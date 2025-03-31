@@ -1,0 +1,12 @@
+{
+  "name": "screen-capture-app",
+  "version": "1.0.0",
+  "description": "Screen capture app with audio visualization",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "electron": "^28.1.0"
+  }
+}
