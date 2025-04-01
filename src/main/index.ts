@@ -11,6 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootPath = path.resolve(__dirname, '../../..')
 const electronAppPath = path.join(rootPath, 'electron-app')
 let openaiApiKey: string | undefined
+const model = 'gpt-4o-mini-realtime-preview-2024-12-17'
 
 try {
   // Try both potential locations for .env file
@@ -142,8 +143,8 @@ function createWindow(): void {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'gpt-4o-realtime-preview-2024-12-17',
-          voice: 'shimmer'
+          model: model,
+          modalities: ['text']
         })
       })
 
@@ -162,7 +163,7 @@ function createWindow(): void {
       }
 
       const response = await fetch(
-        'https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17',
+        `https://api.openai.com/v1/realtime?model=${model}&modalities=text`,
         {
           method: 'POST',
           body: sdp,

@@ -71,15 +71,6 @@ function App(): JSX.Element {
       const pc = new RTCPeerConnection()
       peerConnectionRef.current = pc
 
-      // Create audio element to hear model voice (optional)
-      const audioEl = document.createElement('audio')
-      audioEl.autoplay = true
-      pc.ontrack = (e) => {
-        console.log('Received audio track from OpenAI')
-        audioEl.srcObject = e.streams[0]
-        document.body.appendChild(audioEl)
-      }
-
       // Add desktop audio track to the connection
       stream.getAudioTracks().forEach((track) => {
         pc.addTrack(track, stream)
@@ -94,21 +85,22 @@ function App(): JSX.Element {
           const msg = JSON.parse(event.data)
 
           // Log the event type for all messages
-          console.log('OpenAI WebRTC event:', msg.type)
+          // console.log('OpenAI WebRTC event:', msg.type, msg)
 
-          if (msg.type === 'response.text.delta') {
-            setResponseText((prev) => prev + (msg.delta?.text || ''))
-          }
-          if (msg.type === 'response.text.done') {
-            console.log('Final response:', msg.response.output[0])
-          }
-          // Log when transcription is detected
-          if (msg.type === 'transcription') {
-            console.log('Transcription detected:', msg.transcription?.text)
-          }
-          // Log when voice activity is detected
-          if (msg.type === 'voice_activity') {
-            console.log('Voice activity detected:', msg.is_speech ? 'speech' : 'no speech')
+          if (msg.type === 'response.audio_transcript.delta') {
+            console.log('Delta text received:', msg.delta)
+            setResponseText((prev) => {
+              const delta = msg.delta || ''
+              if (prev.endsWith(delta)) {
+                // Already added this delta, skip update
+                return prev
+              }
+              const newText = prev + delta
+              console.log('Updated response text:', newText)
+              return newText
+            })
+          } else if (msg.type === 'response.text.done') {
+            console.log('Final response text:', msg.text)
           }
         } catch (error) {
           console.error('Error parsing WebRTC message:', error)
@@ -151,33 +143,45 @@ function App(): JSX.Element {
 
     console.log('Manually triggering OpenAI response')
 
-    // Manually trigger a response
-    dataChannelRef.current.send(
-      JSON.stringify({
-        type: 'conversation.item.create',
-        item: {
-          type: 'message',
-          role: 'user',
-          content: [
-            {
-              type: 'input_text',
-              text: 'Summarize what was just said.'
-            }
-          ]
-        }
-      })
-    )
+    // Clear the previous response
+    setResponseText('')
 
-    dataChannelRef.current.send(
-      JSON.stringify({
+    // Manually trigger a response
+    const conversationItem = {
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [
+          {
+            type: 'input_text',
+            text: 'Summarize what was just said.'
+          }
+        ]
+      }
+    }
+
+    console.log('Sending conversation item:', conversationItem)
+    dataChannelRef.current.send(JSON.stringify(conversationItem))
+
+    // Wait a short time to ensure the conversation item is processed
+    setTimeout(() => {
+      if (!dataChannelRef.current) {
+        console.error('No WebRTC data channel available when sending response request')
+        return
+      }
+
+      const responseRequest = {
         type: 'response.create',
         response: {
           modalities: ['text']
         }
-      })
-    )
+      }
 
-    console.log('Manual response request sent to OpenAI')
+      console.log('Sending response request:', responseRequest)
+      dataChannelRef.current.send(JSON.stringify(responseRequest))
+      console.log('Manual response request sent to OpenAI')
+    }, 500)
   }
 
   const stopCapture = (): void => {
@@ -294,7 +298,15 @@ function App(): JSX.Element {
 
       <div className="response-output">
         <h3>OpenAI Response:</h3>
-        <p>{responseText}</p>
+        <div className="response-text">
+          {responseText ? (
+            responseText
+          ) : (
+            <span className="no-response">
+              No response yet. Click "Trigger Response" after starting capture.
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )
