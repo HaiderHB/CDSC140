@@ -90,3 +90,43 @@
   font-size: 0.9rem;
   color: #666;
 }
+
+.response-output {
+  margin: 2rem auto;
+  max-width: 800px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: left;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.response-output h3 {
+  margin-top: 0;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.response-output p {
+  font-size: 1rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.trigger-button {
+  padding: 0.8rem 1.5rem;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: #2196f3;
+  color: white;
+  margin-left: 10px;
+}
+
+.trigger-button:hover {
+  background-color: #0b7dda;
+}
