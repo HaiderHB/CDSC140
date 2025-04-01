@@ -25,10 +25,14 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^4.0.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/material": "^7.0.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "electron-updater": "^6.3.9",
     "express": "^5.1.0",
+    "framer-motion": "^12.6.3",
     "node-fetch": "^3.3.2"
   },
   "devDependencies": {

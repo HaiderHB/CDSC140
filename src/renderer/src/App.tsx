@@ -1,5 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
+import { Box, Tabs, Tab } from '@mui/material'
 import './App.css'
+import MainPage from './components/MainPage'
+import SetupConfigPage from './components/SetupConfigPage'
+import SessionList from './components/SessionList'
+import ResumeManager from './components/ResumeManager'
+import theme from './theme'
+
+interface Session {
+  id: string
+  name: string
+}
+
+interface Resume {
+  id: string
+  name: string
+  file: File
+}
 
 function App(): JSX.Element {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -12,6 +29,10 @@ function App(): JSX.Element {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
   const dataChannelRef = useRef<RTCDataChannel | null>(null)
   const [responseText, setResponseText] = useState('')
+  const [currentPage, setCurrentPage] = useState('main')
+  const [sessions, setSessions] = useState<Session[]>([])
+  const [resumes, setResumes] = useState<Resume[]>([])
+  const [homeTab, setHomeTab] = useState(0)
 
   const startCapture = async (): Promise<void> => {
     try {
@@ -267,48 +288,150 @@ function App(): JSX.Element {
     }
   }, [])
 
+  const handleNewSession = () => {
+    setCurrentPage('setup')
+  }
+
+  const handleLoadSession = () => {
+    // Logic to load existing sessions
+  }
+
+  const handleSaveConfig = (config) => {
+    // Logic to save the session config
+    setCurrentPage('capture')
+  }
+
+  const handleDeleteSession = (sessionId) => {
+    setSessions(sessions.filter((session) => session.id !== sessionId))
+  }
+
+  const handleAddResume = (resume) => {
+    setResumes([...resumes, resume])
+  }
+
+  const handleTabChange = (event, newValue) => {
+    setHomeTab(newValue)
+  }
+
   return (
-    <div className="container">
-      <h1>Screen Capture with OpenAI Realtime</h1>
+    <Box
+      className="app-container"
+      sx={{
+        minHeight: '100vh',
+        background: 'linear-gradient(to bottom right, #0f172a, #1e293b)',
+        p: 3
+      }}
+    >
+      {currentPage === 'main' && (
+        <Box
+          sx={{
+            maxWidth: 'lg',
+            mx: 'auto',
+            borderRadius: 2,
+            overflow: 'hidden',
+            boxShadow: '0 0 40px rgba(99, 102, 241, 0.2)'
+          }}
+        >
+          <MainPage onNewSession={handleNewSession} onLoadSession={handleLoadSession} />
 
-      <div className="controls">
-        {!isCapturing ? (
-          <button onClick={startCapture} className="capture-button">
-            Start Capture
-          </button>
-        ) : (
-          <>
-            <button onClick={stopCapture} className="stop-button">
-              Stop Capture
-            </button>
-            <button onClick={triggerManualResponse} className="trigger-button">
-              Trigger Response
-            </button>
-          </>
-        )}
-      </div>
+          <Box sx={{ mt: 4, borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs value={homeTab} onChange={handleTabChange} aria-label="home tabs">
+              <Tab label="Sessions" />
+              <Tab label="Resumes" />
+            </Tabs>
+          </Box>
 
-      {/* <div className="preview-container">
-        <video ref={videoRef} autoPlay muted className="preview-video" />
-      </div> */}
+          <Box sx={{ py: 3 }}>
+            {homeTab === 0 && (
+              <SessionList sessions={sessions} onDeleteSession={handleDeleteSession} />
+            )}
+            {homeTab === 1 && <ResumeManager onAddResume={handleAddResume} resumes={resumes} />}
+          </Box>
+        </Box>
+      )}
 
-      <div className="audio-container">
-        <canvas ref={canvasRef} className="audio-canvas"></canvas>
-      </div>
+      {currentPage === 'setup' && (
+        <Box
+          sx={{
+            maxWidth: 'md',
+            mx: 'auto',
+            borderRadius: 2,
+            overflow: 'hidden',
+            boxShadow: '0 0 40px rgba(99, 102, 241, 0.2)'
+          }}
+        >
+          <SetupConfigPage
+            onSave={handleSaveConfig}
+            resumes={resumes}
+            onAddResume={handleAddResume}
+            onBack={() => setCurrentPage('main')}
+          />
+        </Box>
+      )}
 
-      <div className="response-output">
-        <h3>OpenAI Response:</h3>
-        <div className="response-text">
-          {responseText ? (
-            responseText
-          ) : (
-            <span className="no-response">
-              No response yet. Click "Trigger Response" after starting capture.
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
+      {currentPage === 'capture' && (
+        <Box
+          sx={{
+            maxWidth: 'lg',
+            mx: 'auto',
+            borderRadius: 2,
+            overflow: 'hidden',
+            boxShadow: '0 0 40px rgba(236, 72, 153, 0.2)'
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', p: 2 }}>
+            <Box
+              onClick={() => setCurrentPage('main')}
+              sx={{
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                color: '#6366f1',
+                '&:hover': { color: '#818cf8' }
+              }}
+            >
+              ← Back to Home
+            </Box>
+          </Box>
+
+          <h1>Screen Capture with OpenAI Realtime</h1>
+
+          <div className="controls">
+            {!isCapturing ? (
+              <button onClick={startCapture} className="capture-button">
+                Start Capture
+              </button>
+            ) : (
+              <>
+                <button onClick={stopCapture} className="stop-button">
+                  Stop Capture
+                </button>
+                <button onClick={triggerManualResponse} className="trigger-button">
+                  Trigger Response
+                </button>
+              </>
+            )}
+          </div>
+
+          <div className="audio-container">
+            <canvas ref={canvasRef} className="audio-canvas"></canvas>
+          </div>
+
+          <div className="response-output">
+            <h3>OpenAI Response:</h3>
+            <div className="response-text">
+              {responseText ? (
+                responseText
+              ) : (
+                <span className="no-response">
+                  No response yet. Click "Trigger Response" after starting capture.
+                </span>
+              )}
+            </div>
+          </div>
+        </Box>
+      )}
+    </Box>
   )
 }
 
