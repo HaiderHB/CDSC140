@@ -5,6 +5,16 @@ import icon from '../../resources/icon.png?asset'
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import path from 'path'
+import {
+  initStorage,
+  loadSessions,
+  loadResumesMetadata,
+  saveSessions,
+  saveResumesMetadata,
+  saveResumeFile,
+  readResumeFile,
+  deleteResumeFile
+} from './storage'
 
 // Load environment variables from .env file
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -45,6 +55,9 @@ try {
     console.error('Failed to create default .env file:', writeError)
   }
 }
+
+// Initialize the storage system
+initStorage()
 
 function createWindow(): void {
   // Create the browser window.
@@ -129,6 +142,9 @@ function createWindow(): void {
     mainWindow.webContents.openDevTools()
   }
 
+  // Set up IPC handlers for data persistence
+  setupIpcHandlers()
+
   // Handle IPC requests for OpenAI token
   ipcMain.handle('get-openai-session', async () => {
     try {
@@ -177,6 +193,81 @@ function createWindow(): void {
       return await response.text()
     } catch (error) {
       console.error('Error in WebRTC SDP exchange:', error)
+      throw error
+    }
+  })
+}
+
+function setupIpcHandlers(): void {
+  // Get sessions
+  ipcMain.handle('get-sessions', async () => {
+    try {
+      return loadSessions()
+    } catch (error) {
+      console.error('Error loading sessions:', error)
+      throw error
+    }
+  })
+
+  // Save sessions
+  ipcMain.handle('save-sessions', async (_, sessions) => {
+    try {
+      return saveSessions(sessions)
+    } catch (error) {
+      console.error('Error saving sessions:', error)
+      throw error
+    }
+  })
+
+  // Get resumes metadata
+  ipcMain.handle('get-resumes', async () => {
+    try {
+      return loadResumesMetadata()
+    } catch (error) {
+      console.error('Error loading resumes metadata:', error)
+      throw error
+    }
+  })
+
+  // Save resumes metadata
+  ipcMain.handle('save-resumes', async (_, resumes) => {
+    try {
+      return saveResumesMetadata(resumes)
+    } catch (error) {
+      console.error('Error saving resumes metadata:', error)
+      throw error
+    }
+  })
+
+  // Save resume file
+  ipcMain.handle('save-resume-file', async (_, id, fileData, fileExtension) => {
+    try {
+      const buffer = Buffer.from(fileData)
+      const filePath = await saveResumeFile(id, buffer, fileExtension)
+      return filePath
+    } catch (error) {
+      console.error('Error saving resume file:', error)
+      throw error
+    }
+  })
+
+  // Read resume file
+  ipcMain.handle('read-resume-file', async (_, filePath) => {
+    try {
+      const buffer = readResumeFile(filePath)
+      return buffer.toString('base64')
+    } catch (error) {
+      console.error('Error reading resume file:', error)
+      throw error
+    }
+  })
+
+  // Delete resume
+  ipcMain.handle('delete-resume', async (_, filePath) => {
+    try {
+      return deleteResumeFile(filePath)
+    } catch (error) {
+      console.error('Error deleting resume file:', error)
       throw error
     }
   })

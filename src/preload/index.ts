@@ -5,7 +5,17 @@ import { electronAPI } from '@electron-toolkit/preload'
 const api = {
   // OpenAI API functions
   getOpenAISession: () => ipcRenderer.invoke('get-openai-session'),
-  openAIWebRtcSdp: (sdp: string) => ipcRenderer.invoke('openai-webrtc-sdp', sdp)
+  openAIWebRtcSdp: (sdp: string) => ipcRenderer.invoke('openai-webrtc-sdp', sdp),
+
+  // Data persistence functions
+  getSessions: () => ipcRenderer.invoke('get-sessions'),
+  saveSessions: (sessions: any[]) => ipcRenderer.invoke('save-sessions', sessions),
+  getResumes: () => ipcRenderer.invoke('get-resumes'),
+  saveResumes: (resumes: any[]) => ipcRenderer.invoke('save-resumes', resumes),
+  saveResumeFile: (id: string, fileData: ArrayBuffer, fileExtension: string) =>
+    ipcRenderer.invoke('save-resume-file', id, fileData, fileExtension),
+  readResumeFile: (filePath: string) => ipcRenderer.invoke('read-resume-file', filePath),
+  deleteResume: (filePath: string) => ipcRenderer.invoke('delete-resume', filePath)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

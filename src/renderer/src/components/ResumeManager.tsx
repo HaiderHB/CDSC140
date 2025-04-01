@@ -17,18 +17,24 @@ import {
 } from '@mui/material'
 import { motion } from 'framer-motion'
 
-interface Resume {
+// Define Resume interface from useDataPersistence
+export interface Resume {
   id: string
   name: string
-  file: File
+  file?: File
+  fileName?: string
+  fileType?: string
+  filePath?: string
+  dateAdded?: string
 }
 
 interface ResumeManagerProps {
-  onAddResume: (resume: Resume) => void
-  resumes?: Resume[]
+  onAddResume: (resume: { name: string; file: File }) => void
+  resumes: Resume[]
+  onDeleteResume?: (id: string) => void
 }
 
-function ResumeManager({ onAddResume, resumes = [] }: ResumeManagerProps) {
+function ResumeManager({ onAddResume, resumes = [], onDeleteResume }: ResumeManagerProps) {
   const [resumeName, setResumeName] = useState('')
   const [resumeFile, setResumeFile] = useState<File | null>(null)
 
@@ -54,9 +60,13 @@ function ResumeManager({ onAddResume, resumes = [] }: ResumeManagerProps) {
 
   const handleAddResume = () => {
     if (resumeName && resumeFile) {
-      // Generate a unique ID
-      const id = `resume_${Date.now()}`
-      onAddResume({ id, name: resumeName, file: resumeFile })
+      // Call the parent's onAddResume with name and file
+      onAddResume({
+        name: resumeName,
+        file: resumeFile
+      })
+
+      // Reset form
       setResumeName('')
       setResumeFile(null)
 
@@ -175,18 +185,39 @@ function ResumeManager({ onAddResume, resumes = [] }: ResumeManagerProps) {
                     <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
                       {resume.name}
                     </Typography>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      {resume.file.name}
-                    </Typography>
+                    {resume.fileName && (
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        {resume.fileName}
+                      </Typography>
+                    )}
                   </Box>
-                  <Chip
-                    label={resume.file.type.split('/')[1].toUpperCase()}
-                    size="small"
-                    sx={{
-                      bgcolor: 'rgba(99, 102, 241, 0.2)',
-                      color: 'primary.light'
-                    }}
-                  />
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {resume.fileType && (
+                      <Chip
+                        label={resume.fileType.split('/')[1]?.toUpperCase() || 'FILE'}
+                        size="small"
+                        sx={{
+                          bgcolor: 'rgba(99, 102, 241, 0.2)',
+                          color: 'primary.light'
+                        }}
+                      />
+                    )}
+                    {onDeleteResume && (
+                      <IconButton
+                        onClick={() => onDeleteResume(resume.id)}
+                        size="small"
+                        sx={{
+                          color: 'rgba(255,255,255,0.6)',
+                          '&:hover': {
+                            color: '#ec4899',
+                            bgcolor: 'rgba(236, 72, 153, 0.1)'
+                          }
+                        }}
+                      >
+                        <span>×</span>
+                      </IconButton>
+                    )}
+                  </Box>
                 </Box>
               </Paper>
             </motion.div>

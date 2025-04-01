@@ -1,21 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
-import { Box, Tabs, Tab } from '@mui/material'
+import { Box, Tabs, Tab, Snackbar, Alert, CircularProgress } from '@mui/material'
 import './App.css'
 import MainPage from './components/MainPage'
 import SetupConfigPage from './components/SetupConfigPage'
 import SessionList from './components/SessionList'
-import ResumeManager from './components/ResumeManager'
+import ResumeManager, { Resume as ResumeType } from './components/ResumeManager'
 import theme from './theme'
+import { useDataPersistence, Session } from './hooks/useDataPersistence'
 
-interface Session {
+// Use Session type from useDataPersistence for all session-related data
+interface CurrentSession {
   id: string
   name: string
-}
-
-interface Resume {
-  id: string
-  name: string
-  file: File
+  date?: string
+  resumeId?: string
+  resumeName?: string
+  jobDescription: string
 }
 
 function App(): JSX.Element {
@@ -30,9 +30,32 @@ function App(): JSX.Element {
   const dataChannelRef = useRef<RTCDataChannel | null>(null)
   const [responseText, setResponseText] = useState('')
   const [currentPage, setCurrentPage] = useState('main')
-  const [sessions, setSessions] = useState<Session[]>([])
-  const [resumes, setResumes] = useState<Resume[]>([])
   const [homeTab, setHomeTab] = useState(0)
+  const [currentSession, setCurrentSession] = useState<CurrentSession | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const {
+    sessions,
+    resumes,
+    loadingSessions,
+    loadingResumes,
+    loadSessionsError,
+    loadResumesError,
+    addSession,
+    updateSession,
+    deleteSession,
+    addResume,
+    deleteResume
+  } = useDataPersistence()
+
+  // Display error messages from data loading
+  useEffect(() => {
+    if (loadSessionsError) {
+      setError(`Failed to load sessions: ${loadSessionsError.message}`)
+    } else if (loadResumesError) {
+      setError(`Failed to load resumes: ${loadResumesError.message}`)
+    }
+  }, [loadSessionsError, loadResumesError])
 
   const startCapture = async (): Promise<void> => {
     try {
@@ -288,29 +311,95 @@ function App(): JSX.Element {
     }
   }, [])
 
+  const handleTabChange = (event, newValue) => {
+    setHomeTab(newValue)
+  }
+
   const handleNewSession = () => {
     setCurrentPage('setup')
   }
 
-  const handleLoadSession = () => {
-    // Logic to load existing sessions
+  const handleLoadSession = (sessionId: string) => {
+    const session = sessions.find((s) => s.id === sessionId)
+    if (session) {
+      setCurrentSession({
+        id: session.id,
+        name: session.name,
+        date: session.date,
+        jobDescription: session.jobDescription,
+        resumeId: session.resumeId,
+        resumeName: session.resumeName
+      })
+      setCurrentPage('capture')
+    }
   }
 
-  const handleSaveConfig = (config) => {
-    // Logic to save the session config
-    setCurrentPage('capture')
+  const handleSaveConfig = async (config: { jobDescription: string; selectedResume: string }) => {
+    try {
+      // Find the selected resume
+      const selectedResume = resumes.find((r) => r.id === config.selectedResume)
+
+      // Create a new session
+      const newSession = await addSession({
+        name: `Interview Session - ${new Date().toLocaleDateString()}`,
+        jobDescription: config.jobDescription,
+        resumeId: selectedResume?.id,
+        resumeName: selectedResume?.name
+      })
+
+      // Set as current session
+      setCurrentSession({
+        id: newSession.id,
+        name: newSession.name,
+        date: newSession.date,
+        jobDescription: newSession.jobDescription,
+        resumeId: newSession.resumeId,
+        resumeName: newSession.resumeName
+      })
+
+      // Navigate to capture page
+      setCurrentPage('capture')
+    } catch (error) {
+      console.error('Error saving session:', error)
+      setError('Failed to save session. Please try again.')
+    }
   }
 
-  const handleDeleteSession = (sessionId) => {
-    setSessions(sessions.filter((session) => session.id !== sessionId))
+  const handleAddResume = async (resume: { name: string; file: File }) => {
+    try {
+      await addResume(resume.name, resume.file)
+      // If we're on the setup page, go back to main with resumes tab active
+      if (currentPage === 'setup') {
+        setCurrentPage('main')
+        setHomeTab(1) // Switch to resumes tab
+      }
+    } catch (error) {
+      console.error('Error adding resume:', error)
+      setError('Failed to add resume. Please try again.')
+    }
   }
 
-  const handleAddResume = (resume) => {
-    setResumes([...resumes, resume])
+  const handleDeleteSession = async (sessionId: string) => {
+    try {
+      await deleteSession(sessionId)
+    } catch (error) {
+      console.error('Error deleting session:', error)
+      setError('Failed to delete session. Please try again.')
+    }
   }
 
-  const handleTabChange = (event, newValue) => {
-    setHomeTab(newValue)
+  const handleDeleteResume = async (resumeId: string) => {
+    try {
+      await deleteResume(resumeId)
+    } catch (error) {
+      console.error('Error deleting resume:', error)
+      setError('Failed to delete resume. Please try again.')
+    }
+  }
+
+  // Close the error snackbar
+  const handleCloseError = () => {
+    setError(null)
   }
 
   return (
@@ -322,6 +411,26 @@ function App(): JSX.Element {
         p: 3
       }}
     >
+      {/* Loading indicator */}
+      {(loadingSessions || loadingResumes) && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: 'rgba(15, 23, 42, 0.7)',
+            zIndex: 9999
+          }}
+        >
+          <CircularProgress color="primary" size={60} />
+        </Box>
+      )}
+
       {currentPage === 'main' && (
         <Box
           sx={{
@@ -332,7 +441,7 @@ function App(): JSX.Element {
             boxShadow: '0 0 40px rgba(99, 102, 241, 0.2)'
           }}
         >
-          <MainPage onNewSession={handleNewSession} onLoadSession={handleLoadSession} />
+          <MainPage onNewSession={handleNewSession} onLoadSession={() => {}} />
 
           <Box sx={{ mt: 4, borderBottom: 1, borderColor: 'divider' }}>
             <Tabs value={homeTab} onChange={handleTabChange} aria-label="home tabs">
@@ -343,9 +452,19 @@ function App(): JSX.Element {
 
           <Box sx={{ py: 3 }}>
             {homeTab === 0 && (
-              <SessionList sessions={sessions} onDeleteSession={handleDeleteSession} />
+              <SessionList
+                sessions={sessions}
+                onDeleteSession={handleDeleteSession}
+                onSelectSession={handleLoadSession}
+              />
             )}
-            {homeTab === 1 && <ResumeManager onAddResume={handleAddResume} resumes={resumes} />}
+            {homeTab === 1 && (
+              <ResumeManager
+                onAddResume={handleAddResume}
+                resumes={resumes}
+                onDeleteResume={handleDeleteResume}
+              />
+            )}
           </Box>
         </Box>
       )}
@@ -363,7 +482,10 @@ function App(): JSX.Element {
           <SetupConfigPage
             onSave={handleSaveConfig}
             resumes={resumes}
-            onAddResume={handleAddResume}
+            onAddResume={() => {
+              setCurrentPage('main')
+              setHomeTab(1) // Switch to resumes tab
+            }}
             onBack={() => setCurrentPage('main')}
           />
         </Box>
@@ -431,6 +553,13 @@ function App(): JSX.Element {
           </div>
         </Box>
       )}
+
+      {/* Error Snackbar */}
+      <Snackbar open={!!error} autoHideDuration={6000} onClose={handleCloseError}>
+        <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
     </Box>
   )
 }

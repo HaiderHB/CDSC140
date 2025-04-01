@@ -12,12 +12,7 @@ import {
   InputAdornment
 } from '@mui/material'
 import { motion } from 'framer-motion'
-
-interface Resume {
-  id: string
-  name: string
-  file: File
-}
+import { Resume } from './ResumeManager'
 
 interface SetupConfigProps {
   onSave: (config: { jobDescription: string; selectedResume: string }) => void

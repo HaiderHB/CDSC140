@@ -13,9 +13,10 @@ interface Session {
 interface SessionListProps {
   sessions: Session[]
   onDeleteSession: (id: string) => void
+  onSelectSession: (id: string) => void
 }
 
-function SessionList({ sessions, onDeleteSession }: SessionListProps) {
+function SessionList({ sessions, onDeleteSession, onSelectSession }: SessionListProps) {
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="h5" sx={{ mb: 3, fontWeight: 600 }}>
@@ -51,9 +52,11 @@ function SessionList({ sessions, onDeleteSession }: SessionListProps) {
                   transition: 'all 0.3s ease',
                   '&:hover': {
                     transform: 'translateY(-4px)',
-                    boxShadow: '0 12px 24px rgba(99, 102, 241, 0.2)'
+                    boxShadow: '0 12px 24px rgba(99, 102, 241, 0.2)',
+                    cursor: 'pointer'
                   }
                 }}
+                onClick={() => onSelectSession(session.id)}
               >
                 <CardContent sx={{ p: 3 }}>
                   <Box
@@ -68,7 +71,10 @@ function SessionList({ sessions, onDeleteSession }: SessionListProps) {
                       {session.name}
                     </Typography>
                     <IconButton
-                      onClick={() => onDeleteSession(session.id)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onDeleteSession(session.id)
+                      }}
                       size="small"
                       sx={{
                         color: 'rgba(255,255,255,0.6)',
