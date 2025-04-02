@@ -1,5 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { Box, Tabs, Tab, Snackbar, Alert, CircularProgress, Grid } from '@mui/material'
+import {
+  Box,
+  Tabs,
+  Tab,
+  Snackbar,
+  Alert,
+  CircularProgress,
+  Grid,
+  List,
+  ListItem,
+  ListItemText,
+  Paper
+} from '@mui/material'
 import './App.css'
 import SetupConfigPage from './components/SetupConfigPage'
 import SessionList from './components/SessionList'
@@ -27,6 +39,8 @@ function App(): JSX.Element {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
   const dataChannelRef = useRef<RTCDataChannel | null>(null)
   const [responseText, setResponseText] = useState('')
+  const [bulletPoints, setBulletPoints] = useState<string[]>([])
+  const [currentBulletPoint, setCurrentBulletPoint] = useState('')
   const [currentPage, setCurrentPage] = useState('main')
   const [homeTab, setHomeTab] = useState(0)
   const [currentSession, setCurrentSession] = useState<CurrentSession | null>(null)
@@ -121,6 +135,38 @@ function App(): JSX.Element {
       const dc = pc.createDataChannel('oai-events')
       dataChannelRef.current = dc
 
+      // Include session information in the automatic response
+      const sessionInfo = currentSession
+        ? `Use the following job description and resume to help answer the questions. Job Description: ${currentSession.jobDescription}, Resume: ${currentSession.resumeName}`
+        : ''
+
+      const prompt = `You are a meeting assistant to help during a meeting.
+        The user is being asked questions by an interviewer and you must help them answer the questions.
+
+        Your answers must be ultra concise so users can understand at a glance.
+        No filler or intro phrases. 
+        Start with a short core answer, then expand if needed
+        Seperate each new point with a "-".
+
+        Do not include anything else in your response. Only include the concise bullet points in the format specified.
+
+        For example instead of saying "Python is a high-level, versatile programming language known for its readability and wide range of applications, from web development to data science and automation."
+        "A high-level versatile programming language - Known for being easy to read - Used for wide range of applications, web development, data science, automation, etc."
+
+        ${sessionInfo}`
+
+      dc.addEventListener('open', () => {
+        console.log('Data channel open, sending session.update')
+
+        const update = {
+          type: 'session.update',
+          session: {
+            instructions: prompt
+          }
+        }
+        dataChannelRef.current?.send(JSON.stringify(update))
+      })
+
       dc.addEventListener('message', (event) => {
         try {
           const msg = JSON.parse(event.data)
@@ -130,30 +176,52 @@ function App(): JSX.Element {
 
           if (msg.type === 'response.audio_transcript.delta') {
             console.log('Delta text received:', msg.delta)
+            const delta = msg.delta || ''
+
             setResponseText((prev) => {
-              const delta = msg.delta || ''
               if (prev.endsWith(delta)) {
-                // Already added this delta, skip update
                 return prev
               }
+              return prev + delta
+            })
+
+            // Handle bullet point parsing
+            setCurrentBulletPoint((prev) => {
               const newText = prev + delta
-              console.log('Updated response text:', newText)
+
+              // If we encounter a bullet point separator
+              if (delta.includes('-')) {
+                const parts = newText.split('-')
+
+                // Add completed bullet points to the list
+                if (parts.length > 1) {
+                  setBulletPoints((prevPoints) => {
+                    const newPoints = [...prevPoints]
+                    // Add all complete points except the last one
+                    for (let i = 0; i < parts.length - 1; i++) {
+                      const point = parts[i].trim()
+                      if (point && !newPoints.includes(point)) {
+                        newPoints.push(point)
+                      }
+                    }
+                    return newPoints
+                  })
+                  // Keep the incomplete part
+                  return parts[parts.length - 1]
+                }
+              }
               return newText
             })
           } else if (msg.type === 'response.text.done') {
-            console.log('Final response text:', msg.text)
-
-            // Include session information in the automatic response
-            const sessionInfo = currentSession
-              ? `Job Description: ${currentSession.jobDescription}, Resume: ${currentSession.resumeName}`
-              : 'No session information available.'
-
-            console.log('Sending request with the following info: ', sessionInfo)
+            // Add the final bullet point if there is one
+            if (currentBulletPoint.trim()) {
+              setBulletPoints((prev) => [...prev, currentBulletPoint.trim()])
+              setCurrentBulletPoint('')
+            }
             const responseRequest = {
               type: 'response.create',
               response: {
-                modalities: ['text'],
-                content: `Help answer this interview question. ${sessionInfo}`
+                modalities: ['text']
               }
             }
 
@@ -228,6 +296,8 @@ function App(): JSX.Element {
 
     setIsCapturing(false)
     setResponseText('')
+    setBulletPoints([])
+    setCurrentBulletPoint('')
 
     // Clear canvas
     if (canvasRef.current) {
@@ -373,6 +443,56 @@ function App(): JSX.Element {
     setError(null)
   }
 
+  // Replace the response-output div with this new component
+  const renderResponseOutput = () => (
+    <Box className="response-output" sx={{ mt: 3 }}>
+      <h3>OpenAI Response:</h3>
+      {bulletPoints.length === 0 && !currentBulletPoint ? (
+        <Paper
+          sx={{
+            p: 2,
+            bgcolor: 'rgba(15, 23, 42, 0.5)',
+            color: 'text.secondary'
+          }}
+        >
+          <span className="no-response">No response yet. Click "Start Capture" to begin.</span>
+        </Paper>
+      ) : (
+        <Paper
+          sx={{
+            bgcolor: 'rgba(15, 23, 42, 0.5)',
+            maxHeight: 400,
+            overflow: 'auto'
+          }}
+        >
+          <List>
+            {bulletPoints.map((point, index) => (
+              <ListItem
+                key={index}
+                sx={{
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  py: 1
+                }}
+              >
+                <ListItemText primary={point} />
+              </ListItem>
+            ))}
+            {currentBulletPoint && (
+              <ListItem
+                sx={{
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  py: 1
+                }}
+              >
+                <ListItemText primary={currentBulletPoint} />
+              </ListItem>
+            )}
+          </List>
+        </Paper>
+      )}
+    </Box>
+  )
+
   return (
     <Box
       className="app-container"
@@ -509,18 +629,7 @@ function App(): JSX.Element {
             <canvas ref={canvasRef} className="audio-canvas"></canvas>
           </div>
 
-          <div className="response-output">
-            <h3>OpenAI Response:</h3>
-            <div className="response-text">
-              {responseText ? (
-                responseText
-              ) : (
-                <span className="no-response">
-                  No response yet. Click "Start Capture" to begin.
-                </span>
-              )}
-            </div>
-          </div>
+          {renderResponseOutput()}
         </Box>
       )}
 
