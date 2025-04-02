@@ -1,6 +1,18 @@
 import React from 'react'
-import { Box, Typography, Card, CardContent, IconButton, Stack, Chip, Divider } from '@mui/material'
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  IconButton,
+  Stack,
+  Chip,
+  Divider,
+  Grid,
+  Paper
+} from '@mui/material'
 import { motion } from 'framer-motion'
+import AddIcon from '@mui/icons-material/Add'
 
 interface Session {
   id: string
@@ -14,51 +26,106 @@ interface SessionListProps {
   sessions: Session[]
   onDeleteSession: (id: string) => void
   onSelectSession: (id: string) => void
+  onNewSession: () => void
 }
 
-function SessionList({ sessions, onDeleteSession, onSelectSession }: SessionListProps) {
-  return (
-    <Box sx={{ p: 2 }}>
-      <Typography variant="h5" sx={{ mb: 3, fontWeight: 600 }}>
-        Your Interview Sessions
-      </Typography>
+// Define styles for the tiles
+const tileBaseStyle = {
+  position: 'relative',
+  height: '180px',
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+  borderRadius: 2,
+  overflow: 'hidden',
+  bgcolor: 'rgba(30, 41, 59, 0.6)',
+  backdropFilter: 'blur(4px)',
+  transition: 'all 0.3s ease',
+  cursor: 'pointer',
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    inset: '-2px',
+    borderRadius: 'inherit',
+    background:
+      'linear-gradient(145deg, rgba(99, 102, 241, 0), rgba(99, 102, 241, 0.4), rgba(236, 72, 153, 0), rgba(236, 72, 153, 0.5)) 0% 0% / 400% 400%',
+    zIndex: -1,
+    opacity: 0,
+    transition: 'opacity 0.4s ease, background-position 1s ease'
+  },
+  '&:hover': {
+    transform: 'translateY(-4px)',
+    bgcolor: 'rgba(30, 41, 59, 0.8)',
+    '&::before': {
+      opacity: 1,
+      animation: 'gradient-spin 4s linear infinite'
+    }
+  }
+}
 
-      {sessions.length === 0 ? (
-        <Box
-          sx={{
-            p: 4,
-            textAlign: 'center',
-            bgcolor: 'rgba(30, 41, 59, 0.4)',
-            borderRadius: 2,
-            border: '1px dashed rgba(255, 255, 255, 0.1)'
-          }}
-        >
-          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            No sessions available. Create a new session to get started.
-          </Typography>
-        </Box>
-      ) : (
-        <Stack spacing={3}>
-          {sessions.map((session, index) => (
+const addTileStyle = {
+  ...tileBaseStyle,
+  alignItems: 'center',
+  justifyContent: 'center',
+  border: '2px dashed rgba(255, 255, 255, 0.2)',
+  bgcolor: 'transparent', // Different background for add tile
+  '&:hover': {
+    transform: 'translateY(-4px)',
+    borderColor: 'rgba(99, 102, 241, 0.8)',
+    bgcolor: 'rgba(99, 102, 241, 0.1)',
+    '& svg': {
+      color: '#818cf8' // Brighter icon on hover
+    }
+  },
+  '&::before': {
+    // Disable gradient glow for add tile
+    display: 'none'
+  }
+}
+
+function SessionList({
+  sessions,
+  onDeleteSession,
+  onSelectSession,
+  onNewSession
+}: SessionListProps) {
+  return (
+    <Box>
+      <Grid container spacing={3}>
+        <Grid xs={12} sm={6} md={4}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Paper sx={addTileStyle} onClick={onNewSession}>
+              <Box sx={{ textAlign: 'center' }}>
+                <AddIcon
+                  sx={{
+                    fontSize: 40,
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    transition: 'color 0.3s ease'
+                  }}
+                />
+                <Typography sx={{ mt: 1, color: 'text.secondary' }}>New Session</Typography>
+              </Box>
+            </Paper>
+          </motion.div>
+        </Grid>
+
+        {sessions.map((session, index) => (
+          <Grid xs={12} sm={6} md={4} key={session.id}>
             <motion.div
-              key={session.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
+              transition={{ duration: 0.3, delay: (index + 1) * 0.05 }}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
             >
-              <Card
-                sx={{
-                  position: 'relative',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: '0 12px 24px rgba(99, 102, 241, 0.2)',
-                    cursor: 'pointer'
-                  }
-                }}
-                onClick={() => onSelectSession(session.id)}
-              >
-                <CardContent sx={{ p: 3 }}>
+              <Paper sx={tileBaseStyle} onClick={() => onSelectSession(session.id)}>
+                <CardContent sx={{ p: 3, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
                   <Box
                     sx={{
                       display: 'flex',
@@ -67,7 +134,7 @@ function SessionList({ sessions, onDeleteSession, onSelectSession }: SessionList
                       mb: 2
                     }}
                   >
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, mr: 1 }}>
                       {session.name}
                     </Typography>
                     <IconButton
@@ -77,48 +144,70 @@ function SessionList({ sessions, onDeleteSession, onSelectSession }: SessionList
                       }}
                       size="small"
                       sx={{
-                        color: 'rgba(255,255,255,0.6)',
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        color: 'rgba(255,255,255,0.4)',
+                        bgcolor: 'rgba(0,0,0,0.2)',
                         '&:hover': {
                           color: '#ec4899',
-                          bgcolor: 'rgba(236, 72, 153, 0.1)'
+                          bgcolor: 'rgba(236, 72, 153, 0.2)'
                         }
                       }}
                     >
-                      <span>×</span>
+                      <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>×</span>
                     </IconButton>
                   </Box>
 
                   {session.date && (
-                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>
                       {new Date(session.date).toLocaleDateString()}
                     </Typography>
                   )}
 
+                  <Box sx={{ flexGrow: 1 }} />
+
                   {session.resumeId && (
-                    <Box sx={{ mt: 2 }}>
-                      <Divider sx={{ my: 1.5 }} />
-                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1.5 }}>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', mr: 1 }}>
+                    <Box sx={{ mt: 'auto' }}>
+                      <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.1)' }} />
+                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', mr: 1 }}>
                           Resume:
                         </Typography>
                         <Chip
                           label={session.resumeName || 'Selected Resume'}
                           size="small"
                           sx={{
-                            bgcolor: 'rgba(99, 102, 241, 0.1)',
-                            color: 'primary.light',
-                            borderRadius: 1
+                            bgcolor: 'rgba(99, 102, 241, 0.15)',
+                            color: '#a5b4fc',
+                            fontSize: '0.7rem',
+                            height: '20px'
                           }}
                         />
                       </Box>
                     </Box>
                   )}
                 </CardContent>
-              </Card>
+              </Paper>
             </motion.div>
-          ))}
-        </Stack>
-      )}
+          </Grid>
+        ))}
+
+        {sessions.length === 0 && (
+          <Grid xs={12}>
+            <Box
+              sx={{
+                p: 4,
+                textAlign: 'center'
+              }}
+            >
+              <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+                No sessions yet. Click the '+' tile to create one!
+              </Typography>
+            </Box>
+          </Grid>
+        )}
+      </Grid>
     </Box>
   )
 }

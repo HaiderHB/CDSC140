@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Box, Tabs, Tab, Snackbar, Alert, CircularProgress } from '@mui/material'
+import { Box, Tabs, Tab, Snackbar, Alert, CircularProgress, Grid } from '@mui/material'
 import './App.css'
-import MainPage from './components/MainPage'
 import SetupConfigPage from './components/SetupConfigPage'
 import SessionList from './components/SessionList'
-import ResumeManager, { Resume as ResumeType } from './components/ResumeManager'
-import theme from './theme'
-import { useDataPersistence, Session } from './hooks/useDataPersistence'
+import ResumeManager from './components/ResumeManager'
+import { useDataPersistence } from './hooks/useDataPersistence'
 
 // Use Session type from useDataPersistence for all session-related data
 interface CurrentSession {
@@ -42,7 +40,6 @@ function App(): JSX.Element {
     loadSessionsError,
     loadResumesError,
     addSession,
-    updateSession,
     deleteSession,
     addResume,
     deleteResume
@@ -145,6 +142,29 @@ function App(): JSX.Element {
             })
           } else if (msg.type === 'response.text.done') {
             console.log('Final response text:', msg.text)
+
+            // Include session information in the automatic response
+            const sessionInfo = currentSession
+              ? `Job Description: ${currentSession.jobDescription}, Resume: ${currentSession.resumeName}`
+              : 'No session information available.'
+
+            console.log('Sending request with the following info: ', sessionInfo)
+            const responseRequest = {
+              type: 'response.create',
+              response: {
+                modalities: ['text'],
+                content: `Help answer this interview question. ${sessionInfo}`
+              }
+            }
+
+            if (dataChannelRef.current) {
+              console.log('Sending automatic response request:', responseRequest)
+              dataChannelRef.current.send(JSON.stringify(responseRequest))
+            } else {
+              console.error(
+                'No WebRTC data channel available when sending automatic response request'
+              )
+            }
           }
         } catch (error) {
           console.error('Error parsing WebRTC message:', error)
@@ -177,55 +197,6 @@ function App(): JSX.Element {
     } catch (error) {
       console.error('Error setting up WebRTC:', error)
     }
-  }
-
-  const triggerManualResponse = (): void => {
-    if (!dataChannelRef.current) {
-      console.error('No WebRTC data channel available')
-      return
-    }
-
-    console.log('Manually triggering OpenAI response')
-
-    // Clear the previous response
-    setResponseText('')
-
-    // Manually trigger a response
-    const conversationItem = {
-      type: 'conversation.item.create',
-      item: {
-        type: 'message',
-        role: 'user',
-        content: [
-          {
-            type: 'input_text',
-            text: 'Summarize what was just said.'
-          }
-        ]
-      }
-    }
-
-    console.log('Sending conversation item:', conversationItem)
-    dataChannelRef.current.send(JSON.stringify(conversationItem))
-
-    // Wait a short time to ensure the conversation item is processed
-    setTimeout(() => {
-      if (!dataChannelRef.current) {
-        console.error('No WebRTC data channel available when sending response request')
-        return
-      }
-
-      const responseRequest = {
-        type: 'response.create',
-        response: {
-          modalities: ['text']
-        }
-      }
-
-      console.log('Sending response request:', responseRequest)
-      dataChannelRef.current.send(JSON.stringify(responseRequest))
-      console.log('Manual response request sent to OpenAI')
-    }, 500)
   }
 
   const stopCapture = (): void => {
@@ -435,27 +406,31 @@ function App(): JSX.Element {
         <Box
           sx={{
             maxWidth: 'lg',
-            mx: 'auto',
-            borderRadius: 2,
-            overflow: 'hidden',
-            boxShadow: '0 0 40px rgba(99, 102, 241, 0.2)'
+            mx: 'auto'
           }}
         >
-          <MainPage onNewSession={handleNewSession} onLoadSession={() => {}} />
-
-          <Box sx={{ mt: 4, borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={homeTab} onChange={handleTabChange} aria-label="home tabs">
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+            <Tabs value={homeTab} onChange={handleTabChange} aria-label="home tabs" centered>
               <Tab label="Sessions" />
               <Tab label="Resumes" />
             </Tabs>
           </Box>
 
-          <Box sx={{ py: 3 }}>
+          <Box
+            sx={{
+              borderRadius: 2,
+              overflow: 'hidden',
+              bgcolor: 'rgba(15, 23, 42, 0.5)',
+              boxShadow: '0 0 40px rgba(99, 102, 241, 0.2)',
+              p: 3
+            }}
+          >
             {homeTab === 0 && (
               <SessionList
                 sessions={sessions}
                 onDeleteSession={handleDeleteSession}
                 onSelectSession={handleLoadSession}
+                onNewSession={handleNewSession}
               />
             )}
             {homeTab === 1 && (
@@ -524,14 +499,9 @@ function App(): JSX.Element {
                 Start Capture
               </button>
             ) : (
-              <>
-                <button onClick={stopCapture} className="stop-button">
-                  Stop Capture
-                </button>
-                <button onClick={triggerManualResponse} className="trigger-button">
-                  Trigger Response
-                </button>
-              </>
+              <button onClick={stopCapture} className="stop-button">
+                Stop Capture
+              </button>
             )}
           </div>
 
@@ -546,7 +516,7 @@ function App(): JSX.Element {
                 responseText
               ) : (
                 <span className="no-response">
-                  No response yet. Click "Trigger Response" after starting capture.
+                  No response yet. Click "Start Capture" to begin.
                 </span>
               )}
             </div>

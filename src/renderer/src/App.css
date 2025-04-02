@@ -203,3 +203,15 @@ button:focus {
   padding: 24px;
   box-shadow: 0 8px 32px rgba(31, 38, 135, 0.2);
 }
+
+@keyframes gradient-spin {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
