@@ -37,7 +37,7 @@
     "express": "^5.1.0",
     "framer-motion": "^12.6.3",
     "node-fetch": "^3.3.2",
-    "whisper-node": "^1.1.1"
+    "nodejs-whisper": "github:HaiderHB/nodejs-whisper"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",

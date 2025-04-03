@@ -15,7 +15,10 @@ const api = {
   saveResumeFile: (id: string, fileData: ArrayBuffer, fileExtension: string) =>
     ipcRenderer.invoke('save-resume-file', id, fileData, fileExtension),
   readResumeFile: (filePath: string) => ipcRenderer.invoke('read-resume-file', filePath),
-  deleteResume: (filePath: string) => ipcRenderer.invoke('delete-resume', filePath)
+  deleteResume: (filePath: string) => ipcRenderer.invoke('delete-resume', filePath),
+
+  // Transcription function
+  transcribeAudio: (audioData: Uint8Array) => ipcRenderer.invoke('transcribe-audio', audioData)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
@@ -23,14 +26,27 @@ const api = {
 // just add to the DOM global.
 if (process.contextIsolated) {
   try {
-    contextBridge.exposeInMainWorld('electron', electronAPI)
+    contextBridge.exposeInMainWorld('electron', {
+      ...electronAPI,
+      ipcRenderer: {
+        ...electronAPI.ipcRenderer,
+        transcribeAudio: (audioData: Uint8Array) =>
+          ipcRenderer.invoke('transcribe-audio', audioData)
+      }
+    })
     contextBridge.exposeInMainWorld('api', api)
   } catch (error) {
     console.error(error)
   }
 } else {
   // @ts-ignore (define in dts)
-  window.electron = electronAPI
+  window.electron = {
+    ...electronAPI,
+    ipcRenderer: {
+      ...electronAPI.ipcRenderer,
+      transcribeAudio: (audioData: Uint8Array) => ipcRenderer.invoke('transcribe-audio', audioData)
+    }
+  }
   // @ts-ignore (define in dts)
   window.api = api
 }

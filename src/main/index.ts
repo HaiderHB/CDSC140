@@ -15,6 +15,7 @@ import {
   readResumeFile,
   deleteResumeFile
 } from './storage'
+import { setupTranscriptionHandlers } from './transcription'
 
 // Load environment variables from .env file
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -116,18 +117,6 @@ function createWindow(): void {
     },
     { useSystemPicker: true }
   )
-
-  // Set Content Security Policy to allow connections to localhost:3000 and inline styles
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [
-          "default-src 'self'; connect-src 'self' http://localhost:3000 https://api.openai.com https://storage.googleapis.com https://fonts.googleapis.com https://tfhub.dev https://www.kaggle.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
-        ]
-      }
-    })
-  })
 
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
@@ -290,6 +279,22 @@ app.whenReady().then(() => {
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
+  // Set up app-wide security policies
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          "default-src 'self'; connect-src 'self' http://localhost:3000 https://api.openai.com https://storage.googleapis.com https://fonts.googleapis.com https://tfhub.dev https://www.kaggle.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
+        ]
+      }
+    })
+  })
+
+  // Set up transcription handlers
+  setupTranscriptionHandlers()
+
+  // Create the browser window
   createWindow()
 
   app.on('activate', function () {

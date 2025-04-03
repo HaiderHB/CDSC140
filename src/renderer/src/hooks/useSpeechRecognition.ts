@@ -1,30 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as use from '@tensorflow-models/universal-sentence-encoder'
 import * as tf from '@tensorflow/tfjs'
-import whisper from 'whisper-node'
-import { writeFile } from 'fs/promises'
-import { join } from 'path'
-import { tmpdir } from 'os'
-
-// Add Web Speech API type definitions
-interface SpeechGrammarList {
-  addFromString(string: string, weight?: number): void
-  addFromURI(src: string, weight?: number): void
-  length: number
-  item(index: number): SpeechGrammar
-}
-
-interface SpeechGrammar {
-  src: string
-  weight: number
-}
-
-interface WebkitSpeechRecognition extends SpeechRecognition {
-  maxAlternatives?: number
-  grammars?: SpeechGrammarList | null
-  serviceURI?: string
-  onstart?: (event: Event) => void
-}
 
 interface UseSpeechRecognitionProps {
   onTranscript: (text: string) => void
@@ -72,35 +48,37 @@ export const useSpeechRecognition = ({
   }, [])
 
   const processAudioChunks = async () => {
-    if (audioChunksRef.current.length === 0) return
+    if (audioChunksRef.current.length === 0) {
+      console.log('No audio chunks to process')
+      return
+    }
 
     try {
+      console.log(`Processing ${audioChunksRef.current.length} audio chunks...`)
       // Create a single blob from all chunks
       const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' })
+      console.log(`Created audio blob of size ${audioBlob.size} bytes`)
 
-      // Convert blob to buffer
+      // Convert blob to ArrayBuffer
       const arrayBuffer = await audioBlob.arrayBuffer()
-      const buffer = Buffer.from(arrayBuffer)
+      console.log('Converted audio blob to ArrayBuffer')
 
-      // Create a temporary file path
-      const tempFilePath = join(tmpdir(), `recording-${Date.now()}.wav`)
+      // Convert to Uint8Array for transmission
+      const uint8Array = new Uint8Array(arrayBuffer)
+      console.log(`Converted to Uint8Array of length ${uint8Array.length}`)
 
-      // Write the buffer to a temporary file
-      await writeFile(tempFilePath, buffer)
+      if (uint8Array.length === 0) {
+        console.warn('No audio data to transcribe')
+        return
+      }
 
-      // Transcribe using whisper-node
-      const transcript = await whisper(tempFilePath, {
-        modelName: 'base.en',
-        whisperOptions: {
-          language: 'en',
-          word_timestamps: true
-        }
-      })
+      console.log('Sending audio data for transcription, size:', uint8Array.length, 'bytes')
+      console.time('transcription')
 
-      // Combine all speech segments into a single transcript
-      const fullTranscript = transcript.map((segment) => segment.speech).join(' ')
-
-      console.log('Full transcript:', fullTranscript)
+      // Send to main process for transcription using exposed IPC
+      const fullTranscript = await window.api.transcribeAudio(uint8Array)
+      console.timeEnd('transcription')
+      console.log('Received transcription from Whisper:', fullTranscript)
       onTranscript(fullTranscript)
 
       // Compare with bullet points if we have the model loaded
@@ -138,9 +116,6 @@ export const useSpeechRecognition = ({
           console.error('Error comparing embeddings:', error)
         }
       }
-
-      // Clean up the temporary file
-      await writeFile(tempFilePath, '')
     } catch (error) {
       console.error('Error processing audio chunks:', error)
     }
@@ -148,8 +123,9 @@ export const useSpeechRecognition = ({
 
   const startListening = async () => {
     try {
-      console.log('Starting audio recording...')
+      console.log('Requesting microphone access...')
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      console.log('Microphone access granted')
       streamRef.current = stream
 
       const mediaRecorder = new MediaRecorder(stream)
@@ -158,15 +134,19 @@ export const useSpeechRecognition = ({
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
+          console.log(`Received audio chunk of size ${event.data.size} bytes`)
           audioChunksRef.current.push(event.data)
         }
       }
 
       // Process audio chunks every 5 seconds
+      console.log('Setting up audio processing interval (every 5 seconds)')
       recordingIntervalRef.current = setInterval(processAudioChunks, 5000)
 
+      console.log('Starting MediaRecorder with 1-second timeslices')
       mediaRecorder.start(1000) // Collect data every second
       setIsListening(true)
+      console.log('Speech recognition is now active')
     } catch (error) {
       console.error('Error starting audio recording:', error)
       setIsListening(false)
@@ -178,17 +158,25 @@ export const useSpeechRecognition = ({
       try {
         console.log('Stopping audio recording...')
         mediaRecorderRef.current.stop()
-        streamRef.current.getTracks().forEach((track) => track.stop())
+        console.log('MediaRecorder stopped')
+
+        streamRef.current.getTracks().forEach((track) => {
+          console.log('Stopping audio track')
+          track.stop()
+        })
 
         if (recordingIntervalRef.current) {
+          console.log('Clearing audio processing interval')
           clearInterval(recordingIntervalRef.current)
           recordingIntervalRef.current = null
         }
 
+        console.log('Processing final audio chunks...')
         // Process any remaining audio chunks
         processAudioChunks()
 
         setIsListening(false)
+        console.log('Speech recognition stopped')
       } catch (error) {
         console.error('Error stopping audio recording:', error)
       }
