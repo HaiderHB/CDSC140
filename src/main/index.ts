@@ -123,7 +123,7 @@ function createWindow(): void {
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self'; connect-src 'self' http://localhost:3000 https://api.openai.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
+          "default-src 'self'; connect-src 'self' http://localhost:3000 https://api.openai.com https://storage.googleapis.com https://fonts.googleapis.com https://tfhub.dev https://www.kaggle.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
         ]
       }
     })

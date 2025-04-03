@@ -10,13 +10,15 @@ import {
   List,
   ListItem,
   ListItemText,
-  Paper
+  Paper,
+  Typography
 } from '@mui/material'
 import './App.css'
 import SetupConfigPage from './components/SetupConfigPage'
 import SessionList from './components/SessionList'
 import ResumeManager from './components/ResumeManager'
 import { useDataPersistence } from './hooks/useDataPersistence'
+import { useSpeechRecognition } from './hooks/useSpeechRecognition'
 
 // Use Session type from useDataPersistence for all session-related data
 interface CurrentSession {
@@ -28,14 +30,21 @@ interface CurrentSession {
   jobDescription: string
 }
 
+const TEST_MODE = true
+
 function App(): JSX.Element {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const micCanvasRef = useRef<HTMLCanvasElement>(null)
   const [isCapturing, setIsCapturing] = useState(false)
   const streamRef = useRef<MediaStream | null>(null)
+  const micStreamRef = useRef<MediaStream | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
+  const micAudioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
+  const micAnalyserRef = useRef<AnalyserNode | null>(null)
   const animationFrameRef = useRef<number | null>(null)
+  const micAnimationFrameRef = useRef<number | null>(null)
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
   const dataChannelRef = useRef<RTCDataChannel | null>(null)
   const [responseText, setResponseText] = useState('')
@@ -59,6 +68,19 @@ function App(): JSX.Element {
     deleteResume
   } = useDataPersistence()
 
+  // Add speech recognition hook with enhanced logging
+  const { isListening, startListening, stopListening } = useSpeechRecognition({
+    onTranscript: (text) => {
+      console.log('User speech transcript:', text)
+    },
+    bulletPoints,
+    onMatchFound: (matchedPoint) => {
+      console.log('Matched bullet point:', matchedPoint)
+      // Remove the matched bullet point
+      setBulletPoints((prev) => prev.filter((point) => point !== matchedPoint))
+    }
+  })
+
   // Display error messages from data loading
   useEffect(() => {
     if (loadSessionsError) {
@@ -70,7 +92,8 @@ function App(): JSX.Element {
 
   const startCapture = async (): Promise<void> => {
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
+      // Get desktop audio stream
+      const desktopStream = await navigator.mediaDevices.getDisplayMedia({
         audio: true,
         video: {
           width: 1280,
@@ -79,34 +102,80 @@ function App(): JSX.Element {
         }
       })
 
+      // Get microphone stream
+      console.log('Requesting microphone access...')
+      const micStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      })
+      console.log('Microphone access granted')
+
       // Check if we got audio tracks
-      const audioTracks = stream.getAudioTracks()
-      if (audioTracks.length === 0) {
-        console.warn('No audio track found in the stream')
+      const desktopAudioTracks = desktopStream.getAudioTracks()
+      if (desktopAudioTracks.length === 0) {
+        console.warn('No desktop audio track found in the stream')
       } else {
-        console.log('Audio track found:', audioTracks[0].label)
+        console.log('Desktop audio track found:', desktopAudioTracks[0].label)
       }
 
-      streamRef.current = stream
+      const micAudioTracks = micStream.getAudioTracks()
+      if (micAudioTracks.length === 0) {
+        console.warn('No microphone audio track found')
+      } else {
+        console.log('Microphone audio track found:', micAudioTracks[0].label)
+      }
+
+      streamRef.current = desktopStream
+      micStreamRef.current = micStream
+
       if (videoRef.current) {
-        videoRef.current.srcObject = stream
+        videoRef.current.srcObject = desktopStream
         videoRef.current.onloadedmetadata = () => videoRef.current?.play()
       }
 
-      // Set up audio analysis
+      // Set up audio analysis for desktop audio
       audioContextRef.current = new AudioContext()
       analyserRef.current = audioContextRef.current.createAnalyser()
-      const source = audioContextRef.current.createMediaStreamSource(stream)
+      const source = audioContextRef.current.createMediaStreamSource(desktopStream)
       source.connect(analyserRef.current)
       analyserRef.current.fftSize = 256
 
+      // Set up audio analysis for microphone
+      micAudioContextRef.current = new AudioContext()
+      micAnalyserRef.current = micAudioContextRef.current.createAnalyser()
+      const micSource = micAudioContextRef.current.createMediaStreamSource(micStream)
+      micSource.connect(micAnalyserRef.current)
+      micAnalyserRef.current.fftSize = 256
+
       setIsCapturing(true)
       startVisualization()
+      startMicVisualization()
 
-      // Connect to OpenAI WebRTC
-      await connectToOpenAI(stream)
-    } catch (error) {
+      // Start speech recognition
+      console.log('Starting speech recognition...')
+      startListening()
+
+      if (TEST_MODE) {
+        // In test mode, set some test bullet points
+        const testBulletPoints = [
+          'I have 5 years of experience in software development',
+          "I'm proficient in Python and JavaScript",
+          "I've worked on large-scale distributed systems",
+          'I have experience with cloud platforms like AWS',
+          "I'm familiar with agile development methodologies"
+        ]
+        setBulletPoints(testBulletPoints)
+        console.log('Test mode: Using test bullet points')
+      } else {
+        // Connect to OpenAI WebRTC with only desktop audio
+        await connectToOpenAI(desktopStream)
+      }
+    } catch (error: any) {
       console.error('Error starting capture:', error)
+      setError(`Failed to start capture: ${error?.message || 'Unknown error'}`)
     }
   }
 
@@ -162,6 +231,7 @@ function App(): JSX.Element {
           type: 'session.update',
           session: {
             instructions: prompt
+            // output_audio: false
           }
         }
         dataChannelRef.current?.send(JSON.stringify(update))
@@ -175,7 +245,7 @@ function App(): JSX.Element {
           // console.log('OpenAI WebRTC event:', msg.type, msg)
 
           if (msg.type === 'response.audio_transcript.delta') {
-            console.log('Delta text received:', msg.delta)
+            // console.log('Delta text received:', msg.delta)
             const delta = msg.delta || ''
 
             setResponseText((prev) => {
@@ -272,9 +342,17 @@ function App(): JSX.Element {
       streamRef.current.getTracks().forEach((track) => track.stop())
       streamRef.current = null
     }
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach((track) => track.stop())
+      micStreamRef.current = null
+    }
     if (audioContextRef.current) {
       audioContextRef.current.close()
       audioContextRef.current = null
+    }
+    if (micAudioContextRef.current) {
+      micAudioContextRef.current.close()
+      micAudioContextRef.current = null
     }
     if (videoRef.current) {
       videoRef.current.srcObject = null
@@ -283,6 +361,13 @@ function App(): JSX.Element {
       cancelAnimationFrame(animationFrameRef.current)
       animationFrameRef.current = null
     }
+    if (micAnimationFrameRef.current) {
+      cancelAnimationFrame(micAnimationFrameRef.current)
+      micAnimationFrameRef.current = null
+    }
+
+    // Stop speech recognition
+    stopListening()
 
     // Close WebRTC connection
     if (peerConnectionRef.current) {
@@ -304,6 +389,12 @@ function App(): JSX.Element {
       const canvasCtx = canvasRef.current.getContext('2d')
       if (canvasCtx) {
         canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+      }
+    }
+    if (micCanvasRef.current) {
+      const micCanvasCtx = micCanvasRef.current.getContext('2d')
+      if (micCanvasCtx) {
+        micCanvasCtx.clearRect(0, 0, micCanvasRef.current.width, micCanvasRef.current.height)
       }
     }
   }
@@ -344,11 +435,51 @@ function App(): JSX.Element {
     draw()
   }
 
+  const startMicVisualization = (): void => {
+    if (!micAnalyserRef.current || !micCanvasRef.current) return
+
+    const canvasCtx = micCanvasRef.current.getContext('2d')
+    if (!canvasCtx) return
+
+    const bufferLength = micAnalyserRef.current.frequencyBinCount
+    const dataArray = new Uint8Array(bufferLength)
+
+    const draw = () => {
+      micAnimationFrameRef.current = requestAnimationFrame(draw)
+
+      if (!micAnalyserRef.current || !micCanvasRef.current) return
+
+      micAnalyserRef.current.getByteFrequencyData(dataArray)
+
+      canvasCtx.fillStyle = '#f8f8f8'
+      canvasCtx.fillRect(0, 0, micCanvasRef.current.width, micCanvasRef.current.height)
+
+      const barWidth = (micCanvasRef.current.width / bufferLength) * 2.5
+      let barHeight
+      let x = 0
+
+      for (let i = 0; i < bufferLength; i++) {
+        barHeight = dataArray[i] / 2
+
+        canvasCtx.fillStyle = `rgb(50, ${barHeight + 100}, 50)`
+        canvasCtx.fillRect(x, micCanvasRef.current.height - barHeight, barWidth, barHeight)
+
+        x += barWidth + 1
+      }
+    }
+
+    draw()
+  }
+
   // Set canvas dimensions when component mounts
   useEffect(() => {
     if (canvasRef.current) {
       canvasRef.current.width = 320
       canvasRef.current.height = 80
+    }
+    if (micCanvasRef.current) {
+      micCanvasRef.current.width = 320
+      micCanvasRef.current.height = 80
     }
   }, [])
 
@@ -614,19 +745,38 @@ function App(): JSX.Element {
           <h1>Screen Capture with OpenAI Realtime</h1>
 
           <div className="controls">
-            {!isCapturing ? (
-              <button onClick={startCapture} className="capture-button">
-                Start Capture
-              </button>
-            ) : (
-              <button onClick={stopCapture} className="stop-button">
-                Stop Capture
-              </button>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
+              {!isCapturing ? (
+                <button onClick={startCapture} className="capture-button">
+                  Start Capture
+                </button>
+              ) : (
+                <button onClick={stopCapture} className="stop-button">
+                  Stop Capture
+                </button>
+              )}
+            </Box>
+            {isListening && (
+              <Box sx={{ color: '#4ade80', mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <CircularProgress size={16} sx={{ color: '#4ade80' }} />
+                Listening for speech...
+              </Box>
             )}
           </div>
 
           <div className="audio-container">
-            <canvas ref={canvasRef} className="audio-canvas"></canvas>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
+                Desktop Audio
+              </Typography>
+              <canvas ref={canvasRef} className="audio-canvas"></canvas>
+            </Box>
+            <Box>
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
+                Microphone Audio
+              </Typography>
+              <canvas ref={micCanvasRef} className="audio-canvas"></canvas>
+            </Box>
           </div>
 
           {renderResponseOutput()}
