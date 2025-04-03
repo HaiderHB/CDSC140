@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as use from '@tensorflow-models/universal-sentence-encoder'
 import * as tf from '@tensorflow/tfjs'
+import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
 
 interface UseSpeechRecognitionProps {
   onTranscript: (text: string) => void
@@ -19,6 +20,7 @@ export const useSpeechRecognition = ({
   const audioChunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const pythonProcessRef = useRef<ChildProcessWithoutNullStreams | null>(null)
 
   // Initialize Universal Sentence Encoder
   useEffect(() => {
@@ -128,6 +130,10 @@ export const useSpeechRecognition = ({
       console.log('Microphone access granted')
       streamRef.current = stream
 
+      // Start the Python WebSocket server via IPC
+      console.log('Requesting main process to start Python WebSocket server...')
+      window.api.startPythonServer()
+
       const mediaRecorder = new MediaRecorder(stream)
       mediaRecorderRef.current = mediaRecorder
       audioChunksRef.current = []
@@ -181,6 +187,10 @@ export const useSpeechRecognition = ({
         console.error('Error stopping audio recording:', error)
       }
     }
+
+    // Stop the Python WebSocket server via IPC
+    console.log('Requesting main process to stop Python WebSocket server...')
+    window.api.stopPythonServer()
   }
 
   // Cleanup on unmount

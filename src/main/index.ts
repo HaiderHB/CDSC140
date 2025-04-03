@@ -17,23 +17,28 @@ import {
 } from './storage'
 import { setupTranscriptionHandlers } from './transcription'
 
+const originalStderrWrite = process.stderr.write
+process.stderr.write = (msg, ...args) => {
+  if (
+    msg.includes('dxgi_duplicator_controller') ||
+    msg.includes('Autofill') ||
+    msg.includes('DxgiDuplicatorController')
+  )
+    return true
+  return originalStderrWrite(msg, ...args)
+}
+
 // Load environment variables from .env file
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootPath = path.resolve(__dirname, '../../..')
-const electronAppPath = path.join(rootPath, 'electron-app')
 let openaiApiKey: string | undefined
 const model = 'gpt-4o-mini-realtime-preview-2024-12-17'
 
+const envFilePath = path.join(rootPath, 'whisper-node-test', '.env')
+
 try {
-  // Try both potential locations for .env file
-  let envFile
-  try {
-    envFile = readFileSync(path.join(rootPath, '.env'), 'utf8')
-    console.log('Found .env file in project root')
-  } catch (e) {
-    envFile = readFileSync(path.join(electronAppPath, '.env'), 'utf8')
-    console.log('Found .env file in electron-app directory')
-  }
+  const envFile = readFileSync(envFilePath, 'utf8')
+  console.log('Found .env file in whisper-node-test directory')
 
   const keyMatch = envFile.match(/OPENAI_API_KEY=(.+)/)
   if (keyMatch) {
@@ -44,17 +49,6 @@ try {
   }
 } catch (error) {
   console.error('Error loading .env file:', error)
-  // Create a default .env file in the electron-app directory
-  try {
-    const defaultEnv = 'OPENAI_API_KEY=your_openai_api_key_here'
-    const targetEnvPath = path.join(electronAppPath, '.env')
-    console.log('Creating default .env file at:', targetEnvPath)
-    const { writeFileSync } = await import('fs')
-    writeFileSync(targetEnvPath, defaultEnv)
-    console.log('Please update the .env file with your actual OpenAI API key')
-  } catch (writeError) {
-    console.error('Failed to create default .env file:', writeError)
-  }
 }
 
 // Initialize the storage system
@@ -88,32 +82,17 @@ function createWindow(): void {
   // Set up screen capture handler for audio and video
   session.defaultSession.setDisplayMediaRequestHandler(
     (_, callback) => {
-      desktopCapturer
-        .getSources({
-          types: ['screen', 'window'],
-          thumbnailSize: { width: 0, height: 0 }
+      try {
+        console.log('Setting up audio capture')
+        // Skip video capture completely
+        callback({
+          video: undefined,
+          audio: 'loopback' // <- this enables system audio capture
         })
-        .then((sources) => {
-          console.log(
-            'Available sources:',
-            sources.map((s) => s.name)
-          )
-          // Always specify loopback for audio to capture system audio
-          if (sources.length > 0) {
-            callback({
-              video: sources[0],
-              audio: 'loopback'
-            })
-          } else {
-            // No sources available - handle gracefully
-            console.error('No screen sources found')
-            callback({ video: undefined, audio: undefined })
-          }
-        })
-        .catch((err) => {
-          console.error('Error getting sources:', err)
-          callback({ video: undefined, audio: undefined })
-        })
+        console.log('Audio capture setup complete')
+      } catch (error) {
+        console.error('Error setting up audio capture:', error)
+      }
     },
     { useSystemPicker: true }
   )
@@ -124,11 +103,6 @@ function createWindow(): void {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
-  }
-
-  // Open DevTools in development mode
-  if (is.dev) {
-    mainWindow.webContents.openDevTools()
   }
 
   // Set up IPC handlers for data persistence
@@ -265,6 +239,7 @@ function setupIpcHandlers(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
+
 app.whenReady().then(() => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')

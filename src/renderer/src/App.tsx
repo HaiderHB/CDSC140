@@ -30,7 +30,7 @@ interface CurrentSession {
   jobDescription: string
 }
 
-const TEST_MODE = true
+const TEST_MODE = false
 
 function App(): JSX.Element {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -95,11 +95,7 @@ function App(): JSX.Element {
       // Get desktop audio stream
       const desktopStream = await navigator.mediaDevices.getDisplayMedia({
         audio: true,
-        video: {
-          width: 1280,
-          height: 720,
-          frameRate: 30
-        }
+        video: false
       })
 
       // Get microphone stream
@@ -212,15 +208,8 @@ function App(): JSX.Element {
       const prompt = `You are a meeting assistant to help during a meeting.
         The user is being asked questions by an interviewer and you must help them answer the questions.
 
-        Your answers must be ultra concise so users can understand at a glance.
-        No filler or intro phrases. 
         Start with a short core answer, then expand if needed
         Seperate each new point with a "-".
-
-        Do not include anything else in your response. Only include the concise bullet points in the format specified.
-
-        For example instead of saying "Python is a high-level, versatile programming language known for its readability and wide range of applications, from web development to data science and automation."
-        "A high-level versatile programming language - Known for being easy to read - Used for wide range of applications, web development, data science, automation, etc."
 
         ${sessionInfo}`
 

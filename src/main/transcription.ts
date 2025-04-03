@@ -1,48 +1,64 @@
 import { ipcMain } from 'electron'
-import { nodewhisper } from 'nodejs-whisper'
-import { writeFile } from 'fs/promises'
-import { join } from 'path'
-import { tmpdir } from 'os'
+import { WebSocket } from 'ws'
+import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
+
+let pythonProcess: ChildProcessWithoutNullStreams | null = null
 
 export function setupTranscriptionHandlers() {
-  ipcMain.handle('transcribe-audio', async (_, audioData: Uint8Array) => {
-    console.log(
-      '------------Starting transcription with audio data length:',
-      audioData.length,
-      'bytes'
-    )
+  ipcMain.handle('start-python-server', () => {
+    if (!pythonProcess) {
+      console.log('Starting Python WebSocket server...')
+      // TODO: Make this path dynamic
+      const pythonPath = 'C:\\Users\\ultim\\AppData\\Local\\Programs\\Python\\Python312\\python.exe'
+      pythonProcess = spawn(pythonPath, ['../scripts/transcription_server.py'])
 
-    try {
-      // Create a temporary file to store the audio data
-      const tempFilePath = join(tmpdir(), `audio-${Date.now()}.wav`)
-      await writeFile(tempFilePath, Buffer.from(audioData))
-
-      // Transcribe the audio file using nodejs-whisper
-      const transcribedText = await nodewhisper(tempFilePath, {
-        modelName: 'base.en',
-        removeWavFileAfterTranscription: true,
-        whisperOptions: {
-          outputInCsv: false, // get output result in csv file
-          outputInJson: false, // get output result in json file
-          outputInJsonFull: false, // get output result in json file including more information
-          outputInLrc: false, // get output result in lrc file
-          outputInSrt: false, // get output result in srt file
-          outputInText: true, // get output result in txt file
-          outputInVtt: false, // get output result in vtt file
-          outputInWords: false, // get output result in wts file for karaoke
-          translateToEnglish: false, // translate from source language to english
-          wordTimestamps: true, // word-level timestamps
-          timestamps_length: 20, // amount of dialogue per timestamp pair
-          splitOnWord: true // split on word rather than on token
-        }
+      pythonProcess.stdout.on('data', (data) => {
+        console.log(`Python stdout: ${data}`)
       })
 
-      console.log('-------------------------------------Transcription complete:', transcribedText)
+      pythonProcess.stderr.on('data', (data) => {
+        console.error(`Python stderr: ${data}`)
+      })
 
-      return {
-        success: true,
-        text: transcribedText
-      }
+      pythonProcess.on('close', (code) => {
+        console.log(`Python process exited with code ${code}`)
+        pythonProcess = null
+      })
+    }
+  })
+
+  ipcMain.handle('stop-python-server', () => {
+    if (pythonProcess) {
+      console.log('Stopping Python WebSocket server...')
+      pythonProcess.kill()
+      pythonProcess = null
+    }
+  })
+
+  ipcMain.handle('transcribe-audio', async (_, audioData: Uint8Array) => {
+    console.log('Starting transcription with audio data length:', audioData.length, 'bytes')
+
+    try {
+      // Establish WebSocket connection to Python server
+      const ws = new WebSocket('ws://localhost:8765')
+
+      ws.on('open', () => {
+        console.log('WebSocket connection opened')
+        ws.send(audioData)
+      })
+
+      ws.on('message', (message) => {
+        console.log('Received transcription:', message)
+        // Handle the received transcription
+      })
+
+      ws.on('error', (error) => {
+        console.error('WebSocket error:', error)
+      })
+
+      ws.on('close', () => {
+        console.log('WebSocket connection closed')
+      })
     } catch (error) {
       console.error('Transcription error:', error)
       return {

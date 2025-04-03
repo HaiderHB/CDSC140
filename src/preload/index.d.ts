@@ -10,6 +10,8 @@ interface OpenAIAPI {
   saveResumeFile: (id: string, fileData: ArrayBuffer, fileExtension: string) => Promise<string>
   readResumeFile: (filePath: string) => Promise<string>
   deleteResume: (filePath: string) => Promise<boolean>
+  startPythonServer: () => Promise<void>
+  stopPythonServer: () => Promise<void>
   transcribeAudio: (audioData: Uint8Array) => Promise<string>
 }
 

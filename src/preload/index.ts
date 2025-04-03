@@ -17,6 +17,10 @@ const api = {
   readResumeFile: (filePath: string) => ipcRenderer.invoke('read-resume-file', filePath),
   deleteResume: (filePath: string) => ipcRenderer.invoke('delete-resume', filePath),
 
+  // Add start and stop Python server methods
+  startPythonServer: () => ipcRenderer.invoke('start-python-server'),
+  stopPythonServer: () => ipcRenderer.invoke('stop-python-server'),
+
   // Transcription function
   transcribeAudio: (audioData: Uint8Array) => ipcRenderer.invoke('transcribe-audio', audioData)
 }
