@@ -6,3 +6,4 @@ out
 *.log*
 .env
 scripts/venv/
+scripts/__pycache__/
