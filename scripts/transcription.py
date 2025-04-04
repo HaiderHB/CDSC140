@@ -25,6 +25,7 @@ import signal
 import sys
 import time
 import queue
+import numpy as np
 
 # Global flag to control the recording state
 recording = False
@@ -136,32 +137,59 @@ async def handle_client(websocket):
     
     try:
         async for message in websocket:
-            try:
-                data = json.loads(message)
-                command = data.get("command")
-                
-                if command == "start":
-                    if not recording:
-                        logging.info("Starting transcription...")
-                        recording = True
+            # Check if the message is binary (audio data) or text (command)
+            if isinstance(message, bytes):
+                if recording:
+                    try:
+                        # Log the size of the received audio data
+                        logging.info(f"Received audio data: {len(message)} bytes")
                         
-                        # Set callback to send updates to the client
-                        recorder.on_realtime_transcription_update = lambda text: process_text(text, websocket)
+                        # Convert bytes to float32 array expected by RealtimeSTT
                         
-                        # Start the recording in a separate thread
-                        asyncio.get_event_loop().run_in_executor(None, start_recording_loop)
+                        # First interpret as int16 (most common audio format)
+                        audio_data = np.frombuffer(message, dtype=np.int16)
                         
-                        await websocket.send(json.dumps({"type": "status", "status": "started"}))
-                
-                elif command == "stop":
-                    if recording:
-                        logging.info("Stopping transcription...")
-                        recording = False
-                        await websocket.send(json.dumps({"type": "status", "status": "stopped"}))
-            except json.JSONDecodeError:
-                logging.warning(f"Received invalid JSON: {message}")
-            except Exception as e:
-                logging.error(f"Error processing message: {e}")
+                        # Print basic audio stats for debugging
+                        if len(audio_data) > 0:
+                            logging.info(f"Audio data stats: min={audio_data.min()}, max={audio_data.max()}, mean={audio_data.mean()}, samples={len(audio_data)}")
+                        
+                        # Convert to float32 normalized to [-1, 1] range as required by RealtimeSTT
+                        audio_float = audio_data.astype(np.float32) / 32767.0
+                        
+                        # Feed the audio data to the recorder
+                        if recorder:
+                            recorder.feed_audio(audio_float.tobytes())
+                            logging.info("Audio data sent to transcription engine")
+                    except Exception as e:
+                        logging.error(f"Error processing audio data: {e}")
+            else:
+                # Handle text messages (commands)
+                try:
+                    data = json.loads(message)
+                    command = data.get("command")
+                    
+                    if command == "start":
+                        if not recording:
+                            logging.info("Starting transcription...")
+                            recording = True
+                            
+                            # Set callback to send updates to the client
+                            recorder.on_realtime_transcription_update = lambda text: process_text(text, websocket)
+                            
+                            # Start the recording in a separate thread
+                            asyncio.get_event_loop().run_in_executor(None, start_recording_loop)
+                            
+                            await websocket.send(json.dumps({"type": "status", "status": "started"}))
+                    
+                    elif command == "stop":
+                        if recording:
+                            logging.info("Stopping transcription...")
+                            recording = False
+                            await websocket.send(json.dumps({"type": "status", "status": "stopped"}))
+                except json.JSONDecodeError:
+                    logging.warning(f"Received invalid JSON: {message}")
+                except Exception as e:
+                    logging.error(f"Error processing message: {e}")
     except websockets.exceptions.ConnectionClosed as e:
         logging.info(f"Client disconnected with code {e.code}: {e.reason}")
     except Exception as e:
@@ -196,33 +224,44 @@ async def main():
     # Start the transcription queue processor task
     asyncio.create_task(process_transcription_queue())
     
-    # Use larger buffer sizes for better performance
-    server = await websockets.serve(
-        handle_client, 
-        "127.0.0.1", 
-        9876,
-        ping_interval=None,  # Disable ping/pong for lower overhead
-        max_size=10 * 1024 * 1024,  # 10MB message size
-        max_queue=64  # Larger queue for messages
-    )
-    
-    logging.info("Transcription server started on ws://127.0.0.1:9876")
-    
-    # On Windows, signal handlers with asyncio can cause issues
-    # Just run the server indefinitely
     try:
-        await asyncio.Future()  # Run forever
-    except asyncio.CancelledError:
-        pass
-    finally:
-        server.close()
-        await server.wait_closed()
-        logging.info("Server shut down gracefully")
-        if recorder:
-            try:
-                recorder.shutdown()
-            except Exception as e:
-                logging.error(f"Error shutting down recorder: {e}")
+        # Use larger buffer sizes for better performance
+        server = await websockets.serve(
+            handle_client, 
+            "127.0.0.1", 
+            9876,
+            ping_interval=None,  # Disable ping/pong for lower overhead
+            max_size=10 * 1024 * 1024,  # 10MB message size
+            max_queue=64  # Larger queue for messages
+        )
+        
+        logging.info("Transcription server started on ws://127.0.0.1:9876")
+        
+        # On Windows, signal handlers with asyncio can cause issues
+        # Just run the server indefinitely
+        try:
+            await asyncio.Future()  # Run forever
+        except asyncio.CancelledError:
+            pass
+        finally:
+            server.close()
+            await server.wait_closed()
+            logging.info("Server shut down gracefully")
+            if recorder:
+                try:
+                    recorder.shutdown()
+                except Exception as e:
+                    logging.error(f"Error shutting down recorder: {e}")
+    except OSError as e:
+        # Handle the case where the port is already in use
+        if e.errno == 10048:  # Windows-specific error for "Address already in use"
+            logging.info("Transcription server is already running on port 9876")
+            # Exit gracefully - this is not an error
+            return
+        else:
+            # For other OSErrors, log and re-raise
+            logging.error(f"Failed to start server: {e}")
+            raise
 
 if __name__ == "__main__":
     try:

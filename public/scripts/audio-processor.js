@@ -1,71 +1,50 @@
+// audio-processor.js
+// This worklet processes audio data for transcription
+
 class AudioProcessor extends AudioWorkletProcessor {
   constructor() {
     super()
-    // Noise gate settings
-    this.threshold = -50 // dB
-    this.bufferSize = 2048
+    this.bufferSize = 4096 // Buffer size for audio processing
     this.buffer = new Float32Array(this.bufferSize)
-    this.int16Buffer = new Int16Array(this.bufferSize)
     this.bufferIndex = 0
-    this.isGateOpen = false
-    this.holdCounter = 0
-    this.holdTime = 50 // frames to hold gate open after falling below threshold
-  }
-
-  calculateRMSdB(samples) {
-    let sum = 0
-    for (let i = 0; i < samples.length; i++) {
-      sum += samples[i] * samples[i]
-    }
-    const rms = Math.sqrt(sum / samples.length)
-    // Convert to dB, with a noise floor of -100 dB
-    return 20 * Math.log10(Math.max(rms, 0.00001))
   }
 
   process(inputs, outputs, parameters) {
-    const input = inputs[0]
-    const output = outputs[0]
+    // Get the input audio data (first channel of first input)
+    const input = inputs[0][0]
 
-    if (input && input.length > 0) {
-      const inputChannel = input[0]
+    // If there's no input, just continue processing
+    if (!input) return true
 
-      // Calculate RMS in dB
-      const currentLevel = this.calculateRMSdB(inputChannel)
-
-      // Noise gate logic with hysteresis
-      if (currentLevel > this.threshold) {
-        this.isGateOpen = true
-        this.holdCounter = this.holdTime
-      } else if (this.holdCounter > 0) {
-        this.holdCounter--
-      } else {
-        this.isGateOpen = false
+    // Fill the buffer with audio data
+    for (let i = 0; i < input.length; i++) {
+      // If we have space in the buffer
+      if (this.bufferIndex < this.bufferSize) {
+        this.buffer[this.bufferIndex++] = input[i]
       }
 
-      // If gate is open, send audio data
-      if (this.isGateOpen) {
-        // Add to buffer
-        for (let i = 0; i < inputChannel.length; i++) {
-          this.buffer[this.bufferIndex] = inputChannel[i]
-          this.bufferIndex++
-
-          // When buffer is full, send it
-          if (this.bufferIndex >= this.bufferSize) {
-            // Convert Float32Array to Int16Array
-            for (let j = 0; j < this.bufferSize; j++) {
-              // Scale to 16-bit range and clamp
-              const sample = Math.max(-1, Math.min(1, this.buffer[j]))
-              this.int16Buffer[j] = sample * 32767
-            }
-            this.port.postMessage(this.int16Buffer.slice())
-            this.bufferIndex = 0
-          }
+      // If the buffer is full, convert and send it
+      if (this.bufferIndex >= this.bufferSize) {
+        // Convert Float32Array to Int16Array for more efficient transmission
+        // and compatibility with the transcription service
+        const int16Data = new Int16Array(this.bufferSize)
+        for (let j = 0; j < this.bufferSize; j++) {
+          // Convert from [-1, 1] float range to [-32768, 32767] int16 range
+          int16Data[j] = Math.max(-32768, Math.min(32767, this.buffer[j] * 32767))
         }
+
+        // Send the audio data to the main thread
+        this.port.postMessage(int16Data.buffer)
+
+        // Reset the buffer index to start over
+        this.bufferIndex = 0
       }
     }
 
+    // Return true to keep the node alive
     return true
   }
 }
 
+// Register the processor
 registerProcessor('audio-processor', AudioProcessor)

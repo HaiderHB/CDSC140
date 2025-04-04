@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import * as use from '@tensorflow-models/universal-sentence-encoder'
 import * as tf from '@tensorflow/tfjs'
+import { load as loadEncoder } from '@tensorflow-models/universal-sentence-encoder'
 
 // Add interface for the Python server result
 interface PythonServerResult {
@@ -20,159 +20,174 @@ export const useSpeechRecognition = ({
   onMatchFound
 }: UseSpeechRecognitionProps) => {
   const [isListening, setIsListening] = useState(false)
-  const modelRef = useRef<any>(null)
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const processingRef = useRef<boolean>(false)
-  const lastProcessedTimeRef = useRef<number>(0)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordingIntervalRef = useRef<number | null>(null)
+  const processingRef = useRef(false)
+  const lastProcessedTimeRef = useRef(0)
   const pendingChunksRef = useRef<ArrayBuffer[]>([])
+  const encoderModelRef = useRef<any>(null)
+  const bulletPointEmbeddingsRef = useRef<tf.Tensor | null>(null)
 
-  // Initialize Universal Sentence Encoder
+  // WebSocket refs
+  const wsRef = useRef<WebSocket | null>(null)
+  const connectionAttemptsRef = useRef(0)
+  const isConnectingRef = useRef(false)
+  const pendingUpdatesRef = useRef<string[]>([])
+  const processingUpdatesRef = useRef(false)
+
+  // Load the Universal Sentence Encoder model for semantic matching
   useEffect(() => {
-    let isMounted = true
-
     const loadModel = async () => {
       try {
-        if (isMounted) {
-          console.log('Loading Universal Sentence Encoder model...')
-          modelRef.current = await use.load()
-          console.log('Universal Sentence Encoder model loaded successfully')
+        console.log('Loading Universal Sentence Encoder model...')
+        encoderModelRef.current = await loadEncoder()
+        console.log('Model loaded successfully')
+
+        // Only compute embeddings if we have bullet points
+        if (bulletPoints && bulletPoints.length > 0 && encoderModelRef.current) {
+          console.log('Computing embeddings for bullet points...')
+          bulletPointEmbeddingsRef.current = await encoderModelRef.current.embed(bulletPoints)
+          console.log('Embeddings computed successfully')
         }
       } catch (error) {
-        console.error('Error loading Universal Sentence Encoder:', error)
+        console.error('Error loading Universal Sentence Encoder model:', error)
       }
     }
+
     loadModel()
 
-    // Cleanup function
     return () => {
-      isMounted = false
-      if (modelRef.current) {
-        // Clean up any tensors and model resources
-        tf.dispose(modelRef.current)
+      // Clean up tensors to prevent memory leaks
+      if (bulletPointEmbeddingsRef.current) {
+        bulletPointEmbeddingsRef.current.dispose()
+        bulletPointEmbeddingsRef.current = null
       }
     }
-  }, [])
+  }, [bulletPoints])
 
-  // Process pending audio chunks periodically
+  // Re-compute embeddings when bullet points change
   useEffect(() => {
-    if (isListening) {
-      // Process chunks every 500ms to avoid overwhelming the server
-      const intervalId = setInterval(() => {
-        if (pendingChunksRef.current.length > 0 && !processingRef.current) {
-          // Take first chunk to process
-          const chunk = pendingChunksRef.current.shift()
-          if (chunk) {
-            processAudioChunk(chunk)
-          }
+    const updateEmbeddings = async () => {
+      if (encoderModelRef.current && bulletPoints && bulletPoints.length > 0) {
+        console.log('Updating embeddings for bullet points...')
+
+        // Clean up previous embeddings
+        if (bulletPointEmbeddingsRef.current) {
+          bulletPointEmbeddingsRef.current.dispose()
         }
-      }, 300)
 
-      return () => clearInterval(intervalId)
-    }
-  }, [isListening])
-
-  const processAudioChunk = async (audioChunk: Blob | ArrayBuffer) => {
-    // Set processing flag to avoid concurrent processing
-    if (processingRef.current) {
-      // If already processing, add to pending chunks
-      pendingChunksRef.current.push(audioChunk as ArrayBuffer)
-      return
+        bulletPointEmbeddingsRef.current = await encoderModelRef.current.embed(bulletPoints)
+        console.log('Embeddings updated successfully')
+      }
     }
 
-    // Check debouncing - don't process too frequently
-    const now = Date.now()
-    if (now - lastProcessedTimeRef.current < 200) {
-      // If called too soon, add to pending chunks
-      pendingChunksRef.current.push(audioChunk as ArrayBuffer)
-      return
-    }
+    updateEmbeddings()
+  }, [bulletPoints])
 
-    // Mark as processing
-    processingRef.current = true
-    lastProcessedTimeRef.current = now
+  // WebSocket connection logic
+  const connectWebSocket = () => {
+    // Prevent multiple connection attempts at the same time
+    if (isConnectingRef.current) return
 
     try {
-      // Handle both Blob and ArrayBuffer inputs
-      let arrayBuffer: ArrayBuffer
-      if (audioChunk instanceof Blob) {
-        arrayBuffer = await audioChunk.arrayBuffer()
-      } else {
-        arrayBuffer = audioChunk
-      }
-      console.log('Processing audio data')
+      isConnectingRef.current = true
+      console.log('Connecting to transcription WebSocket server...')
 
-      // For Int16Buffer input, which is what the audio processor sends
-      // The server expects Int16Array data
-      const uint8Array = new Uint8Array(arrayBuffer)
-      console.log(`Converted to Uint8Array of length ${uint8Array.length}`)
+      wsRef.current = new WebSocket('ws://localhost:9876')
 
-      if (uint8Array.length === 0) {
-        console.warn('No audio data to transcribe')
-        processingRef.current = false
-        return
-      }
+      wsRef.current.onopen = () => {
+        console.log('WebSocket connection established')
+        connectionAttemptsRef.current = 0
+        isConnectingRef.current = false
 
-      // Ensure the WebSocket server is started
-      console.log('Sending audio data for transcription, size:', uint8Array.length, 'bytes')
-      console.time('transcription')
-
-      try {
-        // Send the audio data to main process for transcription
-        const fullTranscript = await window.api.transcribeAudio(uint8Array)
-        console.timeEnd('transcription')
-
-        if (fullTranscript) {
-          console.log('Received transcription from Whisper:', fullTranscript)
-          onTranscript(fullTranscript)
-
-          // Compare with bullet points if we have the model loaded
-          if (modelRef.current && bulletPoints.length > 0) {
-            try {
-              console.log('Comparing transcript with bullet points:', bulletPoints)
-              // Get embeddings for the transcript and bullet points
-              const transcriptEmbedding = await modelRef.current.embed([fullTranscript])
-              const bulletPointEmbeddings = await modelRef.current.embed(bulletPoints)
-
-              // Calculate cosine similarity between transcript and each bullet point
-              const transcriptTensor = transcriptEmbedding as tf.Tensor
-              const bulletPointTensor = bulletPointEmbeddings as tf.Tensor
-
-              // Use tensor operations for better performance
-              const scores = tf.matMul(transcriptTensor, bulletPointTensor, false, true)
-              const similarities = scores.dataSync()
-
-              // Log similarities for each bullet point
-              similarities.forEach((score, index) => {
-                console.log(`Similarity with "${bulletPoints[index]}": ${score.toFixed(3)}`)
-              })
-
-              // Clean up tensors
-              tf.dispose([transcriptTensor, bulletPointTensor, scores])
-
-              // Check similarities against threshold
-              for (let i = 0; i < similarities.length; i++) {
-                if (similarities[i] > 0.7) {
-                  console.log(`Match found! Removing bullet point: ${bulletPoints[i]}`)
-                  onMatchFound(bulletPoints[i])
-                }
-              }
-            } catch (error) {
-              console.error('Error comparing embeddings:', error)
-            }
-          }
-        } else {
-          console.warn('No transcription received')
+        // Start recording once connected
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          console.log('Starting transcription recording')
+          pendingUpdatesRef.current = []
+          wsRef.current.send(JSON.stringify({ command: 'start' }))
         }
-      } catch (error) {
-        console.error('Error from transcription service:', error)
       }
-    } catch (error) {
-      console.error('Error processing audio chunk:', error)
-    } finally {
-      // Always reset processing flag
-      processingRef.current = false
+
+      wsRef.current.onclose = (event) => {
+        console.log(`WebSocket closed with code: ${event.code}`)
+        isConnectingRef.current = false
+
+        // Only attempt to reconnect if we're still recording
+        if (isListening) {
+          // Exponential backoff for reconnection attempts
+          const delay = Math.min(3000 * Math.pow(1.5, connectionAttemptsRef.current), 10000)
+          connectionAttemptsRef.current++
+
+          // Try to reconnect after a delay
+          setTimeout(connectWebSocket, delay)
+        }
+      }
+
+      wsRef.current.onerror = (error) => {
+        console.error('WebSocket error:', error)
+      }
+
+      wsRef.current.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+
+          if (data.type === 'transcription') {
+            // Process the transcription
+            processTranscription(data.text)
+          }
+        } catch (err) {
+          console.error('Error handling WebSocket message:', err)
+        }
+      }
+
+      // Use binary message format for better performance
+      wsRef.current.binaryType = 'arraybuffer'
+    } catch (err) {
+      console.error('WebSocket connection error:', err)
+      isConnectingRef.current = false
+    }
+  }
+
+  // Process transcription and perform semantic matching
+  const processTranscription = async (text: string) => {
+    if (!text || text.trim() === '') return
+
+    console.log('Received transcription:', text)
+    onTranscript(text)
+
+    // Check for matches with bullet points using semantic search
+    if (encoderModelRef.current && bulletPointEmbeddingsRef.current && bulletPoints.length > 0) {
+      try {
+        // Get embedding for the transcription
+        const transcriptionEmbedding = await encoderModelRef.current.embed([text])
+
+        // Compute similarities
+        const similarities = tf.matMul(
+          transcriptionEmbedding as tf.Tensor2D,
+          (bulletPointEmbeddingsRef.current as tf.Tensor2D).transpose()
+        )
+
+        // Find the best match
+        const values = await similarities.data()
+        const maxValue = Math.max(...Array.from(values))
+
+        // If the similarity is high enough, consider it a match
+        const SIMILARITY_THRESHOLD = 0.65
+        if (maxValue > SIMILARITY_THRESHOLD) {
+          const matchIndex = Array.from(values).indexOf(maxValue)
+          const matchedPoint = bulletPoints[matchIndex]
+
+          console.log(`Match found with similarity ${maxValue}:`, matchedPoint)
+          onMatchFound(matchedPoint)
+        }
+
+        // Clean up tensors
+        transcriptionEmbedding.dispose()
+        similarities.dispose()
+      } catch (error) {
+        console.error('Error performing semantic matching:', error)
+      }
     }
   }
 
@@ -183,20 +198,22 @@ export const useSpeechRecognition = ({
       console.log('Microphone access granted')
       streamRef.current = stream
 
-      // Start the Python WebSocket server via IPC
-      console.log('Requesting main process to start Python WebSocket server...')
-      try {
-        await window.api.startPythonServer()
-        console.log('Python WebSocket server started')
-      } catch (err) {
-        const error = err as Error
-        console.error('Failed to start Python WebSocket server:', error)
-        throw new Error(`Failed to start Python server: ${error?.message || 'Unknown error'}`)
-      }
+      // Start WebSocket connection for transcription
+      connectWebSocket()
 
       const audioContext = new AudioContext()
 
-      await audioContext.audioWorklet.addModule('/scripts/audio-processor.js')
+      // Use the correct path to the audio processor script
+      const processorUrl = window.location.origin + '/scripts/audio-processor.js'
+      console.log('Loading audio processor from:', processorUrl)
+
+      try {
+        await audioContext.audioWorklet.addModule(processorUrl)
+        console.log('Audio processor loaded successfully')
+      } catch (err) {
+        console.error('Failed to load audio processor:', err)
+        throw err
+      }
 
       const audioWorkletNode = new AudioWorkletNode(audioContext, 'audio-processor')
       const source = audioContext.createMediaStreamSource(stream)
@@ -225,6 +242,13 @@ export const useSpeechRecognition = ({
   }
 
   const stopListening = () => {
+    // Stop WebSocket connection
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      console.log('Stopping transcription recording')
+      wsRef.current.send(JSON.stringify({ command: 'stop' }))
+      // Don't close the connection - just stop recording
+    }
+
     // Clear pending chunks
     pendingChunksRef.current = []
 
@@ -246,10 +270,6 @@ export const useSpeechRecognition = ({
           recordingIntervalRef.current = null
         }
 
-        // Stop the Python WebSocket server via IPC
-        console.log('Requesting main process to stop Python WebSocket server...')
-        window.api.stopPythonServer()
-
         setIsListening(false)
         console.log('Speech recognition stopped')
       } catch (error) {
@@ -265,10 +285,48 @@ export const useSpeechRecognition = ({
         clearInterval(recordingIntervalRef.current)
         recordingIntervalRef.current = null
       }
-      // Stop the Python WebSocket server via IPC
-      window.api.stopPythonServer()
       setIsListening(false)
       console.log('Speech recognition stopped')
+    }
+  }
+
+  // Add audio processing and WebSocket audio transmission
+  useEffect(() => {
+    if (isListening && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      // Process audio chunks at regular intervals
+      const intervalId = setInterval(() => {
+        if (pendingChunksRef.current.length > 0 && !processingRef.current) {
+          const chunk = pendingChunksRef.current.shift()
+          if (chunk) {
+            sendAudioChunk(chunk)
+          }
+        }
+      }, 100) // Process chunks every 100ms
+
+      return () => clearInterval(intervalId)
+    }
+  }, [isListening])
+
+  const sendAudioChunk = (audioChunk: ArrayBuffer) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      // If WebSocket is not open, queue the chunk for later
+      pendingChunksRef.current.push(audioChunk)
+      return
+    }
+
+    processingRef.current = true
+    try {
+      // Send the raw audio data to the WebSocket server
+      wsRef.current.send(audioChunk)
+    } catch (error) {
+      console.error('Error sending audio chunk to WebSocket server:', error)
+      // If there was an error, re-queue the chunk
+      pendingChunksRef.current.push(audioChunk)
+    } finally {
+      // Set processingRef to false after a small delay to avoid overwhelming the server
+      setTimeout(() => {
+        processingRef.current = false
+      }, 50)
     }
   }
 
@@ -281,6 +339,11 @@ export const useSpeechRecognition = ({
       }
       if (recordingIntervalRef.current) {
         clearInterval(recordingIntervalRef.current)
+      }
+      // Close WebSocket connection
+      if (wsRef.current) {
+        wsRef.current.close()
+        wsRef.current = null
       }
     }
   }, [])
