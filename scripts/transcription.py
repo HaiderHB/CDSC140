@@ -19,9 +19,6 @@ check_and_install_packages([
     {'import_name': 'asyncio'},
     # Added for sentence similarity
     {'import_name': 'sentence_transformers'},
-    {'import_name': 'onnxruntime'},
-    {'import_name': 'onnx'},
-    {'import_name': 'torch'}, # Needed for ONNX conversion
     {'import_name': 'numpy'},
 ])
 
@@ -35,20 +32,15 @@ import time
 import queue
 import numpy as np
 # Added for sentence similarity
-from sentence_transformers import SentenceTransformer
-import onnxruntime as ort
+from sentence_transformers import SentenceTransformer, util
 from pathlib import Path
-import torch # Required by sentence_transformers for conversion
 
 # --- Sentence Similarity Setup ---
-MODEL_NAME = 'multi-qa-MiniLM-L6-cos-v1'
-ONNX_MODEL_DIR = Path("onnx_models")
-ONNX_MODEL_PATH = ONNX_MODEL_DIR / f"{MODEL_NAME}.onnx"
-SIMILARITY_THRESHOLD = 0.5  # Lowered from 0.7 to 0.5 for easier matching
+MODEL_NAME = 'sentence-transformers/multi-qa-MiniLM-L6-cos-v1'
+SIMILARITY_THRESHOLD = 0.5  # Threshold for matching
 
 # Global variables for sentence similarity
-onnx_session = None
-model = None # Keep the original model for encoding
+model = None
 bullet_points = []
 bullet_embeddings = None
 # --- End Sentence Similarity Setup ---
@@ -65,124 +57,17 @@ transcription_queue = queue.SimpleQueue()
 similarity_queue = queue.SimpleQueue()
 
 # --- Sentence Similarity Functions ---
-def normalize_embeddings(embeddings):
-    """Normalize embeddings to unit length."""
-    norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
-    return embeddings / norms
-
-class SentenceTransformerWrapper(torch.nn.Module):
-    """Wrapper for SentenceTransformer to make it compatible with ONNX export"""
-    def __init__(self, model):
-        super().__init__()
-        self.model = model
-        self.tokenizer = model.tokenizer
-    
-    def forward(self, input_ids, attention_mask):
-        # Forward compatible with ONNX export
-        # This creates a dict expected by SentenceTransformer
-        inputs = {"input_ids": input_ids, "attention_mask": attention_mask}
-        return self.model.encode(inputs, convert_to_tensor=True)
-
-def convert_to_onnx(model_name: str, output_path: Path):
-    """Converts a SentenceTransformer model to ONNX format."""
-    logging.info(f"Converting {model_name} to ONNX format...")
+def load_similarity_model(model_name=MODEL_NAME):
+    """Loads the sentence transformer model."""
+    global model
     try:
-        # Load original model
-        st_model = SentenceTransformer(model_name)
-        # Create wrapper for ONNX export
-        model = SentenceTransformerWrapper(st_model)
-        
-        # Create dummy input
-        dummy_input_text = "This is a dummy input sentence."
-        tokenized = st_model.tokenizer(dummy_input_text, return_tensors="pt", padding=True, truncation=True)
-        input_ids = tokenized['input_ids']
-        attention_mask = tokenized['attention_mask']
-
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Export the model
-        torch.onnx.export(
-            model,                         # Wrapped model being run
-            (input_ids, attention_mask),   # model inputs as separate tensors
-            str(output_path),              # where to save the model
-            export_params=True,            # store the trained parameter weights inside the model file
-            opset_version=11,              # the ONNX version to export the model to
-            do_constant_folding=True,      # whether to execute constant folding for optimization
-            input_names=['input_ids', 'attention_mask'], # the model's input names
-            output_names=['sentence_embedding'], # the model's output names
-            dynamic_axes={'input_ids': {0: 'batch_size', 1: 'sequence_length'}, # variable length axes
-                          'attention_mask': {0: 'batch_size', 1: 'sequence_length'},
-                          'sentence_embedding': {0: 'batch_size'}}
-        )
-        logging.info(f"Model successfully converted to ONNX: {output_path}")
-        return st_model # Return the original model for immediate use
-    except Exception as e:
-        logging.error(f"Error converting model to ONNX: {e}")
-        return None
-
-def load_onnx_model(model_name: str = MODEL_NAME, onnx_path: Path = ONNX_MODEL_PATH):
-    """Loads the ONNX model, converting if necessary."""
-    global onnx_session, model
-    try:
-        # First load the original model regardless of ONNX availability
-        # This ensures we at least have a working model even if ONNX fails
-        original_model = SentenceTransformer(model_name)
-        model = original_model  # Set the global model
-        logging.info(f"Loaded original SentenceTransformer model: {model_name}")
-        
-        # Try to load or convert to ONNX
-        if not onnx_path.exists():
-            logging.warning(f"ONNX model not found at {onnx_path}. Attempting conversion...")
-            convert_to_onnx(model_name, onnx_path)
-            
-        # If we have a valid ONNX model, try to load it
-        if onnx_path.exists():
-            try:
-                onnx_session = ort.InferenceSession(str(onnx_path))
-                logging.info(f"ONNX Runtime session loaded successfully from {onnx_path}")
-                return True
-            except Exception as e:
-                logging.error(f"Error loading ONNX session from {onnx_path}: {e}")
-                logging.warning("Falling back to original SentenceTransformer model without ONNX")
-                onnx_session = None
-        else:
-            logging.warning("ONNX model not available, using original SentenceTransformer directly")
-            
-        # Return True since we have a working model (even if not ONNX)
+        model = SentenceTransformer(model_name)
+        logging.info(f"Loaded SentenceTransformer model: {model_name}")
         return True
     except Exception as e:
-        logging.error(f"Failed to load any sentence similarity model: {e}")
+        logging.error(f"Failed to load sentence similarity model: {e}")
         model = None
-        onnx_session = None
         return False
-
-def compute_embeddings(texts):
-    """Computes embeddings using either ONNX or the original model."""
-    if not model:
-        logging.warning("No model loaded. Cannot compute embeddings.")
-        return None
-        
-    try:
-        # If ONNX session is available, use it
-        if onnx_session:
-            inputs = model.tokenizer(texts, padding=True, truncation=True, return_tensors="np")
-            onnx_inputs = {
-                'input_ids': inputs['input_ids'].astype(np.int64),
-                'attention_mask': inputs['attention_mask'].astype(np.int64)
-            }
-            # Run inference with ONNX Runtime
-            outputs = onnx_session.run(None, onnx_inputs)
-            embeddings = outputs[0] # Assuming the first output is the embedding
-        else:
-            # Fall back to the original model
-            logging.debug("Using original SentenceTransformer model for embedding")
-            embeddings = model.encode(texts, convert_to_numpy=True)
-            
-        normalized = normalize_embeddings(embeddings)
-        return normalized
-    except Exception as e:
-        logging.error(f"Error computing embeddings: {e}")
-        return None
 
 def precompute_bullet_embeddings(points):
     """Precomputes embeddings for the list of bullet points."""
@@ -192,16 +77,17 @@ def precompute_bullet_embeddings(points):
         bullet_embeddings = None
         logging.info("Bullet points list is empty. Cleared embeddings.")
         return
+    
     logging.info(f"Precomputing embeddings for {len(points)} bullet points...")
     start_time = time.time()
-    embeddings = compute_embeddings(points)
-    if embeddings is not None:
-        bullet_embeddings = embeddings
+    
+    try:
+        bullet_embeddings = model.encode(points, convert_to_tensor=True)
         end_time = time.time()
         logging.info(f"Precomputation finished in {end_time - start_time:.2f} seconds.")
-    else:
+    except Exception as e:
         bullet_embeddings = None
-        logging.error("Failed to precompute bullet embeddings.")
+        logging.error(f"Failed to precompute bullet embeddings: {e}")
 
 def find_best_match(transcript_text):
     """Finds the best matching bullet point for the given transcript."""
@@ -212,26 +98,28 @@ def find_best_match(transcript_text):
             logging.debug("No bullet points available for matching.")
         elif not transcript_text:
             logging.debug("Empty transcript text, skipping matching.")
-        return None, 0.0 # No match if no bullets or empty transcript
+        return None, 0.0  # No match if no bullets or empty transcript
 
-    transcript_embedding = compute_embeddings([transcript_text])
-    if transcript_embedding is None:
-        logging.warning("Failed to compute embedding for transcript text.")
-        return None, 0.0 # Failed to compute embedding
-
-    # Calculate cosine similarities
-    # Cosine similarity = dot product of normalized vectors
-    similarities = np.dot(bullet_embeddings, transcript_embedding.T).flatten()
-
-    best_match_index = np.argmax(similarities)
-    best_score = similarities[best_match_index]
-
-    logging.debug(f"Best match score: {best_score:.4f} (threshold: {SIMILARITY_THRESHOLD})")
-    
-    if best_score >= SIMILARITY_THRESHOLD:
-        return bullet_points[best_match_index], best_score
-    else:
-        return None, best_score # No match above threshold
+    try:
+        # Encode the transcript text
+        transcript_embedding = model.encode(transcript_text, convert_to_tensor=True)
+        
+        # Compute dot scores between transcript and all bullet points
+        scores = util.dot_score(transcript_embedding, bullet_embeddings)[0].cpu().tolist()
+        
+        # Find the best match
+        best_match_index = np.argmax(scores)
+        best_score = scores[best_match_index]
+        
+        logging.debug(f"Best match score: {best_score:.4f} (threshold: {SIMILARITY_THRESHOLD})")
+        
+        if best_score >= SIMILARITY_THRESHOLD:
+            return bullet_points[best_match_index], best_score
+        else:
+            return None, best_score  # No match above threshold
+    except Exception as e:
+        logging.error(f"Error finding best match: {e}")
+        return None, 0.0
 
 # --- End Sentence Similarity Functions ---
 
@@ -453,8 +341,8 @@ def start_recording_loop():
 async def main():
     """Main function to start the WebSocket server"""
     # --- Initialize Model and Recorder ---
-    # Load ONNX model at startup
-    model_loaded = load_onnx_model()
+    # Load sentence transformer model at startup
+    model_loaded = load_similarity_model()
     if not model_loaded:
         logging.error("CRITICAL: Failed to load sentence similarity model. Matching will be disabled.")
         # Decide if server should exit or run without matching
