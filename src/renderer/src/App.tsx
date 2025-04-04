@@ -56,6 +56,13 @@ function App(): JSX.Element {
   const [currentSession, setCurrentSession] = useState<CurrentSession | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [transcriptText, setTranscriptText] = useState<string>('')
+  const [wsStatus, setWsStatus] = useState('disconnected')
+  const [wsError, setWsError] = useState<string | null>(null)
+  const wsRef = useRef<WebSocket | null>(null)
+  const connectionAttemptsRef = useRef(0)
+  const isConnectingRef = useRef(false)
+  const pendingUpdatesRef = useRef<string[]>([])
+  const processingUpdatesRef = useRef(false)
 
   const {
     sessions,
@@ -94,6 +101,115 @@ function App(): JSX.Element {
       setError(`Failed to load resumes: ${loadResumesError.message}`)
     }
   }, [loadSessionsError, loadResumesError])
+
+  const connectWebSocket = () => {
+    // Prevent multiple connection attempts at the same time
+    if (isConnectingRef.current) return
+
+    try {
+      isConnectingRef.current = true
+      setWsStatus('connecting')
+      setWsError(null)
+
+      wsRef.current = new WebSocket('ws://localhost:9876')
+
+      wsRef.current.onopen = () => {
+        console.log('WebSocket connection established')
+        setWsStatus('connected')
+        setWsError(null)
+        connectionAttemptsRef.current = 0
+        isConnectingRef.current = false
+      }
+
+      wsRef.current.onclose = (event) => {
+        console.log(`WebSocket closed with code: ${event.code}`)
+        setWsStatus('disconnected')
+        isConnectingRef.current = false
+
+        // Only show error if we've attempted to connect multiple times
+        if (connectionAttemptsRef.current >= 2) {
+          setWsError('Failed to connect to transcription service')
+        }
+
+        // Only attempt to reconnect if we're still capturing
+        if (isCapturing) {
+          // Exponential backoff for reconnection attempts
+          const delay = Math.min(3000 * Math.pow(1.5, connectionAttemptsRef.current), 10000)
+          connectionAttemptsRef.current++
+
+          // Try to reconnect after a delay
+          setTimeout(connectWebSocket, delay)
+        }
+      }
+
+      wsRef.current.onerror = (error) => {
+        console.error('WebSocket error:', error)
+        // Don't set error message immediately during initial connection
+        if (wsStatus !== 'connecting' || connectionAttemptsRef.current >= 2) {
+          setWsError('Failed to connect to transcription service')
+        }
+      }
+
+      wsRef.current.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+
+          if (data.type === 'transcription') {
+            // Queue transcription update
+            queueTranscriptionUpdate(data.text)
+          } else if (data.type === 'status') {
+            if (data.status === 'connected') {
+              setWsStatus('connected')
+              setWsError(null)
+            }
+          }
+        } catch (err) {
+          console.error('Error handling WebSocket message:', err)
+        }
+      }
+
+      // Use binary message format for better performance
+      wsRef.current.binaryType = 'arraybuffer'
+    } catch (err) {
+      console.error('WebSocket connection error:', err)
+      isConnectingRef.current = false
+      setWsStatus('disconnected')
+
+      // Only show error if not in initial connection phase
+      if (wsStatus !== 'connecting' || connectionAttemptsRef.current >= 2) {
+        setWsError('Failed to connect to transcription service')
+      }
+    }
+  }
+
+  // Add these helper functions for processing transcription updates
+  const processTranscriptionQueue = () => {
+    if (pendingUpdatesRef.current.length === 0 || processingUpdatesRef.current) return
+
+    processingUpdatesRef.current = true
+    // Get latest update and clear queue
+    const latestUpdate = pendingUpdatesRef.current[pendingUpdatesRef.current.length - 1]
+    pendingUpdatesRef.current = []
+
+    // Update state and allow React to render before processing more
+    setTranscriptText(latestUpdate)
+
+    // Allow next update after a short delay (enough time for React to render)
+    setTimeout(() => {
+      processingUpdatesRef.current = false
+      // Process any new updates that came in while we were updating
+      if (pendingUpdatesRef.current.length > 0) {
+        processTranscriptionQueue()
+      }
+    }, 10) // Small delay for React to render
+  }
+
+  const queueTranscriptionUpdate = (text: string) => {
+    pendingUpdatesRef.current.push(text)
+    if (!processingUpdatesRef.current) {
+      processTranscriptionQueue()
+    }
+  }
 
   const startCapture = async (): Promise<void> => {
     try {
@@ -158,6 +274,31 @@ function App(): JSX.Element {
       // Start speech recognition
       console.log('Starting speech recognition...')
       startListening()
+
+      // Start WebSocket connection for transcription
+      console.log('Connecting to transcription WebSocket...')
+      connectWebSocket()
+
+      // Start recording transcription once connected
+      const startRecording = () => {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          console.log('Starting transcription recording')
+          setWsError(null)
+          setTranscriptText('')
+          pendingUpdatesRef.current = []
+          wsRef.current.send(JSON.stringify({ command: 'start' }))
+        } else if (wsStatus === 'connecting') {
+          // If still connecting, try again shortly
+          setTimeout(startRecording, 500)
+        } else {
+          console.error('WebSocket is not connected, cannot start recording')
+          connectWebSocket() // Try to reconnect
+          setTimeout(startRecording, 1000) // Try again shortly
+        }
+      }
+
+      // Start a timer to wait for connection before starting recording
+      setTimeout(startRecording, 1000)
 
       if (TEST_MODE) {
         // In test mode, set some test bullet points
@@ -332,6 +473,12 @@ function App(): JSX.Element {
   }
 
   const stopCapture = (): void => {
+    // Stop transcription recording first
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      console.log('Stopping transcription recording')
+      wsRef.current.send(JSON.stringify({ command: 'stop' }))
+    }
+
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop())
       streamRef.current = null
@@ -392,8 +539,7 @@ function App(): JSX.Element {
       }
     }
 
-    // Clear transcript
-    setTranscriptText('')
+    // Don't clear transcript - keep it visible after stopping
   }
 
   const startVisualization = (): void => {
@@ -621,13 +767,89 @@ function App(): JSX.Element {
     </Box>
   )
 
+  const renderTranscriptionDisplay = () => (
+    <Box
+      className="transcription-container"
+      sx={{
+        mt: 3,
+        p: 2,
+        borderRadius: 2,
+        bgcolor: 'rgba(30, 41, 59, 0.7)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+        maxWidth: '800px',
+        margin: '0 auto',
+        display: isCapturing || transcriptText ? 'block' : 'none'
+      }}
+    >
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+        <Typography variant="h6" sx={{ color: '#4ade80' }}>
+          Transcription
+        </Typography>
+
+        {/* Show WebSocket connection status */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <div
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: '50%',
+              backgroundColor:
+                wsStatus === 'connected'
+                  ? '#10b981'
+                  : wsStatus === 'connecting'
+                    ? '#f59e0b'
+                    : '#ef4444',
+              boxShadow: wsStatus === 'connected' ? '0 0 0 3px rgba(16, 185, 129, 0.2)' : 'none'
+            }}
+          />
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            {wsStatus === 'connected'
+              ? 'Transcription Service Connected'
+              : wsStatus === 'connecting'
+                ? 'Connecting...'
+                : 'Transcription Service Disconnected'}
+          </Typography>
+        </Box>
+      </Box>
+
+      {wsError && (
+        <Box
+          sx={{
+            bgcolor: 'rgba(239, 68, 68, 0.1)',
+            borderLeft: '3px solid #ef4444',
+            color: '#ef4444',
+            borderRadius: '4px',
+            p: 1,
+            mb: 2,
+            fontSize: '0.9rem'
+          }}
+        >
+          {wsError}
+        </Box>
+      )}
+
+      <Typography
+        variant="body1"
+        sx={{
+          color: 'white',
+          fontWeight: transcriptText ? 'normal' : 'light',
+          fontStyle: transcriptText ? 'normal' : 'italic',
+          maxHeight: '200px',
+          overflowY: 'auto',
+          p: 1
+        }}
+      >
+        {transcriptText || 'Waiting for speech...'}
+      </Typography>
+    </Box>
+  )
+
   const renderMainPage = () => (
     <>
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs value={homeTab} onChange={handleTabChange} aria-label="main navigation tabs">
           <Tab label="Sessions" />
           <Tab label="Resumes" />
-          <Tab label="Transcription" />
         </Tabs>
       </Box>
 
@@ -649,9 +871,6 @@ function App(): JSX.Element {
           onDeleteResume={handleDeleteResume}
         />
       )}
-
-      {/* Transcription Tab */}
-      {homeTab === 2 && <Transcription />}
     </>
   )
 
@@ -770,35 +989,7 @@ function App(): JSX.Element {
             </Box>
           </div>
 
-          {/* Transcription Display */}
-          {isListening && (
-            <Box
-              className="transcription-container"
-              sx={{
-                mt: 3,
-                p: 2,
-                borderRadius: 2,
-                bgcolor: 'rgba(30, 41, 59, 0.7)',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                maxWidth: '800px',
-                margin: '0 auto'
-              }}
-            >
-              <Typography variant="h6" sx={{ color: '#4ade80', mb: 1 }}>
-                Transcription
-              </Typography>
-              <Typography
-                variant="body1"
-                sx={{
-                  color: 'white',
-                  fontWeight: transcriptText ? 'normal' : 'light',
-                  fontStyle: transcriptText ? 'normal' : 'italic'
-                }}
-              >
-                {transcriptText || 'Waiting for speech...'}
-              </Typography>
-            </Box>
-          )}
+          {renderTranscriptionDisplay()}
 
           {renderResponseOutput()}
         </Box>
