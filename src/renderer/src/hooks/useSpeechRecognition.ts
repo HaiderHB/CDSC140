@@ -2,6 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import * as use from '@tensorflow-models/universal-sentence-encoder'
 import * as tf from '@tensorflow/tfjs'
 
+// Add interface for the Python server result
+interface PythonServerResult {
+  success: boolean
+  error?: string
+}
+
 interface UseSpeechRecognitionProps {
   onTranscript: (text: string) => void
   bulletPoints: string[]
@@ -18,6 +24,9 @@ export const useSpeechRecognition = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const processingRef = useRef<boolean>(false)
+  const lastProcessedTimeRef = useRef<number>(0)
+  const pendingChunksRef = useRef<ArrayBuffer[]>([])
 
   // Initialize Universal Sentence Encoder
   useEffect(() => {
@@ -46,7 +55,44 @@ export const useSpeechRecognition = ({
     }
   }, [])
 
+  // Process pending audio chunks periodically
+  useEffect(() => {
+    if (isListening) {
+      // Process chunks every 500ms to avoid overwhelming the server
+      const intervalId = setInterval(() => {
+        if (pendingChunksRef.current.length > 0 && !processingRef.current) {
+          // Take first chunk to process
+          const chunk = pendingChunksRef.current.shift()
+          if (chunk) {
+            processAudioChunk(chunk)
+          }
+        }
+      }, 300)
+
+      return () => clearInterval(intervalId)
+    }
+  }, [isListening])
+
   const processAudioChunk = async (audioChunk: Blob | ArrayBuffer) => {
+    // Set processing flag to avoid concurrent processing
+    if (processingRef.current) {
+      // If already processing, add to pending chunks
+      pendingChunksRef.current.push(audioChunk as ArrayBuffer)
+      return
+    }
+
+    // Check debouncing - don't process too frequently
+    const now = Date.now()
+    if (now - lastProcessedTimeRef.current < 200) {
+      // If called too soon, add to pending chunks
+      pendingChunksRef.current.push(audioChunk as ArrayBuffer)
+      return
+    }
+
+    // Mark as processing
+    processingRef.current = true
+    lastProcessedTimeRef.current = now
+
     try {
       // Handle both Blob and ArrayBuffer inputs
       let arrayBuffer: ArrayBuffer
@@ -64,6 +110,7 @@ export const useSpeechRecognition = ({
 
       if (uint8Array.length === 0) {
         console.warn('No audio data to transcribe')
+        processingRef.current = false
         return
       }
 
@@ -123,6 +170,9 @@ export const useSpeechRecognition = ({
       }
     } catch (error) {
       console.error('Error processing audio chunk:', error)
+    } finally {
+      // Always reset processing flag
+      processingRef.current = false
     }
   }
 
@@ -135,8 +185,14 @@ export const useSpeechRecognition = ({
 
       // Start the Python WebSocket server via IPC
       console.log('Requesting main process to start Python WebSocket server...')
-      await window.api.startPythonServer()
-      console.log('Python WebSocket server started')
+      try {
+        await window.api.startPythonServer()
+        console.log('Python WebSocket server started')
+      } catch (err) {
+        const error = err as Error
+        console.error('Failed to start Python WebSocket server:', error)
+        throw new Error(`Failed to start Python server: ${error?.message || 'Unknown error'}`)
+      }
 
       const audioContext = new AudioContext()
 
@@ -146,12 +202,17 @@ export const useSpeechRecognition = ({
       const source = audioContext.createMediaStreamSource(stream)
       source.connect(audioWorkletNode)
 
+      // Reset processing state
+      processingRef.current = false
+      lastProcessedTimeRef.current = 0
+      pendingChunksRef.current = []
+
       audioWorkletNode.port.onmessage = (event) => {
         const audioChunk = event.data
         if (audioChunk.byteLength > 0) {
           console.log(`Received audio chunk of size ${audioChunk.byteLength} bytes`)
-          // Directly send the audio chunk for transcription
-          processAudioChunk(audioChunk)
+          // Add to pending chunks instead of processing immediately
+          pendingChunksRef.current.push(audioChunk)
         }
       }
 
@@ -164,6 +225,9 @@ export const useSpeechRecognition = ({
   }
 
   const stopListening = () => {
+    // Clear pending chunks
+    pendingChunksRef.current = []
+
     if (mediaRecorderRef.current && streamRef.current) {
       try {
         console.log('Stopping audio recording...')

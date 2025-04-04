@@ -4,14 +4,21 @@ interface OpenAIAPI {
   transcribeAudio: (audioData: Uint8Array) => Promise<string>
 }
 
+interface ServerResult {
+  success: boolean
+  error?: string
+}
+
 interface DataAPI {
-  getSessions: () => Promise<any>
-  saveSessions: (sessions: any[]) => Promise<void>
-  getResumes: () => Promise<any>
-  saveResumes: (resumes: any[]) => Promise<void>
-  saveResumeFile: (id: string, fileData: ArrayBuffer, fileExtension: string) => Promise<void>
-  readResumeFile: (filePath: string) => Promise<ArrayBuffer>
-  deleteResume: (filePath: string) => Promise<void>
+  getSessions: () => Promise<any[]>
+  saveSessions: (sessions: any[]) => Promise<boolean>
+  getResumes: () => Promise<any[]>
+  saveResumes: (resumes: any[]) => Promise<boolean>
+  saveResumeFile: (id: string, fileData: ArrayBuffer, fileExtension: string) => Promise<string>
+  readResumeFile: (filePath: string) => Promise<string>
+  deleteResume: (filePath: string) => Promise<boolean>
+  startPythonServer: () => Promise<ServerResult>
+  stopPythonServer: () => Promise<ServerResult>
 }
 
 interface API extends OpenAIAPI, DataAPI {
