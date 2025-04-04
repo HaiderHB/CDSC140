@@ -17,6 +17,7 @@ import './App.css'
 import SetupConfigPage from './components/SetupConfigPage'
 import SessionList from './components/SessionList'
 import ResumeManager from './components/ResumeManager'
+import Transcription from './components/Transcription'
 import { useDataPersistence } from './hooks/useDataPersistence'
 import { useSpeechRecognition } from './hooks/useSpeechRecognition'
 
@@ -620,6 +621,40 @@ function App(): JSX.Element {
     </Box>
   )
 
+  const renderMainPage = () => (
+    <>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+        <Tabs value={homeTab} onChange={handleTabChange} aria-label="main navigation tabs">
+          <Tab label="Sessions" />
+          <Tab label="Resumes" />
+          <Tab label="Transcription" />
+        </Tabs>
+      </Box>
+
+      {/* Sessions Tab */}
+      {homeTab === 0 && (
+        <SessionList
+          sessions={sessions}
+          onNewSession={handleNewSession}
+          onSelectSession={handleLoadSession}
+          onDeleteSession={handleDeleteSession}
+        />
+      )}
+
+      {/* Resumes Tab */}
+      {homeTab === 1 && (
+        <ResumeManager
+          resumes={resumes}
+          onAddResume={handleAddResume}
+          onDeleteResume={handleDeleteResume}
+        />
+      )}
+
+      {/* Transcription Tab */}
+      {homeTab === 2 && <Transcription />}
+    </>
+  )
+
   return (
     <Box
       className="app-container"
@@ -649,47 +684,7 @@ function App(): JSX.Element {
         </Box>
       )}
 
-      {currentPage === 'main' && (
-        <Box
-          sx={{
-            maxWidth: 'lg',
-            mx: 'auto'
-          }}
-        >
-          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-            <Tabs value={homeTab} onChange={handleTabChange} aria-label="home tabs" centered>
-              <Tab label="Sessions" />
-              <Tab label="Resumes" />
-            </Tabs>
-          </Box>
-
-          <Box
-            sx={{
-              borderRadius: 2,
-              overflow: 'hidden',
-              bgcolor: 'rgba(15, 23, 42, 0.5)',
-              boxShadow: '0 0 40px rgba(99, 102, 241, 0.2)',
-              p: 3
-            }}
-          >
-            {homeTab === 0 && (
-              <SessionList
-                sessions={sessions}
-                onDeleteSession={handleDeleteSession}
-                onSelectSession={handleLoadSession}
-                onNewSession={handleNewSession}
-              />
-            )}
-            {homeTab === 1 && (
-              <ResumeManager
-                onAddResume={handleAddResume}
-                resumes={resumes}
-                onDeleteResume={handleDeleteResume}
-              />
-            )}
-          </Box>
-        </Box>
-      )}
+      {currentPage === 'main' && renderMainPage()}
 
       {currentPage === 'setup' && (
         <Box
@@ -810,7 +805,12 @@ function App(): JSX.Element {
       )}
 
       {/* Error Snackbar */}
-      <Snackbar open={!!error} autoHideDuration={6000} onClose={handleCloseError}>
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={handleCloseError}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
         <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
           {error}
         </Alert>

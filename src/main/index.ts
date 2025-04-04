@@ -16,6 +16,46 @@ import {
   deleteResumeFile
 } from './storage'
 import { setupTranscriptionHandlers } from './transcription'
+import spawn from 'cross-spawn'
+import { ChildProcess } from 'child_process'
+
+// Reference to the Python process
+let pythonProcess: ChildProcess | null = null
+
+function startPythonScript() {
+  // Check if we're in development or production
+  const scriptPath = is.dev
+    ? join(process.cwd(), 'scripts', 'transcription.py')
+    : join(process.resourcesPath, 'scripts', 'transcription.py')
+
+  // Use Python 3.12 specifically
+  const pythonCommand = process.platform === 'win32' ? 'py' : 'python3.12'
+  const pythonArgs = process.platform === 'win32' ? ['-3.12', scriptPath] : [scriptPath]
+
+  // Spawn the Python process
+  try {
+    console.log(`Starting Python transcription server...`)
+
+    pythonProcess = spawn(pythonCommand, pythonArgs, {
+      stdio: 'inherit'
+    })
+
+    if (pythonProcess) {
+      pythonProcess.on('error', (err) => {
+        console.error('Failed to start Python process:', err)
+      })
+
+      pythonProcess.on('close', (code) => {
+        if (code !== 0) {
+          console.log(`Python process exited with code ${code}`)
+        }
+        pythonProcess = null
+      })
+    }
+  } catch (error) {
+    console.error('Error starting Python script:', error)
+  }
+}
 
 const originalStderrWrite = process.stderr.write
 process.stderr.write = (msg, ...args) => {
@@ -260,7 +300,7 @@ app.whenReady().then(() => {
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self'; connect-src 'self' http://localhost:3000 https://api.openai.com https://storage.googleapis.com https://fonts.googleapis.com https://tfhub.dev https://www.kaggle.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline';"
+          "default-src 'self'; connect-src 'self' http://localhost:3000 ws://localhost:9876 https://api.openai.com https://storage.googleapis.com https://fonts.googleapis.com https://tfhub.dev https://www.kaggle.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline';"
         ]
       }
     })
@@ -271,6 +311,9 @@ app.whenReady().then(() => {
 
   // Create the browser window
   createWindow()
+
+  // Start the Python transcription script
+  startPythonScript()
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
@@ -285,6 +328,18 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
+  }
+})
+
+// Clean up the Python process when the app is about to quit
+app.on('will-quit', () => {
+  if (pythonProcess) {
+    // On Windows, sending SIGTERM might not work, so just kill it
+    if (process.platform === 'win32') {
+      pythonProcess.pid && process.kill(pythonProcess.pid)
+    } else {
+      pythonProcess.kill('SIGTERM')
+    }
   }
 })
 
