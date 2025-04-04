@@ -79,11 +79,105 @@ function App(): JSX.Element {
     deleteResume
   } = useDataPersistence()
 
-  // Update the ref when bullet points change
+  // Use the ref when bulletPoints change
   useEffect(() => {
     bulletPointsRef.current = bulletPoints
     console.log('📋 Bullet points updated in App component:', bulletPoints)
   }, [bulletPoints])
+
+  // Define the match found handler function
+  const handleMatchFound = (matchedPoint: string) => {
+    console.log('🎯 Matched bullet point:', matchedPoint)
+
+    // Use the ref value to avoid stale closure
+    const currentBulletPoints = bulletPointsRef.current
+    console.log('🔍 Current bullet points in state:', currentBulletPoints)
+
+    // Check if this exact bullet point exists in our list
+    const exactMatch = currentBulletPoints.includes(matchedPoint)
+
+    if (exactMatch) {
+      console.log('✅ Exact match found in bullet points, removing:', matchedPoint)
+
+      // Remove the exact match
+      setBulletPoints((prev) => {
+        const newPoints = prev.filter((point) => point !== matchedPoint)
+        console.log(`✅ Removed bullet point. Remaining bullet points: ${newPoints.length}`)
+        return newPoints
+      })
+    } else {
+      // Try to find a close match if not an exact match
+      console.log('⚠️ No exact match in bullet points, looking for close match for:', matchedPoint)
+
+      // Simple direct string comparison first
+      for (const point of currentBulletPoints) {
+        if (
+          point.toLowerCase().includes(matchedPoint.toLowerCase()) ||
+          matchedPoint.toLowerCase().includes(point.toLowerCase())
+        ) {
+          console.log('✅ Found direct string match:', point)
+
+          setBulletPoints((prev) => {
+            const newPoints = prev.filter((p) => p !== point)
+            console.log(`✅ Removed matched bullet point. Remaining: ${newPoints.length}`)
+            return newPoints
+          })
+          return
+        }
+      }
+
+      // If no direct match, try fuzzy match
+      const normalizeForComparison = (text: string) => {
+        return text
+          .toLowerCase()
+          .replace(/['".,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+      }
+
+      const normalizedMatchPoint = normalizeForComparison(matchedPoint)
+
+      // Find bullet point with closest content match
+      const fuzzyMatch = currentBulletPoints.find((point) => {
+        const normalizedPoint = normalizeForComparison(point)
+        // Check if the normalized strings are similar
+        return (
+          normalizedPoint.includes(normalizedMatchPoint) ||
+          normalizedMatchPoint.includes(normalizedPoint)
+        )
+      })
+
+      if (fuzzyMatch) {
+        console.log('✅ Found fuzzy match:', fuzzyMatch)
+
+        // Remove the fuzzy match
+        setBulletPoints((prev) => {
+          const newPoints = prev.filter((point) => point !== fuzzyMatch)
+          console.log(
+            `✅ Removed fuzzy-matched bullet point. Remaining bullet points: ${newPoints.length}`
+          )
+          return newPoints
+        })
+      } else {
+        console.log('❌ No fuzzy match found among current bullet points:', currentBulletPoints)
+        console.log(
+          '👀 Check exact text matching:',
+          currentBulletPoints.map((bp) => [
+            bp,
+            matchedPoint.toLowerCase().includes(bp.toLowerCase().replace("'", '')) ||
+              bp.toLowerCase().replace("'", '').includes(matchedPoint.toLowerCase())
+          ])
+        )
+
+        // Last resort approach - force remove bullet point at index 0 if available
+        if (currentBulletPoints.length > 0) {
+          const pointToRemove = currentBulletPoints[0]
+          console.log('⚠️ Force removing first bullet point as fallback:', pointToRemove)
+          setBulletPoints((prev) => prev.filter((_, i) => i !== 0))
+        }
+      }
+    }
+  }
 
   const { isListening, startListening, stopListening } = useSpeechRecognition({
     onTranscript: (text) => {
@@ -93,101 +187,7 @@ function App(): JSX.Element {
       }
     },
     bulletPoints,
-    onMatchFound: (matchedPoint) => {
-      console.log('🎯 Matched bullet point:', matchedPoint)
-
-      // Use the ref value to avoid stale closure
-      const currentBulletPoints = bulletPointsRef.current
-      console.log('🔍 Current bullet points in state:', currentBulletPoints)
-
-      // Check if this exact bullet point exists in our list
-      const exactMatch = currentBulletPoints.includes(matchedPoint)
-
-      if (exactMatch) {
-        console.log('✅ Exact match found in bullet points, removing:', matchedPoint)
-
-        // Remove the exact match
-        setBulletPoints((prev) => {
-          const newPoints = prev.filter((point) => point !== matchedPoint)
-          console.log(`✅ Removed bullet point. Remaining bullet points: ${newPoints.length}`)
-          return newPoints
-        })
-      } else {
-        // Try to find a close match if not an exact match
-        console.log(
-          '⚠️ No exact match in bullet points, looking for close match for:',
-          matchedPoint
-        )
-
-        // Simple direct string comparison first
-        for (const point of currentBulletPoints) {
-          if (
-            point.toLowerCase().includes(matchedPoint.toLowerCase()) ||
-            matchedPoint.toLowerCase().includes(point.toLowerCase())
-          ) {
-            console.log('✅ Found direct string match:', point)
-
-            setBulletPoints((prev) => {
-              const newPoints = prev.filter((p) => p !== point)
-              console.log(`✅ Removed matched bullet point. Remaining: ${newPoints.length}`)
-              return newPoints
-            })
-            return
-          }
-        }
-
-        // If no direct match, try fuzzy match
-        const normalizeForComparison = (text: string) => {
-          return text
-            .toLowerCase()
-            .replace(/['".,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
-            .replace(/\s+/g, ' ')
-            .trim()
-        }
-
-        const normalizedMatchPoint = normalizeForComparison(matchedPoint)
-
-        // Find bullet point with closest content match
-        const fuzzyMatch = currentBulletPoints.find((point) => {
-          const normalizedPoint = normalizeForComparison(point)
-          // Check if the normalized strings are similar
-          return (
-            normalizedPoint.includes(normalizedMatchPoint) ||
-            normalizedMatchPoint.includes(normalizedPoint)
-          )
-        })
-
-        if (fuzzyMatch) {
-          console.log('✅ Found fuzzy match:', fuzzyMatch)
-
-          // Remove the fuzzy match
-          setBulletPoints((prev) => {
-            const newPoints = prev.filter((point) => point !== fuzzyMatch)
-            console.log(
-              `✅ Removed fuzzy-matched bullet point. Remaining bullet points: ${newPoints.length}`
-            )
-            return newPoints
-          })
-        } else {
-          console.log('❌ No fuzzy match found among current bullet points:', currentBulletPoints)
-          console.log(
-            '👀 Check exact text matching:',
-            currentBulletPoints.map((bp) => [
-              bp,
-              matchedPoint.toLowerCase().includes(bp.toLowerCase().replace("'", '')) ||
-                bp.toLowerCase().replace("'", '').includes(matchedPoint.toLowerCase())
-            ])
-          )
-
-          // Last resort approach - force remove bullet point at index 0 if available
-          if (currentBulletPoints.length > 0) {
-            const pointToRemove = currentBulletPoints[0]
-            console.log('⚠️ Force removing first bullet point as fallback:', pointToRemove)
-            setBulletPoints((prev) => prev.filter((_, i) => i !== 0))
-          }
-        }
-      }
-    }
+    onMatchFound: handleMatchFound
   })
 
   // Test mode effect - set test bullet points only once
@@ -206,6 +206,34 @@ function App(): JSX.Element {
       console.log('✅ Initial bullet points set for semantic matching')
     }
   }, [bulletPoints.length]) // Only run when bulletPoints.length changes
+
+  // Effect to send bullet points to the backend when they change
+  useEffect(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && bulletPoints.length > 0) {
+      console.log('🔄 Sending updated bullet points to backend:', bulletPoints)
+      wsRef.current.send(
+        JSON.stringify({
+          type: 'set_bullet_points',
+          payload: { points: bulletPoints }
+        })
+      )
+    }
+  }, [bulletPoints]) // Run whenever bulletPoints change
+
+  // Also send bullet points right after WebSocket connects
+  useEffect(() => {
+    if (wsStatus === 'connected' && bulletPoints.length > 0) {
+      console.log('🔄 Sending bullet points after WS connection:', bulletPoints)
+      if (wsRef.current) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: 'set_bullet_points',
+            payload: { points: bulletPoints }
+          })
+        )
+      }
+    }
+  }, [wsStatus, bulletPoints]) // Run when WebSocket status changes to connected
 
   // Display error messages from data loading
   useEffect(() => {
@@ -268,17 +296,49 @@ function App(): JSX.Element {
         try {
           const data = JSON.parse(event.data)
 
-          if (data.type === 'transcription') {
-            // Queue transcription update
-            queueTranscriptionUpdate(data.text)
-          } else if (data.type === 'status') {
-            if (data.status === 'connected') {
-              setWsStatus('connected')
-              setWsError(null)
-            }
+          switch (data.type) {
+            case 'transcription':
+              // Queue transcription update
+              queueTranscriptionUpdate(data.text)
+              break
+            case 'match_result':
+              // Handle match result from backend
+              if (data.match) {
+                console.log(
+                  `🎯 Match found from backend: '${data.match}' (Score: ${data.score.toFixed(2)})`
+                )
+                // Use the same handler we pass to useSpeechRecognition
+                console.log('Calling handleMatchFound with match:', data.match)
+                handleMatchFound(data.match)
+              } else {
+                console.log(
+                  `No match found from backend (Score: ${data.score?.toFixed(2) || 'unknown'})`
+                )
+              }
+              break
+            case 'status':
+              console.log(`Received status update: ${data.status}`, data)
+              if (data.status === 'connected') {
+                setWsStatus('connected')
+                setWsError(null)
+              } else if (data.status === 'bullets_updated') {
+                console.log(`Backend confirmed ${data.count} bullet points updated.`)
+              } else if (data.status === 'started') {
+                console.log('Backend confirmed recording started.')
+              } else if (data.status === 'stopped') {
+                console.log('Backend confirmed recording stopped.')
+              }
+              break
+            case 'control':
+              if (data.payload?.command === 'pong') {
+                console.log('Received pong from transcription server')
+              }
+              break
+            default:
+              console.warn('Received unknown message type from backend:', data.type)
           }
         } catch (err) {
-          console.error('Error handling WebSocket message:', err)
+          console.error('Error handling WebSocket message:', err, event.data)
         }
       }
 
@@ -400,7 +460,28 @@ function App(): JSX.Element {
           setWsError(null)
           setTranscriptText('')
           pendingUpdatesRef.current = []
-          wsRef.current.send(JSON.stringify({ command: 'start' }))
+
+          // Send current bullet points right before starting recording
+          if (bulletPointsRef.current.length > 0) {
+            console.log('Sending bullet points before starting recording:', bulletPointsRef.current)
+            wsRef.current.send(
+              JSON.stringify({
+                type: 'set_bullet_points',
+                payload: { points: bulletPointsRef.current }
+              })
+            )
+          }
+
+          // Wait a short moment for bullet points to be processed
+          setTimeout(() => {
+            // Then start recording
+            wsRef.current?.send(
+              JSON.stringify({
+                type: 'control',
+                payload: { command: 'start' }
+              })
+            )
+          }, 200) // Small delay to ensure bullet points are processed first
         } else if (wsStatus === 'connecting') {
           // If still connecting, try again shortly
           setTimeout(startRecording, 500)
@@ -581,7 +662,12 @@ function App(): JSX.Element {
     // Stop transcription recording first
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       console.log('Stopping transcription recording')
-      wsRef.current.send(JSON.stringify({ command: 'stop' }))
+      wsRef.current.send(
+        JSON.stringify({
+          type: 'control',
+          payload: { command: 'stop' }
+        })
+      )
     }
 
     if (streamRef.current) {

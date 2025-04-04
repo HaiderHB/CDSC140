@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import SemanticMatcher from '../utils/semanticMatching'
 
 // Add interface for the Python server result
 interface PythonServerResult {
@@ -13,6 +12,19 @@ interface UseSpeechRecognitionProps {
   onMatchFound: (matchedPoint: string) => void
 }
 
+// Helper function to send messages safely
+const sendWsMessage = (ws: WebSocket | null, message: object) => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    try {
+      ws.send(JSON.stringify(message))
+    } catch (err) {
+      console.error('Error sending WebSocket message:', err)
+    }
+  } else {
+    console.warn('WebSocket not open, cannot send message:', message)
+  }
+}
+
 export const useSpeechRecognition = ({
   onTranscript,
   bulletPoints,
@@ -20,65 +32,51 @@ export const useSpeechRecognition = ({
 }: UseSpeechRecognitionProps) => {
   const [isListening, setIsListening] = useState(false)
   const streamRef = useRef<MediaStream | null>(null)
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordingIntervalRef = useRef<number | null>(null)
   const processingRef = useRef(false)
-  const lastProcessedTimeRef = useRef(0)
   const pendingChunksRef = useRef<ArrayBuffer[]>([])
 
-  // Create a ref for the semantic matcher
-  const semanticMatcherRef = useRef<SemanticMatcher | null>(null)
-
-  // Wrap onMatchFound in useCallback to prevent it from changing on each render
-  const stableOnMatchFound = useCallback((matchedPoint: string) => {
-    console.log('🔍 Match found in semantic matcher, calling onMatchFound...')
-    onMatchFound(matchedPoint)
-  }, [])
+  // Wrap onMatchFound in useCallback for stability if needed elsewhere, but not strictly necessary now
+  const stableOnMatchFound = useCallback(
+    (matchedPoint: string) => {
+      onMatchFound(matchedPoint)
+    },
+    [onMatchFound]
+  )
 
   // WebSocket refs
   const wsRef = useRef<WebSocket | null>(null)
   const connectionAttemptsRef = useRef(0)
   const isConnectingRef = useRef(false)
-  const pendingUpdatesRef = useRef<string[]>([])
 
-  // Initialize semantic matcher on component mount - only ONCE
+  // Send bullet points to backend when they change or when WS connects
   useEffect(() => {
-    if (!semanticMatcherRef.current) {
-      console.log('Initializing semantic matcher')
-      semanticMatcherRef.current = new SemanticMatcher(stableOnMatchFound)
-    }
-
-    return () => {
-      if (semanticMatcherRef.current) {
-        semanticMatcherRef.current.dispose()
-        semanticMatcherRef.current = null
-      }
-    }
-  }, []) // Empty dependency array - run only once
-
-  // Update bullet points when they change
-  useEffect(() => {
-    const updateBulletPoints = async () => {
-      if (semanticMatcherRef.current) {
-        if (bulletPoints.length > 0) {
-          console.log('🔄 Updating bullet points in semantic matcher:', bulletPoints)
-          await semanticMatcherRef.current.setBulletPoints(bulletPoints)
-          console.log('✅ Bullet points updated successfully in semantic matcher')
-        } else {
-          console.log('⚠️ No bullet points to set in semantic matcher')
-        }
+    // Function to send bullet points
+    const sendBulletPointsToBackend = () => {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        console.log('🔄 Sending updated bullet points to backend:', bulletPoints)
+        sendWsMessage(wsRef.current, {
+          type: 'set_bullet_points',
+          payload: { points: bulletPoints }
+        })
       } else {
-        console.error('❌ Cannot update bullet points - semantic matcher not initialized')
+        console.warn('Cannot send bullet points - WebSocket not connected.')
+        // Optionally retry or wait for connection
       }
     }
 
-    updateBulletPoints()
-  }, [bulletPoints])
+    // Send immediately if already connected
+    if (isListening) {
+      // Only send if actively listening/connected state expected
+      sendBulletPointsToBackend()
+    }
+    // The connectWebSocket function will also call this upon successful connection.
+  }, [bulletPoints, isListening]) // Also depend on isListening to send when starting
 
   // WebSocket connection logic
   const connectWebSocket = () => {
     // Prevent multiple connection attempts at the same time
-    if (isConnectingRef.current) return
+    if (isConnectingRef.current || wsRef.current) return // Don't reconnect if already connected or connecting
 
     try {
       isConnectingRef.current = true
@@ -91,36 +89,49 @@ export const useSpeechRecognition = ({
         connectionAttemptsRef.current = 0
         isConnectingRef.current = false
 
-        // Start recording once connected
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-          console.log('Starting transcription recording')
-          pendingUpdatesRef.current = []
-          wsRef.current.send(JSON.stringify({ command: 'start' }))
+        // Send current bullet points immediately upon connection
+        console.log('🔄 Sending initial bullet points to backend:', bulletPoints)
+        sendWsMessage(wsRef.current, {
+          type: 'set_bullet_points',
+          payload: { points: bulletPoints }
+        })
+
+        // Start recording process (send start command) if isListening is true
+        if (isListening) {
+          console.log('WebSocket reconnected while listening, sending start command...')
+          sendWsMessage(wsRef.current, {
+            type: 'control',
+            payload: { command: 'start' }
+          })
 
           // Send a periodic ping to keep the connection alive
-          const pingInterval = setInterval(() => {
-            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-              wsRef.current.send(JSON.stringify({ command: 'ping' }))
-            } else {
-              clearInterval(pingInterval)
-            }
-          }, 30000) // Ping every 30 seconds
-
-          // Store the interval reference for cleanup
-          recordingIntervalRef.current = pingInterval as unknown as number
+          // Clear previous interval if any
+          if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current)
+          recordingIntervalRef.current = setInterval(() => {
+            sendWsMessage(wsRef.current, {
+              type: 'control',
+              payload: { command: 'ping' }
+            })
+          }, 30000) as unknown as number // Ping every 30 seconds
         }
       }
 
       wsRef.current.onclose = (event) => {
         console.log(`WebSocket closed with code: ${event.code}`)
         isConnectingRef.current = false
+        wsRef.current = null // Clear the ref
+        // Clear ping interval
+        if (recordingIntervalRef.current) {
+          clearInterval(recordingIntervalRef.current)
+          recordingIntervalRef.current = null
+        }
 
-        // Only attempt to reconnect if we're still recording
+        // Only attempt to reconnect if we intended to be listening
         if (isListening) {
           // Exponential backoff for reconnection attempts
           const delay = Math.min(3000 * Math.pow(1.5, connectionAttemptsRef.current), 10000)
           connectionAttemptsRef.current++
-
+          console.log(`WebSocket disconnected, attempting reconnect in ${delay}ms...`)
           // Try to reconnect after a delay
           setTimeout(connectWebSocket, delay)
         }
@@ -128,21 +139,53 @@ export const useSpeechRecognition = ({
 
       wsRef.current.onerror = (error) => {
         console.error('WebSocket error:', error)
+        // Consider closing and triggering reconnect on error as well
+        if (wsRef.current) {
+          wsRef.current.close() // This will trigger onclose handler for reconnect logic
+        }
+        isConnectingRef.current = false // Ensure connection attempts can proceed
       }
 
       wsRef.current.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
 
-          if (data.type === 'transcription') {
-            // Process the transcription
-            processTranscription(data.text)
-          } else if (data.type === 'pong') {
-            // Received pong response from server
-            console.log('Received pong from transcription server')
+          switch (data.type) {
+            case 'transcription':
+              // Directly use the latest transcription from the backend
+              onTranscript(data.text)
+              break
+            case 'match_result':
+              // Handle match result from backend
+              if (data.match) {
+                console.log(`Match found: '${data.match}' (Score: ${data.score.toFixed(2)})`)
+                stableOnMatchFound(data.match)
+              }
+              // Optionally handle cases where match is null (below threshold) if needed
+              break
+            case 'status':
+              // Handle status updates from backend (e.g., connected, started, stopped, bullets_updated)
+              console.log(`Received status update: ${data.status}`, data)
+              if (data.status === 'bullets_updated') {
+                console.log(`Backend confirmed ${data.count} bullet points updated.`)
+              } else if (data.status === 'started') {
+                console.log('Backend confirmed recording started.')
+                // Might sync internal state if needed, though startListening should handle it
+              } else if (data.status === 'stopped') {
+                console.log('Backend confirmed recording stopped.')
+                // Might sync internal state if needed
+              }
+              break
+            case 'control':
+              if (data.payload?.command === 'pong') {
+                console.log('Received pong from transcription server')
+              }
+              break
+            default:
+              console.warn('Received unknown message type from backend:', data.type)
           }
         } catch (err) {
-          console.error('Error handling WebSocket message:', err)
+          console.error('Error handling WebSocket message:', err, event.data)
         }
       }
 
@@ -151,55 +194,46 @@ export const useSpeechRecognition = ({
     } catch (err) {
       console.error('WebSocket connection error:', err)
       isConnectingRef.current = false
+      wsRef.current = null // Clear the ref
 
       // Try to reconnect if we're still listening
       if (isListening) {
         const delay = Math.min(3000 * Math.pow(1.5, connectionAttemptsRef.current), 10000)
         connectionAttemptsRef.current++
+        console.log(`WebSocket connection failed, attempting reconnect in ${delay}ms...`)
         setTimeout(connectWebSocket, delay)
       }
     }
   }
 
-  // Process transcription using the semantic matcher
-  const processTranscription = async (text: string) => {
-    if (!text || text.trim() === '') return
-
-    console.log('Received transcription:', text)
-    onTranscript(text)
-
-    // Use semantic matcher to find matches
-    if (semanticMatcherRef.current) {
-      await semanticMatcherRef.current.processTranscription(text)
-    } else {
-      console.error('Semantic matcher not initialized')
-    }
-  }
-
   const startListening = async () => {
+    // Guard against starting if already listening
+    if (isListening) {
+      console.warn('startListening called while already listening.')
+      return
+    }
     try {
-      // Reset the semantic matcher
-      if (semanticMatcherRef.current) {
-        semanticMatcherRef.current.reset()
-
-        // Make sure the matcher has the latest bullet points
-        if (bulletPoints.length > 0) {
-          await semanticMatcherRef.current.setBulletPoints(bulletPoints)
-        }
-      }
-
       console.log('Requesting microphone access...')
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          // Optional: Add constraints for better quality if needed
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      })
       console.log('Microphone access granted')
       streamRef.current = stream
 
-      // Start WebSocket connection for transcription
-      connectWebSocket()
+      setIsListening(true) // Set state first
+
+      // Start WebSocket connection (will handle sending bullets/start command onopen)
+      connectWebSocket() // This now handles sending bullets and start command on successful connection
 
       const audioContext = new AudioContext()
 
       // Use the correct path to the audio processor script
-      const processorUrl = window.location.origin + '/scripts/audio-processor.js'
+      const processorUrl = '/scripts/audio-processor.js' // Relative path should work if served correctly
       console.log('Loading audio processor from:', processorUrl)
 
       try {
@@ -207,7 +241,9 @@ export const useSpeechRecognition = ({
         console.log('Audio processor loaded successfully')
       } catch (err) {
         console.error('Failed to load audio processor:', err)
-        throw err
+        setIsListening(false) // Reset state on failure
+        if (streamRef.current) streamRef.current.getTracks().forEach((track) => track.stop()) // Clean up stream
+        throw err // Re-throw error
       }
 
       const audioWorkletNode = new AudioWorkletNode(audioContext, 'audio-processor')
@@ -216,39 +252,60 @@ export const useSpeechRecognition = ({
 
       // Reset processing state
       processingRef.current = false
-      lastProcessedTimeRef.current = 0
       pendingChunksRef.current = []
 
       audioWorkletNode.port.onmessage = (event) => {
         const audioChunk = event.data
         if (audioChunk.byteLength > 0) {
-          console.log(`Received audio chunk of size ${audioChunk.byteLength} bytes`)
           // Add to pending chunks instead of processing immediately
           pendingChunksRef.current.push(audioChunk)
         }
       }
 
-      setIsListening(true)
-      console.log('Speech recognition is now active')
+      console.log(
+        'Speech recognition setup complete, waiting for WebSocket connection to start sending audio.'
+      )
+      // NOTE: Actual audio sending starts when WebSocket connection is open (handled by useEffect + sendAudioChunk)
     } catch (error) {
       console.error('Error starting audio recording:', error)
       setIsListening(false)
+      // Clean up stream if acquired
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop())
+        streamRef.current = null
+      }
     }
   }
 
   const stopListening = () => {
-    // Stop WebSocket connection
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      console.log('Stopping transcription recording')
-      wsRef.current.send(JSON.stringify({ command: 'stop' }))
+    // Guard against stopping if not listening
+    if (!isListening) {
+      console.warn('stopListening called while not listening.')
+      return
+    }
 
-      // Close WebSocket connection
-      try {
-        wsRef.current.close()
-        wsRef.current = null
-      } catch (err) {
-        console.error('Error closing WebSocket:', err)
-      }
+    console.log('Stopping speech recognition...')
+    setIsListening(false) // Set state immediately
+
+    // Stop WebSocket connection and command
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      console.log('Sending stop command to backend')
+      sendWsMessage(wsRef.current, {
+        type: 'control',
+        payload: { command: 'stop' }
+      })
+
+      // Close WebSocket connection gracefully after sending stop command
+      // Let the onclose handler manage cleanup and prevent immediate reconnect attempts
+      // wsRef.current.close() // Consider delaying close or letting onclose handle state
+    } else {
+      console.warn('WebSocket not open when trying to send stop command.')
+    }
+
+    // Close WebSocket if it exists (will trigger onclose which stops reconnect logic because isListening is false)
+    if (wsRef.current) {
+      wsRef.current.close(1000, 'Client stopping listening')
+      wsRef.current = null // Clear ref immediately
     }
 
     // Clear pending chunks
@@ -260,59 +317,55 @@ export const useSpeechRecognition = ({
       recordingIntervalRef.current = null
     }
 
-    if (mediaRecorderRef.current && streamRef.current) {
-      try {
-        console.log('Stopping audio recording...')
-        mediaRecorderRef.current.stop()
-        console.log('MediaRecorder stopped')
-
-        streamRef.current.getTracks().forEach((track) => {
-          console.log('Stopping audio track')
-          track.stop()
-        })
-        streamRef.current = null
-
-        setIsListening(false)
-        console.log('Speech recognition stopped')
-      } catch (error) {
-        console.error('Error stopping audio recording:', error)
-      }
-    } else {
-      // Even if there's no mediaRecorder, we should still clean up
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop())
-        streamRef.current = null
-      }
-      setIsListening(false)
-      console.log('Speech recognition stopped')
+    // Stop media stream tracks
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => {
+        console.log('Stopping audio track')
+        track.stop()
+      })
+      streamRef.current = null
     }
 
-    // Reset semantic matcher state
-    if (semanticMatcherRef.current) {
-      semanticMatcherRef.current.reset()
-    }
+    console.log('Speech recognition stopped')
   }
 
   // Add audio processing and WebSocket audio transmission
   useEffect(() => {
-    if (isListening && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+    let intervalId: number | null = null
+    if (isListening) {
+      // Only run interval if listening
       // Process audio chunks at regular intervals
-      const intervalId = setInterval(() => {
-        if (pendingChunksRef.current.length > 0 && !processingRef.current) {
+      intervalId = setInterval(() => {
+        // Ensure WebSocket is open before attempting to send
+        if (
+          wsRef.current &&
+          wsRef.current.readyState === WebSocket.OPEN &&
+          pendingChunksRef.current.length > 0 &&
+          !processingRef.current
+        ) {
           const chunk = pendingChunksRef.current.shift()
           if (chunk) {
             sendAudioChunk(chunk)
           }
+        } else if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+          // console.log("WS not open, holding audio chunks...") // Optional logging
         }
-      }, 100) // Process chunks every 100ms
-
-      return () => clearInterval(intervalId)
+      }, 100) as unknown as number // Process chunks every 100ms
+    } else {
+      // Clear interval if not listening
+      if (intervalId) clearInterval(intervalId)
     }
-  }, [isListening])
+
+    return () => {
+      if (intervalId) clearInterval(intervalId)
+    }
+  }, [isListening]) // Depend only on isListening state
 
   const sendAudioChunk = (audioChunk: ArrayBuffer) => {
+    // This function remains largely the same, just ensure wsRef.current is checked
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      // If WebSocket is not open, queue the chunk for later
+      // If WebSocket is not open, queue the chunk for later (or potentially discard if too old)
+      console.warn('WebSocket not open, requeuing audio chunk.')
       pendingChunksRef.current.push(audioChunk)
       return
     }
@@ -336,25 +389,27 @@ export const useSpeechRecognition = ({
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      console.log('Cleaning up useSpeechRecognition hook...')
+      // Ensure stopListening is called which handles most cleanup
       stopListening()
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop())
-      }
+
+      // Explicitly clear interval just in case
       if (recordingIntervalRef.current) {
         clearInterval(recordingIntervalRef.current)
+        recordingIntervalRef.current = null
       }
-      // Close WebSocket connection
+      // Explicitly close WebSocket if stopListening didn't catch it
       if (wsRef.current) {
-        wsRef.current.close()
+        wsRef.current.close(1000, 'Component unmounting')
         wsRef.current = null
       }
-      // Dispose semantic matcher
-      if (semanticMatcherRef.current) {
-        semanticMatcherRef.current.dispose()
-        semanticMatcherRef.current = null
+      // Ensure stream tracks are stopped
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop())
+        streamRef.current = null
       }
     }
-  }, [])
+  }, []) // Empty dependency array ensures this runs only on unmount
 
   return { isListening, startListening, stopListening }
 }

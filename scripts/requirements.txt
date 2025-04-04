@@ -1,0 +1,8 @@
+websockets
+RealtimeSTT
+asyncio
+sentence-transformers
+onnxruntime
+onnx
+torch
+numpy 
