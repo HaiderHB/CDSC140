@@ -17,7 +17,7 @@ import './App.css'
 import SetupConfigPage from './components/SetupConfigPage'
 import SessionList from './components/SessionList'
 import ResumeManager from './components/ResumeManager'
-import Transcription from './components/Transcription'
+// import Transcription from './components/Transcription'
 import { useDataPersistence } from './hooks/useDataPersistence'
 import { useSpeechRecognition } from './hooks/useSpeechRecognition'
 
