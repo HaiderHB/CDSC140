@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import * as tf from '@tensorflow/tfjs'
-import { load as loadEncoder } from '@tensorflow-models/universal-sentence-encoder'
+import { useEffect, useRef, useState, useCallback } from 'react'
+import SemanticMatcher from '../utils/semanticMatching'
 
 // Add interface for the Python server result
 interface PythonServerResult {
@@ -26,63 +25,54 @@ export const useSpeechRecognition = ({
   const processingRef = useRef(false)
   const lastProcessedTimeRef = useRef(0)
   const pendingChunksRef = useRef<ArrayBuffer[]>([])
-  const encoderModelRef = useRef<any>(null)
-  const bulletPointEmbeddingsRef = useRef<tf.Tensor | null>(null)
+
+  // Create a ref for the semantic matcher
+  const semanticMatcherRef = useRef<SemanticMatcher | null>(null)
+
+  // Wrap onMatchFound in useCallback to prevent it from changing on each render
+  const stableOnMatchFound = useCallback((matchedPoint: string) => {
+    console.log('🔍 Match found in semantic matcher, calling onMatchFound...')
+    onMatchFound(matchedPoint)
+  }, [])
 
   // WebSocket refs
   const wsRef = useRef<WebSocket | null>(null)
   const connectionAttemptsRef = useRef(0)
   const isConnectingRef = useRef(false)
   const pendingUpdatesRef = useRef<string[]>([])
-  const processingUpdatesRef = useRef(false)
 
-  // Load the Universal Sentence Encoder model for semantic matching
+  // Initialize semantic matcher on component mount - only ONCE
   useEffect(() => {
-    const loadModel = async () => {
-      try {
-        console.log('Loading Universal Sentence Encoder model...')
-        encoderModelRef.current = await loadEncoder()
-        console.log('Model loaded successfully')
-
-        // Only compute embeddings if we have bullet points
-        if (bulletPoints && bulletPoints.length > 0 && encoderModelRef.current) {
-          console.log('Computing embeddings for bullet points...')
-          bulletPointEmbeddingsRef.current = await encoderModelRef.current.embed(bulletPoints)
-          console.log('Embeddings computed successfully')
-        }
-      } catch (error) {
-        console.error('Error loading Universal Sentence Encoder model:', error)
-      }
+    if (!semanticMatcherRef.current) {
+      console.log('Initializing semantic matcher')
+      semanticMatcherRef.current = new SemanticMatcher(stableOnMatchFound)
     }
-
-    loadModel()
 
     return () => {
-      // Clean up tensors to prevent memory leaks
-      if (bulletPointEmbeddingsRef.current) {
-        bulletPointEmbeddingsRef.current.dispose()
-        bulletPointEmbeddingsRef.current = null
+      if (semanticMatcherRef.current) {
+        semanticMatcherRef.current.dispose()
+        semanticMatcherRef.current = null
       }
     }
-  }, [bulletPoints])
+  }, []) // Empty dependency array - run only once
 
-  // Re-compute embeddings when bullet points change
+  // Update bullet points when they change
   useEffect(() => {
-    const updateEmbeddings = async () => {
-      if (encoderModelRef.current && bulletPoints && bulletPoints.length > 0) {
-        console.log('Updating embeddings for bullet points...')
-
-        // Clean up previous embeddings
-        if (bulletPointEmbeddingsRef.current) {
-          bulletPointEmbeddingsRef.current.dispose()
+    const updateBulletPoints = async () => {
+      if (semanticMatcherRef.current) {
+        if (bulletPoints.length > 0) {
+          console.log('🔄 Updating bullet points in semantic matcher:', bulletPoints)
+          await semanticMatcherRef.current.setBulletPoints(bulletPoints)
+          console.log('✅ Bullet points updated successfully in semantic matcher')
+        } else {
+          console.log('⚠️ No bullet points to set in semantic matcher')
         }
-
-        bulletPointEmbeddingsRef.current = await encoderModelRef.current.embed(bulletPoints)
-        console.log('Embeddings updated successfully')
+      } else {
+        console.error('❌ Cannot update bullet points - semantic matcher not initialized')
       }
     }
 
-    updateEmbeddings()
+    updateBulletPoints()
   }, [bulletPoints])
 
   // WebSocket connection logic
@@ -106,6 +96,18 @@ export const useSpeechRecognition = ({
           console.log('Starting transcription recording')
           pendingUpdatesRef.current = []
           wsRef.current.send(JSON.stringify({ command: 'start' }))
+
+          // Send a periodic ping to keep the connection alive
+          const pingInterval = setInterval(() => {
+            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+              wsRef.current.send(JSON.stringify({ command: 'ping' }))
+            } else {
+              clearInterval(pingInterval)
+            }
+          }, 30000) // Ping every 30 seconds
+
+          // Store the interval reference for cleanup
+          recordingIntervalRef.current = pingInterval as unknown as number
         }
       }
 
@@ -135,6 +137,9 @@ export const useSpeechRecognition = ({
           if (data.type === 'transcription') {
             // Process the transcription
             processTranscription(data.text)
+          } else if (data.type === 'pong') {
+            // Received pong response from server
+            console.log('Received pong from transcription server')
           }
         } catch (err) {
           console.error('Error handling WebSocket message:', err)
@@ -146,53 +151,43 @@ export const useSpeechRecognition = ({
     } catch (err) {
       console.error('WebSocket connection error:', err)
       isConnectingRef.current = false
+
+      // Try to reconnect if we're still listening
+      if (isListening) {
+        const delay = Math.min(3000 * Math.pow(1.5, connectionAttemptsRef.current), 10000)
+        connectionAttemptsRef.current++
+        setTimeout(connectWebSocket, delay)
+      }
     }
   }
 
-  // Process transcription and perform semantic matching
+  // Process transcription using the semantic matcher
   const processTranscription = async (text: string) => {
     if (!text || text.trim() === '') return
 
     console.log('Received transcription:', text)
     onTranscript(text)
 
-    // Check for matches with bullet points using semantic search
-    if (encoderModelRef.current && bulletPointEmbeddingsRef.current && bulletPoints.length > 0) {
-      try {
-        // Get embedding for the transcription
-        const transcriptionEmbedding = await encoderModelRef.current.embed([text])
-
-        // Compute similarities
-        const similarities = tf.matMul(
-          transcriptionEmbedding as tf.Tensor2D,
-          (bulletPointEmbeddingsRef.current as tf.Tensor2D).transpose()
-        )
-
-        // Find the best match
-        const values = await similarities.data()
-        const maxValue = Math.max(...Array.from(values))
-
-        // If the similarity is high enough, consider it a match
-        const SIMILARITY_THRESHOLD = 0.65
-        if (maxValue > SIMILARITY_THRESHOLD) {
-          const matchIndex = Array.from(values).indexOf(maxValue)
-          const matchedPoint = bulletPoints[matchIndex]
-
-          console.log(`Match found with similarity ${maxValue}:`, matchedPoint)
-          onMatchFound(matchedPoint)
-        }
-
-        // Clean up tensors
-        transcriptionEmbedding.dispose()
-        similarities.dispose()
-      } catch (error) {
-        console.error('Error performing semantic matching:', error)
-      }
+    // Use semantic matcher to find matches
+    if (semanticMatcherRef.current) {
+      await semanticMatcherRef.current.processTranscription(text)
+    } else {
+      console.error('Semantic matcher not initialized')
     }
   }
 
   const startListening = async () => {
     try {
+      // Reset the semantic matcher
+      if (semanticMatcherRef.current) {
+        semanticMatcherRef.current.reset()
+
+        // Make sure the matcher has the latest bullet points
+        if (bulletPoints.length > 0) {
+          await semanticMatcherRef.current.setBulletPoints(bulletPoints)
+        }
+      }
+
       console.log('Requesting microphone access...')
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       console.log('Microphone access granted')
@@ -246,11 +241,24 @@ export const useSpeechRecognition = ({
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       console.log('Stopping transcription recording')
       wsRef.current.send(JSON.stringify({ command: 'stop' }))
-      // Don't close the connection - just stop recording
+
+      // Close WebSocket connection
+      try {
+        wsRef.current.close()
+        wsRef.current = null
+      } catch (err) {
+        console.error('Error closing WebSocket:', err)
+      }
     }
 
     // Clear pending chunks
     pendingChunksRef.current = []
+
+    // Clear intervals
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current)
+      recordingIntervalRef.current = null
+    }
 
     if (mediaRecorderRef.current && streamRef.current) {
       try {
@@ -264,12 +272,6 @@ export const useSpeechRecognition = ({
         })
         streamRef.current = null
 
-        if (recordingIntervalRef.current) {
-          console.log('Clearing audio processing interval')
-          clearInterval(recordingIntervalRef.current)
-          recordingIntervalRef.current = null
-        }
-
         setIsListening(false)
         console.log('Speech recognition stopped')
       } catch (error) {
@@ -281,12 +283,13 @@ export const useSpeechRecognition = ({
         streamRef.current.getTracks().forEach((track) => track.stop())
         streamRef.current = null
       }
-      if (recordingIntervalRef.current) {
-        clearInterval(recordingIntervalRef.current)
-        recordingIntervalRef.current = null
-      }
       setIsListening(false)
       console.log('Speech recognition stopped')
+    }
+
+    // Reset semantic matcher state
+    if (semanticMatcherRef.current) {
+      semanticMatcherRef.current.reset()
     }
   }
 
@@ -344,6 +347,11 @@ export const useSpeechRecognition = ({
       if (wsRef.current) {
         wsRef.current.close()
         wsRef.current = null
+      }
+      // Dispose semantic matcher
+      if (semanticMatcherRef.current) {
+        semanticMatcherRef.current.dispose()
+        semanticMatcherRef.current = null
       }
     }
   }, [])

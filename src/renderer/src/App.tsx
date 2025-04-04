@@ -63,6 +63,8 @@ function App(): JSX.Element {
   const isConnectingRef = useRef(false)
   const pendingUpdatesRef = useRef<string[]>([])
   const processingUpdatesRef = useRef(false)
+  const bulletPointsRef = useRef<string[]>([])
+  const bulletPointsInitializedRef = useRef(false)
 
   const {
     sessions,
@@ -77,7 +79,12 @@ function App(): JSX.Element {
     deleteResume
   } = useDataPersistence()
 
-  // Add speech recognition hook with enhanced logging
+  // Update the ref when bullet points change
+  useEffect(() => {
+    bulletPointsRef.current = bulletPoints
+    console.log('📋 Bullet points updated in App component:', bulletPoints)
+  }, [bulletPoints])
+
   const { isListening, startListening, stopListening } = useSpeechRecognition({
     onTranscript: (text) => {
       console.log('User speech transcript:', text)
@@ -87,11 +94,118 @@ function App(): JSX.Element {
     },
     bulletPoints,
     onMatchFound: (matchedPoint) => {
-      console.log('Matched bullet point:', matchedPoint)
-      // Remove the matched bullet point
-      setBulletPoints((prev) => prev.filter((point) => point !== matchedPoint))
+      console.log('🎯 Matched bullet point:', matchedPoint)
+
+      // Use the ref value to avoid stale closure
+      const currentBulletPoints = bulletPointsRef.current
+      console.log('🔍 Current bullet points in state:', currentBulletPoints)
+
+      // Check if this exact bullet point exists in our list
+      const exactMatch = currentBulletPoints.includes(matchedPoint)
+
+      if (exactMatch) {
+        console.log('✅ Exact match found in bullet points, removing:', matchedPoint)
+
+        // Remove the exact match
+        setBulletPoints((prev) => {
+          const newPoints = prev.filter((point) => point !== matchedPoint)
+          console.log(`✅ Removed bullet point. Remaining bullet points: ${newPoints.length}`)
+          return newPoints
+        })
+      } else {
+        // Try to find a close match if not an exact match
+        console.log(
+          '⚠️ No exact match in bullet points, looking for close match for:',
+          matchedPoint
+        )
+
+        // Simple direct string comparison first
+        for (const point of currentBulletPoints) {
+          if (
+            point.toLowerCase().includes(matchedPoint.toLowerCase()) ||
+            matchedPoint.toLowerCase().includes(point.toLowerCase())
+          ) {
+            console.log('✅ Found direct string match:', point)
+
+            setBulletPoints((prev) => {
+              const newPoints = prev.filter((p) => p !== point)
+              console.log(`✅ Removed matched bullet point. Remaining: ${newPoints.length}`)
+              return newPoints
+            })
+            return
+          }
+        }
+
+        // If no direct match, try fuzzy match
+        const normalizeForComparison = (text: string) => {
+          return text
+            .toLowerCase()
+            .replace(/['".,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+        }
+
+        const normalizedMatchPoint = normalizeForComparison(matchedPoint)
+
+        // Find bullet point with closest content match
+        const fuzzyMatch = currentBulletPoints.find((point) => {
+          const normalizedPoint = normalizeForComparison(point)
+          // Check if the normalized strings are similar
+          return (
+            normalizedPoint.includes(normalizedMatchPoint) ||
+            normalizedMatchPoint.includes(normalizedPoint)
+          )
+        })
+
+        if (fuzzyMatch) {
+          console.log('✅ Found fuzzy match:', fuzzyMatch)
+
+          // Remove the fuzzy match
+          setBulletPoints((prev) => {
+            const newPoints = prev.filter((point) => point !== fuzzyMatch)
+            console.log(
+              `✅ Removed fuzzy-matched bullet point. Remaining bullet points: ${newPoints.length}`
+            )
+            return newPoints
+          })
+        } else {
+          console.log('❌ No fuzzy match found among current bullet points:', currentBulletPoints)
+          console.log(
+            '👀 Check exact text matching:',
+            currentBulletPoints.map((bp) => [
+              bp,
+              matchedPoint.toLowerCase().includes(bp.toLowerCase().replace("'", '')) ||
+                bp.toLowerCase().replace("'", '').includes(matchedPoint.toLowerCase())
+            ])
+          )
+
+          // Last resort approach - force remove bullet point at index 0 if available
+          if (currentBulletPoints.length > 0) {
+            const pointToRemove = currentBulletPoints[0]
+            console.log('⚠️ Force removing first bullet point as fallback:', pointToRemove)
+            setBulletPoints((prev) => prev.filter((_, i) => i !== 0))
+          }
+        }
+      }
     }
   })
+
+  // Test mode effect - set test bullet points only once
+  useEffect(() => {
+    if (TEST_MODE && bulletPoints.length === 0 && !bulletPointsInitializedRef.current) {
+      const testBulletPoints = [
+        'I have 5 years of experience in software development',
+        "I'm proficient in Python and JavaScript",
+        "I've worked on large-scale distributed systems",
+        'I have experience with cloud platforms like AWS',
+        "I'm familiar with agile development methodologies"
+      ]
+      console.log('🔄 Test mode: Setting bullet points for semantic matching:', testBulletPoints)
+      setBulletPoints(testBulletPoints)
+      bulletPointsInitializedRef.current = true
+      console.log('✅ Initial bullet points set for semantic matching')
+    }
+  }, [bulletPoints.length]) // Only run when bulletPoints.length changes
 
   // Display error messages from data loading
   useEffect(() => {
@@ -301,16 +415,7 @@ function App(): JSX.Element {
       setTimeout(startRecording, 1000)
 
       if (TEST_MODE) {
-        // In test mode, set some test bullet points
-        const testBulletPoints = [
-          'I have 5 years of experience in software development',
-          "I'm proficient in Python and JavaScript",
-          "I've worked on large-scale distributed systems",
-          'I have experience with cloud platforms like AWS',
-          "I'm familiar with agile development methodologies"
-        ]
-        setBulletPoints(testBulletPoints)
-        console.log('Test mode: Using test bullet points')
+        console.log('🔄 Test mode enabled: bullet points should be set by useEffect')
       } else {
         // Connect to OpenAI WebRTC with only desktop audio
         await connectToOpenAI(desktopStream)
@@ -524,6 +629,9 @@ function App(): JSX.Element {
     setResponseText('')
     setBulletPoints([])
     setCurrentBulletPoint('')
+
+    // Reset the initialization flag to allow bullet points to be set again in future sessions
+    bulletPointsInitializedRef.current = false
 
     // Clear canvas
     if (canvasRef.current) {
