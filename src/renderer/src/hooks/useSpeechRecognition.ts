@@ -133,7 +133,6 @@ export const useSpeechRecognition = ({
       const audioWorkletNode = new AudioWorkletNode(audioContext, 'audio-processor')
       const source = audioContext.createMediaStreamSource(stream)
       source.connect(audioWorkletNode)
-      audioWorkletNode.connect(audioContext.destination)
 
       audioWorkletNode.port.onmessage = (event) => {
         const audioChunk = event.data
@@ -163,6 +162,7 @@ export const useSpeechRecognition = ({
           console.log('Stopping audio track')
           track.stop()
         })
+        streamRef.current = null
 
         if (recordingIntervalRef.current) {
           console.log('Clearing audio processing interval')
@@ -170,20 +170,30 @@ export const useSpeechRecognition = ({
           recordingIntervalRef.current = null
         }
 
-        console.log('Processing final audio chunks...')
-        // Process any remaining audio chunks
-        processAudioChunk(new Blob())
+        // Stop the Python WebSocket server via IPC
+        console.log('Requesting main process to stop Python WebSocket server...')
+        window.api.stopPythonServer()
 
         setIsListening(false)
         console.log('Speech recognition stopped')
       } catch (error) {
         console.error('Error stopping audio recording:', error)
       }
+    } else {
+      // Even if there's no mediaRecorder, we should still clean up
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop())
+        streamRef.current = null
+      }
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current)
+        recordingIntervalRef.current = null
+      }
+      // Stop the Python WebSocket server via IPC
+      window.api.stopPythonServer()
+      setIsListening(false)
+      console.log('Speech recognition stopped')
     }
-
-    // Stop the Python WebSocket server via IPC
-    console.log('Requesting main process to stop Python WebSocket server...')
-    window.api.stopPythonServer()
   }
 
   // Cleanup on unmount
