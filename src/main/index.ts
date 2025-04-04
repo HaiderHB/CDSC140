@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, desktopCapturer, session } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, session } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -260,7 +260,7 @@ app.whenReady().then(() => {
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self'; connect-src 'self' http://localhost:3000 https://api.openai.com https://storage.googleapis.com https://fonts.googleapis.com https://tfhub.dev https://www.kaggle.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
+          "default-src 'self'; connect-src 'self' http://localhost:3000 https://api.openai.com https://storage.googleapis.com https://fonts.googleapis.com https://tfhub.dev https://www.kaggle.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline';"
         ]
       }
     })

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as use from '@tensorflow-models/universal-sentence-encoder'
 import * as tf from '@tensorflow/tfjs'
-import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
 
 interface UseSpeechRecognitionProps {
   onTranscript: (text: string) => void
@@ -17,10 +16,8 @@ export const useSpeechRecognition = ({
   const [isListening, setIsListening] = useState(false)
   const modelRef = useRef<any>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const audioChunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const pythonProcessRef = useRef<ChildProcessWithoutNullStreams | null>(null)
 
   // Initialize Universal Sentence Encoder
   useEffect(() => {
@@ -49,21 +46,16 @@ export const useSpeechRecognition = ({
     }
   }, [])
 
-  const processAudioChunks = async () => {
-    if (audioChunksRef.current.length === 0) {
-      console.log('No audio chunks to process')
-      return
-    }
-
+  const processAudioChunk = async (audioChunk: Blob | ArrayBuffer) => {
     try {
-      console.log(`Processing ${audioChunksRef.current.length} audio chunks...`)
-      // Create a single blob from all chunks
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' })
-      console.log(`Created audio blob of size ${audioBlob.size} bytes`)
-
-      // Convert blob to ArrayBuffer
-      const arrayBuffer = await audioBlob.arrayBuffer()
-      console.log('Converted audio blob to ArrayBuffer')
+      // Handle both Blob and ArrayBuffer inputs
+      let arrayBuffer: ArrayBuffer
+      if (audioChunk instanceof Blob) {
+        arrayBuffer = await audioChunk.arrayBuffer()
+      } else {
+        arrayBuffer = audioChunk
+      }
+      console.log('Processing audio data')
 
       // Convert to Uint8Array for transmission
       const uint8Array = new Uint8Array(arrayBuffer)
@@ -119,7 +111,7 @@ export const useSpeechRecognition = ({
         }
       }
     } catch (error) {
-      console.error('Error processing audio chunks:', error)
+      console.error('Error processing audio chunk:', error)
     }
   }
 
@@ -134,23 +126,24 @@ export const useSpeechRecognition = ({
       console.log('Requesting main process to start Python WebSocket server...')
       window.api.startPythonServer()
 
-      const mediaRecorder = new MediaRecorder(stream)
-      mediaRecorderRef.current = mediaRecorder
-      audioChunksRef.current = []
+      const audioContext = new AudioContext()
 
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          console.log(`Received audio chunk of size ${event.data.size} bytes`)
-          audioChunksRef.current.push(event.data)
+      await audioContext.audioWorklet.addModule('/scripts/audio-processor.js')
+
+      const audioWorkletNode = new AudioWorkletNode(audioContext, 'audio-processor')
+      const source = audioContext.createMediaStreamSource(stream)
+      source.connect(audioWorkletNode)
+      audioWorkletNode.connect(audioContext.destination)
+
+      audioWorkletNode.port.onmessage = (event) => {
+        const audioChunk = event.data
+        if (audioChunk.byteLength > 0) {
+          console.log(`Received audio chunk of size ${audioChunk.byteLength} bytes`)
+          // Directly send the audio chunk for transcription
+          processAudioChunk(audioChunk)
         }
       }
 
-      // Process audio chunks every 5 seconds
-      console.log('Setting up audio processing interval (every 5 seconds)')
-      recordingIntervalRef.current = setInterval(processAudioChunks, 5000)
-
-      console.log('Starting MediaRecorder with 1-second timeslices')
-      mediaRecorder.start(1000) // Collect data every second
       setIsListening(true)
       console.log('Speech recognition is now active')
     } catch (error) {
@@ -179,7 +172,7 @@ export const useSpeechRecognition = ({
 
         console.log('Processing final audio chunks...')
         // Process any remaining audio chunks
-        processAudioChunks()
+        processAudioChunk(new Blob())
 
         setIsListening(false)
         console.log('Speech recognition stopped')
@@ -207,12 +200,4 @@ export const useSpeechRecognition = ({
   }, [])
 
   return { isListening, startListening, stopListening }
-}
-
-// Helper function to calculate cosine similarity between two vectors
-function cosineSimilarity(vec1: number[], vec2: number[]): number {
-  const dotProduct = vec1.reduce((sum, val, i) => sum + val * vec2[i], 0)
-  const norm1 = Math.sqrt(vec1.reduce((sum, val) => sum + val * val, 0))
-  const norm2 = Math.sqrt(vec2.reduce((sum, val) => sum + val * val, 0))
-  return dotProduct / (norm1 * norm2)
 }

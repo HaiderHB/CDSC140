@@ -3,6 +3,7 @@ import { WebSocket } from 'ws'
 import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
 
 let pythonProcess: ChildProcessWithoutNullStreams | null = null
+let ws: WebSocket | null = null
 
 export function setupTranscriptionHandlers() {
   ipcMain.handle('start-python-server', () => {
@@ -25,26 +26,12 @@ export function setupTranscriptionHandlers() {
         pythonProcess = null
       })
     }
-  })
 
-  ipcMain.handle('stop-python-server', () => {
-    if (pythonProcess) {
-      console.log('Stopping Python WebSocket server...')
-      pythonProcess.kill()
-      pythonProcess = null
-    }
-  })
-
-  ipcMain.handle('transcribe-audio', async (_, audioData: Uint8Array) => {
-    console.log('Starting transcription with audio data length:', audioData.length, 'bytes')
-
-    try {
-      // Establish WebSocket connection to Python server
-      const ws = new WebSocket('ws://localhost:8765')
+    if (!ws) {
+      ws = new WebSocket('ws://localhost:8765')
 
       ws.on('open', () => {
         console.log('WebSocket connection opened')
-        ws.send(audioData)
       })
 
       ws.on('message', (message) => {
@@ -58,13 +45,31 @@ export function setupTranscriptionHandlers() {
 
       ws.on('close', () => {
         console.log('WebSocket connection closed')
+        ws = null
       })
-    } catch (error) {
-      console.error('Transcription error:', error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
-      }
+    }
+  })
+
+  ipcMain.handle('stop-python-server', () => {
+    if (pythonProcess) {
+      console.log('Stopping Python WebSocket server...')
+      pythonProcess.kill()
+      pythonProcess = null
+    }
+
+    if (ws) {
+      ws.close()
+      ws = null
+    }
+  })
+
+  ipcMain.handle('transcribe-audio', async (_, audioData: Uint8Array) => {
+    console.log('Starting transcription with audio data length:', audioData.length, 'bytes')
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(audioData)
+    } else {
+      console.error('WebSocket is not open')
     }
   })
 }

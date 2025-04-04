@@ -30,7 +30,7 @@ interface CurrentSession {
   jobDescription: string
 }
 
-const TEST_MODE = false
+const TEST_MODE = true
 
 function App(): JSX.Element {
   const videoRef = useRef<HTMLVideoElement>(null)

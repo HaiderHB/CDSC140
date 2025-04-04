@@ -65,3 +65,69 @@ $ npm run build:linux
 - WebRTC streaming to OpenAI
 - Real-time text responses from OpenAI's GPT-4o model
 - Manual response triggering
+
+```
+whisper-node-test
+├─ .editorconfig
+├─ .npmrc
+├─ .prettierignore
+├─ .prettierrc.yaml
+├─ build
+│  ├─ entitlements.mac.plist
+│  ├─ icon.icns
+│  ├─ icon.ico
+│  └─ icon.png
+├─ dev-app-update.yml
+├─ electron-builder.yml
+├─ electron.vite.config.ts
+├─ eslint.config.mjs
+├─ package-lock.json
+├─ package.json
+├─ public
+│  └─ scripts
+│     └─ audio-processor.js
+├─ README.md
+├─ resources
+│  └─ icon.png
+├─ scripts
+│  ├─ test.py
+│  └─ transcription_server.py
+├─ src
+│  ├─ main
+│  │  ├─ index.ts
+│  │  ├─ storage.ts
+│  │  └─ transcription.ts
+│  ├─ preload
+│  │  ├─ index.d.ts
+│  │  └─ index.ts
+│  └─ renderer
+│     ├─ index.html
+│     └─ src
+│        ├─ App.css
+│        ├─ App.tsx
+│        ├─ assets
+│        │  ├─ base.css
+│        │  ├─ electron.svg
+│        │  ├─ main.css
+│        │  └─ wavy-lines.svg
+│        ├─ components
+│        │  ├─ MainPage.tsx
+│        │  ├─ ResumeManager.tsx
+│        │  ├─ SessionList.tsx
+│        │  ├─ SetupConfigPage.tsx
+│        │  └─ Versions.tsx
+│        ├─ env.d.ts
+│        ├─ hooks
+│        │  ├─ useDataPersistence.ts
+│        │  └─ useSpeechRecognition.ts
+│        ├─ main.tsx
+│        ├─ theme.tsx
+│        └─ types
+│           ├─ electron.d.ts
+│           └─ speech.d.ts
+├─ start.js
+├─ tsconfig.json
+├─ tsconfig.node.json
+└─ tsconfig.web.json
+
+```
