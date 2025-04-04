@@ -42,11 +42,6 @@ class AudioProcessor extends AudioWorkletProcessor {
         this.isGateOpen = false
       }
 
-      // Copy input to output
-      for (let channel = 0; channel < input.length; channel++) {
-        output[channel].set(input[channel])
-      }
-
       // If gate is open, send audio data
       if (this.isGateOpen) {
         // Add to buffer

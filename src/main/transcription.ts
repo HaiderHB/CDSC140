@@ -35,9 +35,7 @@ export function setupTranscriptionHandlers() {
       })
 
       ws.on('message', (message) => {
-        console.log('Received transcription:', message)
-        // Send the transcription back to the renderer process
-        return message.toString()
+        console.log('Received transcription:', message.toString())
       })
 
       ws.on('error', (error) => {
@@ -67,21 +65,37 @@ export function setupTranscriptionHandlers() {
   ipcMain.handle('transcribe-audio', async (event, audioData: Uint8Array) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
       try {
-        ws.send(audioData)
-        // Wait for the response from the WebSocket server
-        const response = await new Promise((resolve) => {
-          ws.once('message', (message) => {
-            resolve(message.toString())
-          })
+        // Set up the message listener before sending data
+        const responsePromise = new Promise<string>((resolve) => {
+          const messageHandler = (message: any) => {
+            const transcription = message.toString()
+            console.log('Transcription received:', transcription)
+            ws!.removeListener('message', messageHandler)
+            resolve(transcription)
+          }
+
+          ws!.on('message', messageHandler)
+
+          // Set a timeout to prevent hanging if no response
+          setTimeout(() => {
+            ws!.removeListener('message', messageHandler)
+            resolve('')
+          }, 5000)
         })
+
+        // Send the audio data
+        ws.send(audioData)
+
+        // Wait for the response
+        const response = await responsePromise
         return response
       } catch (error) {
         console.error('Error during transcription:', error)
-        return undefined
+        return ''
       }
     } else {
       console.error('WebSocket is not open')
-      return undefined
+      return ''
     }
   })
 }

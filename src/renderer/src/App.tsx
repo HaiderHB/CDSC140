@@ -54,6 +54,7 @@ function App(): JSX.Element {
   const [homeTab, setHomeTab] = useState(0)
   const [currentSession, setCurrentSession] = useState<CurrentSession | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [transcriptText, setTranscriptText] = useState<string>('')
 
   const {
     sessions,
@@ -72,6 +73,9 @@ function App(): JSX.Element {
   const { isListening, startListening, stopListening } = useSpeechRecognition({
     onTranscript: (text) => {
       console.log('User speech transcript:', text)
+      if (text) {
+        setTranscriptText(text)
+      }
     },
     bulletPoints,
     onMatchFound: (matchedPoint) => {
@@ -386,6 +390,9 @@ function App(): JSX.Element {
         micCanvasCtx.clearRect(0, 0, micCanvasRef.current.width, micCanvasRef.current.height)
       }
     }
+
+    // Clear transcript
+    setTranscriptText('')
   }
 
   const startVisualization = (): void => {
@@ -767,6 +774,36 @@ function App(): JSX.Element {
               <canvas ref={micCanvasRef} className="audio-canvas"></canvas>
             </Box>
           </div>
+
+          {/* Transcription Display */}
+          {isListening && (
+            <Box
+              className="transcription-container"
+              sx={{
+                mt: 3,
+                p: 2,
+                borderRadius: 2,
+                bgcolor: 'rgba(30, 41, 59, 0.7)',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                maxWidth: '800px',
+                margin: '0 auto'
+              }}
+            >
+              <Typography variant="h6" sx={{ color: '#4ade80', mb: 1 }}>
+                Transcription
+              </Typography>
+              <Typography
+                variant="body1"
+                sx={{
+                  color: 'white',
+                  fontWeight: transcriptText ? 'normal' : 'light',
+                  fontStyle: transcriptText ? 'normal' : 'italic'
+                }}
+              >
+                {transcriptText || 'Waiting for speech...'}
+              </Typography>
+            </Box>
+          )}
 
           {renderResponseOutput()}
         </Box>

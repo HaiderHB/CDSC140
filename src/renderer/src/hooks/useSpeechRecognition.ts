@@ -57,7 +57,8 @@ export const useSpeechRecognition = ({
       }
       console.log('Processing audio data')
 
-      // Convert to Uint8Array for transmission
+      // For Int16Buffer input, which is what the audio processor sends
+      // The server expects Int16Array data
       const uint8Array = new Uint8Array(arrayBuffer)
       console.log(`Converted to Uint8Array of length ${uint8Array.length}`)
 
@@ -66,49 +67,59 @@ export const useSpeechRecognition = ({
         return
       }
 
+      // Ensure the WebSocket server is started
       console.log('Sending audio data for transcription, size:', uint8Array.length, 'bytes')
       console.time('transcription')
 
-      // Send to main process for transcription using exposed IPC
-      const fullTranscript = await window.api.transcribeAudio(uint8Array)
-      console.timeEnd('transcription')
-      console.log('Received transcription from Whisper:', fullTranscript)
-      onTranscript(fullTranscript)
+      try {
+        // Send the audio data to main process for transcription
+        const fullTranscript = await window.api.transcribeAudio(uint8Array)
+        console.timeEnd('transcription')
 
-      // Compare with bullet points if we have the model loaded
-      if (modelRef.current && bulletPoints.length > 0) {
-        try {
-          console.log('Comparing transcript with bullet points:', bulletPoints)
-          // Get embeddings for the transcript and bullet points
-          const transcriptEmbedding = await modelRef.current.embed([fullTranscript])
-          const bulletPointEmbeddings = await modelRef.current.embed(bulletPoints)
+        if (fullTranscript) {
+          console.log('Received transcription from Whisper:', fullTranscript)
+          onTranscript(fullTranscript)
 
-          // Calculate cosine similarity between transcript and each bullet point
-          const transcriptTensor = transcriptEmbedding as tf.Tensor
-          const bulletPointTensor = bulletPointEmbeddings as tf.Tensor
+          // Compare with bullet points if we have the model loaded
+          if (modelRef.current && bulletPoints.length > 0) {
+            try {
+              console.log('Comparing transcript with bullet points:', bulletPoints)
+              // Get embeddings for the transcript and bullet points
+              const transcriptEmbedding = await modelRef.current.embed([fullTranscript])
+              const bulletPointEmbeddings = await modelRef.current.embed(bulletPoints)
 
-          // Use tensor operations for better performance
-          const scores = tf.matMul(transcriptTensor, bulletPointTensor, false, true)
-          const similarities = scores.dataSync()
+              // Calculate cosine similarity between transcript and each bullet point
+              const transcriptTensor = transcriptEmbedding as tf.Tensor
+              const bulletPointTensor = bulletPointEmbeddings as tf.Tensor
 
-          // Log similarities for each bullet point
-          similarities.forEach((score, index) => {
-            console.log(`Similarity with "${bulletPoints[index]}": ${score.toFixed(3)}`)
-          })
+              // Use tensor operations for better performance
+              const scores = tf.matMul(transcriptTensor, bulletPointTensor, false, true)
+              const similarities = scores.dataSync()
 
-          // Clean up tensors
-          tf.dispose([transcriptTensor, bulletPointTensor, scores])
+              // Log similarities for each bullet point
+              similarities.forEach((score, index) => {
+                console.log(`Similarity with "${bulletPoints[index]}": ${score.toFixed(3)}`)
+              })
 
-          // Check similarities against threshold
-          for (let i = 0; i < similarities.length; i++) {
-            if (similarities[i] > 0.7) {
-              console.log(`Match found! Removing bullet point: ${bulletPoints[i]}`)
-              onMatchFound(bulletPoints[i])
+              // Clean up tensors
+              tf.dispose([transcriptTensor, bulletPointTensor, scores])
+
+              // Check similarities against threshold
+              for (let i = 0; i < similarities.length; i++) {
+                if (similarities[i] > 0.7) {
+                  console.log(`Match found! Removing bullet point: ${bulletPoints[i]}`)
+                  onMatchFound(bulletPoints[i])
+                }
+              }
+            } catch (error) {
+              console.error('Error comparing embeddings:', error)
             }
           }
-        } catch (error) {
-          console.error('Error comparing embeddings:', error)
+        } else {
+          console.warn('No transcription received')
         }
+      } catch (error) {
+        console.error('Error from transcription service:', error)
       }
     } catch (error) {
       console.error('Error processing audio chunk:', error)
@@ -124,7 +135,8 @@ export const useSpeechRecognition = ({
 
       // Start the Python WebSocket server via IPC
       console.log('Requesting main process to start Python WebSocket server...')
-      window.api.startPythonServer()
+      await window.api.startPythonServer()
+      console.log('Python WebSocket server started')
 
       const audioContext = new AudioContext()
 
