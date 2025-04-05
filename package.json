@@ -29,7 +29,6 @@
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^7.0.1",
     "@mui/material": "^7.0.1",
-    "@tensorflow/tfjs": "^4.22.0",
     "cors": "^2.8.5",
     "cross-spawn": "^7.0.6",
     "dotenv": "^16.4.7",
