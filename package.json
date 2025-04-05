@@ -37,6 +37,7 @@
     "electron-updater": "^6.3.9",
     "express": "^5.1.0",
     "framer-motion": "^12.6.3",
+    "fuse.js": "^7.1.0",
     "node-fetch": "^3.3.2",
     "nodejs-whisper": "github:HaiderHB/nodejs-whisper",
     "whisper-node": "^1.1.1",

@@ -20,6 +20,7 @@ import ResumeManager from './components/ResumeManager'
 // import Transcription from './components/Transcription'
 import { useDataPersistence } from './hooks/useDataPersistence'
 import { useSpeechRecognition } from './hooks/useSpeechRecognition'
+import Fuse from 'fuse.js'
 
 // Use Session type from useDataPersistence for all session-related data
 interface CurrentSession {
@@ -106,68 +107,41 @@ function App(): JSX.Element {
         return newPoints
       })
     } else {
-      // Try to find a close match if not an exact match
-      console.log('⚠️ No exact match in bullet points, looking for close match for:', matchedPoint)
+      console.log(
+        '⚠️ No exact match in bullet points, using Fuse.js for fuzzy matching:',
+        matchedPoint
+      )
 
-      // Simple direct string comparison first
-      for (const point of currentBulletPoints) {
-        if (
-          point.toLowerCase().includes(matchedPoint.toLowerCase()) ||
-          matchedPoint.toLowerCase().includes(point.toLowerCase())
-        ) {
-          console.log('✅ Found direct string match:', point)
-
-          setBulletPoints((prev) => {
-            const newPoints = prev.filter((p) => p !== point)
-            console.log(`✅ Removed matched bullet point. Remaining: ${newPoints.length}`)
-            return newPoints
-          })
-          return
-        }
+      // Configure Fuse.js with appropriate options
+      const fuseOptions = {
+        includeScore: true,
+        threshold: 0.4, // Lower threshold means more strict matching
+        keys: ['.'] // Search the whole string
       }
 
-      // If no direct match, try fuzzy match
-      const normalizeForComparison = (text: string) => {
-        return text
-          .toLowerCase()
-          .replace(/['".,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
-          .replace(/\s+/g, ' ')
-          .trim()
-      }
+      // Initialize Fuse with current bullet points
+      const fuse = new Fuse(currentBulletPoints, fuseOptions)
 
-      const normalizedMatchPoint = normalizeForComparison(matchedPoint)
+      // Perform the search
+      const searchResult = fuse.search(matchedPoint)
 
-      // Find bullet point with closest content match
-      const fuzzyMatch = currentBulletPoints.find((point) => {
-        const normalizedPoint = normalizeForComparison(point)
-        // Check if the normalized strings are similar
-        return (
-          normalizedPoint.includes(normalizedMatchPoint) ||
-          normalizedMatchPoint.includes(normalizedPoint)
+      if (searchResult.length > 0) {
+        // Get the best match
+        const bestMatch = searchResult[0]
+        console.log(
+          `✅ Found fuzzy match with Fuse.js: "${bestMatch.item}" (Score: ${bestMatch.score?.toFixed(4)})`
         )
-      })
 
-      if (fuzzyMatch) {
-        console.log('✅ Found fuzzy match:', fuzzyMatch)
-
-        // Remove the fuzzy match
+        // Remove the best match from bullet points
         setBulletPoints((prev) => {
-          const newPoints = prev.filter((point) => point !== fuzzyMatch)
+          const newPoints = prev.filter((point) => point !== bestMatch.item)
           console.log(
             `✅ Removed fuzzy-matched bullet point. Remaining bullet points: ${newPoints.length}`
           )
           return newPoints
         })
       } else {
-        console.log('❌ No fuzzy match found among current bullet points:', currentBulletPoints)
-        console.log(
-          '👀 Check exact text matching:',
-          currentBulletPoints.map((bp) => [
-            bp,
-            matchedPoint.toLowerCase().includes(bp.toLowerCase().replace("'", '')) ||
-              bp.toLowerCase().replace("'", '').includes(matchedPoint.toLowerCase())
-          ])
-        )
+        console.log('❌ No match found with Fuse.js among current bullet points')
 
         // Last resort approach - force remove bullet point at index 0 if available
         if (currentBulletPoints.length > 0) {
