@@ -29,7 +29,6 @@
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^7.0.1",
     "@mui/material": "^7.0.1",
-    "@tensorflow-models/universal-sentence-encoder": "^1.3.3",
     "@tensorflow/tfjs": "^4.22.0",
     "cors": "^2.8.5",
     "cross-spawn": "^7.0.6",
@@ -39,8 +38,6 @@
     "framer-motion": "^12.6.3",
     "fuse.js": "^7.1.0",
     "node-fetch": "^3.3.2",
-    "nodejs-whisper": "github:HaiderHB/nodejs-whisper",
-    "whisper-node": "^1.1.1",
     "ws": "^8.18.1"
   },
   "devDependencies": {
