@@ -1,18 +1,19 @@
-import React from 'react'
+import { useState, useEffect } from 'react'
 import {
   Box,
-  Typography,
-  Card,
+  Button,
   CardContent,
-  IconButton,
-  Stack,
   Chip,
   Divider,
-  Grid,
-  Paper
+  IconButton,
+  Paper,
+  Typography,
+  Grid
 } from '@mui/material'
 import { motion } from 'framer-motion'
 import AddIcon from '@mui/icons-material/Add'
+import DeleteIcon from '@mui/icons-material/Delete'
+import { format } from 'date-fns'
 
 interface Session {
   id: string
@@ -92,7 +93,7 @@ function SessionList({
   return (
     <Box>
       <Grid container spacing={3}>
-        <Grid xs={12} sm={6} md={4}>
+        <Grid item xs={12} sm={6} md={4}>
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -116,7 +117,7 @@ function SessionList({
         </Grid>
 
         {sessions.map((session, index) => (
-          <Grid xs={12} sm={6} md={4} key={session.id}>
+          <Grid item xs={12} sm={6} md={4} key={session.id}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -194,7 +195,7 @@ function SessionList({
         ))}
 
         {sessions.length === 0 && (
-          <Grid xs={12}>
+          <Grid item xs={12}>
             <Box
               sx={{
                 p: 4,

@@ -8,10 +8,6 @@ import {
   CardContent,
   Stack,
   IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
   Chip,
   Paper
 } from '@mui/material'

@@ -7,6 +7,9 @@ const api = {
   getOpenAISession: () => ipcRenderer.invoke('get-openai-session'),
   openAIWebRtcSdp: (sdp: string) => ipcRenderer.invoke('openai-webrtc-sdp', sdp),
 
+  // App control functions
+  closeApp: () => ipcRenderer.send('close-app'),
+
   // Data persistence functions
   getSessions: () => ipcRenderer.invoke('get-sessions'),
   saveSessions: (sessions: any[]) => ipcRenderer.invoke('save-sessions', sessions),

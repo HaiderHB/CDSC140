@@ -1,17 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Box,
-  Tabs,
-  Tab,
-  Snackbar,
-  Alert,
+  Button,
   CircularProgress,
-  Grid,
+  Container,
+  CssBaseline,
+  Divider,
+  IconButton,
   List,
   ListItem,
   ListItemText,
   Paper,
-  Typography
+  Snackbar,
+  Alert,
+  Tab,
+  Tabs,
+  TextField,
+  ThemeProvider,
+  Typography,
+  createTheme
 } from '@mui/material'
 import './App.css'
 import SetupConfigPage from './components/SetupConfigPage'
@@ -32,13 +39,14 @@ interface CurrentSession {
   jobDescription: string
 }
 
-const TEST_MODE = true
+const TEST_MODE = false
 
 function App(): JSX.Element {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const micCanvasRef = useRef<HTMLCanvasElement>(null)
   const [isCapturing, setIsCapturing] = useState(false)
+  const [isClickThrough, setIsClickThrough] = useState(false)
   const streamRef = useRef<MediaStream | null>(null)
   const micStreamRef = useRef<MediaStream | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
@@ -217,6 +225,19 @@ function App(): JSX.Element {
       setError(`Failed to load resumes: ${loadResumesError.message}`)
     }
   }, [loadSessionsError, loadResumesError])
+
+  // Effect to listen for click-through toggle events
+  useEffect(() => {
+    const handleClickThroughToggle = (event: CustomEvent) => {
+      setIsClickThrough(event.detail.enabled)
+    }
+
+    window.addEventListener('clickThroughToggled', handleClickThroughToggle as EventListener)
+
+    return () => {
+      window.removeEventListener('clickThroughToggled', handleClickThroughToggle as EventListener)
+    }
+  }, [])
 
   const connectWebSocket = () => {
     // Prevent multiple connection attempts at the same time
@@ -794,7 +815,7 @@ function App(): JSX.Element {
     }
   }, [])
 
-  const handleTabChange = (event, newValue) => {
+  const handleTabChange = (_, newValue) => {
     setHomeTab(newValue)
   }
 
@@ -893,7 +914,7 @@ function App(): JSX.Element {
         <Paper
           sx={{
             p: 2,
-            bgcolor: 'rgba(15, 23, 42, 0.5)',
+            bgcolor: 'rgba(15, 23, 42, 0.3)',
             color: 'text.secondary'
           }}
         >
@@ -902,7 +923,7 @@ function App(): JSX.Element {
       ) : (
         <Paper
           sx={{
-            bgcolor: 'rgba(15, 23, 42, 0.5)',
+            bgcolor: 'rgba(15, 23, 42, 0.3)',
             maxHeight: 400,
             overflow: 'auto'
           }}
@@ -942,8 +963,8 @@ function App(): JSX.Element {
         mt: 3,
         p: 2,
         borderRadius: 2,
-        bgcolor: 'rgba(30, 41, 59, 0.7)',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+        bgcolor: 'rgba(30, 41, 59, 0.3)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
         maxWidth: '800px',
         margin: '0 auto',
         display: isCapturing || transcriptText ? 'block' : 'none'
@@ -1042,138 +1063,226 @@ function App(): JSX.Element {
     </>
   )
 
+  // Add a function to handle window close
+  const handleCloseApp = () => {
+    window.api.closeApp?.()
+  }
+
   return (
     <Box
       className="app-container"
       sx={{
         minHeight: '100vh',
-        background: 'linear-gradient(to bottom right, #0f172a, #1e293b)',
+        background: isClickThrough
+          ? 'transparent'
+          : 'linear-gradient(to bottom right, rgba(15, 23, 42, 0.4), rgba(30, 41, 59, 0.4))',
+        backdropFilter: 'blur(2px)',
         p: 3
       }}
     >
-      {/* Loading indicator */}
-      {(loadingSessions || loadingResumes) && (
+      {/* Custom title bar */}
+      <Box
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          height: '28px',
+          backgroundColor: isClickThrough ? 'transparent' : 'rgba(15, 23, 42, 0.6)',
+          WebkitAppRegion: 'drag', // Make draggable on macOS and Windows
+          zIndex: 9999,
+          paddingX: 2
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ color: isClickThrough ? 'transparent' : 'white' }}>
+          Interview Assistant
+        </Typography>
+        <Box sx={{ display: 'flex', WebkitAppRegion: 'no-drag' }}>
+          {' '}
+          {/* Ensure buttons are clickable */}
+          <IconButton
+            onClick={handleCloseApp}
+            size="small"
+            sx={{
+              color: isClickThrough ? 'transparent' : 'white',
+              '&:hover': {
+                color: 'red',
+                backgroundColor: 'rgba(255,255,255,0.1)'
+              }
+            }}
+          >
+            ✕
+          </IconButton>
+        </Box>
+      </Box>
+
+      {/* Click-through indicator */}
+      {isClickThrough ? (
         <Box
           sx={{
             position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            bgcolor: 'rgba(15, 23, 42, 0.7)',
+            top: 30,
+            right: 10,
+            backgroundColor: 'rgba(255, 0, 0, 0.5)',
+            color: 'white',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: '10px',
+            opacity: 0.7,
             zIndex: 9999
           }}
         >
-          <CircularProgress color="primary" size={60} />
+          Press Ctrl+Alt+T
+        </Box>
+      ) : (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 30,
+            right: 10,
+            backgroundColor: 'rgba(0, 255, 0, 0.2)',
+            color: 'white',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: '10px',
+            zIndex: 9999
+          }}
+        >
+          Interactive Mode
         </Box>
       )}
 
-      {currentPage === 'main' && renderMainPage()}
-
-      {currentPage === 'setup' && (
-        <Box
-          sx={{
-            maxWidth: 'md',
-            mx: 'auto',
-            borderRadius: 2,
-            overflow: 'hidden',
-            boxShadow: '0 0 40px rgba(99, 102, 241, 0.2)'
-          }}
-        >
-          <SetupConfigPage
-            onSave={handleSaveConfig}
-            resumes={resumes}
-            onAddResume={() => {
-              setCurrentPage('main')
-              setHomeTab(1) // Switch to resumes tab
+      {/* Add top margin to account for title bar */}
+      <Box sx={{ pt: 3 }}>
+        {/* Loading indicator */}
+        {(loadingSessions || loadingResumes) && (
+          <Box
+            sx={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: 'rgba(15, 23, 42, 0.3)',
+              zIndex: 9999
             }}
-            onBack={() => setCurrentPage('main')}
-          />
-        </Box>
-      )}
-
-      {currentPage === 'capture' && (
-        <Box
-          sx={{
-            maxWidth: 'lg',
-            mx: 'auto',
-            borderRadius: 2,
-            overflow: 'hidden',
-            boxShadow: '0 0 40px rgba(236, 72, 153, 0.2)'
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', p: 2 }}>
-            <Box
-              onClick={() => setCurrentPage('main')}
-              sx={{
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                color: '#6366f1',
-                '&:hover': { color: '#818cf8' }
-              }}
-            >
-              ← Back to Home
-            </Box>
+          >
+            <CircularProgress color="primary" size={60} />
           </Box>
+        )}
 
-          <h1>Screen Capture with OpenAI Realtime</h1>
+        {currentPage === 'main' && renderMainPage()}
 
-          <div className="controls">
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
-              {!isCapturing ? (
-                <button onClick={startCapture} className="capture-button">
-                  Start Capture
-                </button>
-              ) : (
-                <button onClick={stopCapture} className="stop-button">
-                  Stop Capture
-                </button>
-              )}
-            </Box>
-            {isListening && (
-              <Box sx={{ color: '#4ade80', mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <CircularProgress size={16} sx={{ color: '#4ade80' }} />
-                Listening for speech...
+        {currentPage === 'setup' && (
+          <Box
+            sx={{
+              maxWidth: 'md',
+              mx: 'auto',
+              borderRadius: 2,
+              overflow: 'hidden',
+              boxShadow: '0 0 40px rgba(99, 102, 241, 0.2)'
+            }}
+          >
+            <SetupConfigPage
+              onSave={handleSaveConfig}
+              resumes={resumes}
+              onAddResume={() => {
+                setCurrentPage('main')
+                setHomeTab(1) // Switch to resumes tab
+              }}
+              onBack={() => setCurrentPage('main')}
+            />
+          </Box>
+        )}
+
+        {currentPage === 'capture' && (
+          <Box
+            sx={{
+              maxWidth: 'lg',
+              mx: 'auto',
+              borderRadius: 2,
+              overflow: 'hidden',
+              boxShadow: '0 0 40px rgba(236, 72, 153, 0.2)'
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', p: 2 }}>
+              <Box
+                onClick={() => setCurrentPage('main')}
+                sx={{
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: '#6366f1',
+                  '&:hover': { color: '#818cf8' }
+                }}
+              >
+                ← Back to Home
               </Box>
-            )}
-          </div>
-
-          <div className="audio-container">
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
-                Desktop Audio
-              </Typography>
-              <canvas ref={canvasRef} className="audio-canvas"></canvas>
             </Box>
-            <Box>
-              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
-                Microphone Audio
-              </Typography>
-              <canvas ref={micCanvasRef} className="audio-canvas"></canvas>
-            </Box>
-          </div>
 
-          {renderTranscriptionDisplay()}
+            <h1>Screen Capture with OpenAI Realtime</h1>
 
-          {renderResponseOutput()}
-        </Box>
-      )}
+            <div className="controls">
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
+                {!isCapturing ? (
+                  <button onClick={startCapture} className="capture-button">
+                    Start Capture
+                  </button>
+                ) : (
+                  <button onClick={stopCapture} className="stop-button">
+                    Stop Capture
+                  </button>
+                )}
+              </Box>
+              {isListening && (
+                <Box
+                  sx={{ color: '#4ade80', mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}
+                >
+                  <CircularProgress size={16} sx={{ color: '#4ade80' }} />
+                  Listening for speech...
+                </Box>
+              )}
+            </div>
 
-      {/* Error Snackbar */}
-      <Snackbar
-        open={!!error}
-        autoHideDuration={6000}
-        onClose={handleCloseError}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
-          {error}
-        </Alert>
-      </Snackbar>
+            <div className="audio-container">
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
+                  Desktop Audio
+                </Typography>
+                <canvas ref={canvasRef} className="audio-canvas"></canvas>
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
+                  Microphone Audio
+                </Typography>
+                <canvas ref={micCanvasRef} className="audio-canvas"></canvas>
+              </Box>
+            </div>
+
+            {renderTranscriptionDisplay()}
+
+            {renderResponseOutput()}
+          </Box>
+        )}
+
+        {/* Error Snackbar */}
+        <Snackbar
+          open={!!error}
+          autoHideDuration={6000}
+          onClose={handleCloseError}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
+            {error}
+          </Alert>
+        </Snackbar>
+      </Box>
     </Box>
   )
 }

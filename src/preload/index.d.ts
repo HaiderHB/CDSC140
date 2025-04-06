@@ -10,6 +10,7 @@ interface OpenAIAPI {
   saveResumeFile: (id: string, fileData: ArrayBuffer, fileExtension: string) => Promise<string>
   readResumeFile: (filePath: string) => Promise<string>
   deleteResume: (filePath: string) => Promise<boolean>
+  closeApp: () => void
 }
 
 declare global {

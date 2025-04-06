@@ -1,11 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 
-// Add interface for the Python server result
-interface PythonServerResult {
-  success: boolean
-  error?: string
-}
-
 interface UseSpeechRecognitionProps {
   onTranscript: (text: string) => void
   bulletPoints: string[]

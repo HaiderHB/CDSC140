@@ -2,6 +2,7 @@ interface OpenAIAPI {
   getOpenAISession: () => Promise<any>
   openAIWebRtcSdp: (sdp: string) => Promise<any>
   transcribeAudio: (audioData: Uint8Array) => Promise<string>
+  closeApp: () => void
 }
 
 interface ServerResult {

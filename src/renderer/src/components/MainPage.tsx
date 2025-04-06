@@ -1,4 +1,4 @@
-import React from 'react'
+import { useState, useEffect } from 'react'
 import { Box, Typography, Button, Container, Card, CardContent } from '@mui/material'
 import { motion } from 'framer-motion'
 

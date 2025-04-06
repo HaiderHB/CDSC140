@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, session } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, session, globalShortcut } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -21,6 +21,12 @@ import { ChildProcess } from 'child_process'
 
 // Reference to the Python process
 let pythonProcess: ChildProcess | null = null
+
+// State variables for window controls
+let windowVisible = false
+let windowOpacity = 0
+let moveStep = 20
+let mainWindow: BrowserWindow | null = null
 
 function startPythonScript() {
   // Check if we're in development or production
@@ -94,13 +100,82 @@ try {
 // Initialize the storage system
 initStorage()
 
+// Toggle window visibility
+function toggleWindowVisibility() {
+  if (!mainWindow) return
+
+  windowVisible = !windowVisible
+
+  if (windowVisible) {
+    // Make window visible
+    windowOpacity = 0.8
+    mainWindow.setOpacity(windowOpacity)
+    mainWindow.setIgnoreMouseEvents(false, { forward: true })
+  } else {
+    // Make window invisible
+    windowOpacity = 0
+    mainWindow.setOpacity(windowOpacity)
+    mainWindow.setIgnoreMouseEvents(true, { forward: true })
+  }
+}
+
+// Adjust window opacity
+function adjustOpacity(increase: boolean) {
+  if (!mainWindow) return
+
+  if (increase) {
+    windowOpacity = Math.min(1, windowOpacity + 0.1)
+  } else {
+    windowOpacity = Math.max(0, windowOpacity - 0.1)
+  }
+
+  mainWindow.setOpacity(windowOpacity)
+
+  // Update mouse events based on opacity
+  if (windowOpacity < 0.1) {
+    mainWindow.setIgnoreMouseEvents(true, { forward: true })
+  } else {
+    mainWindow.setIgnoreMouseEvents(false, { forward: true })
+  }
+}
+
+// Move window
+function moveWindow(direction: 'left' | 'right' | 'up' | 'down') {
+  if (!mainWindow) return
+
+  const [x, y] = mainWindow.getPosition()
+
+  switch (direction) {
+    case 'left':
+      mainWindow.setPosition(x - moveStep, y, true)
+      break
+    case 'right':
+      mainWindow.setPosition(x + moveStep, y, true)
+      break
+    case 'up':
+      mainWindow.setPosition(x, y - moveStep, true)
+      break
+    case 'down':
+      mainWindow.setPosition(x, y + moveStep, true)
+      break
+  }
+}
+
 function createWindow(): void {
-  // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  // Create the browser window with anti-screen-capture properties
+  mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,
     autoHideMenuBar: true,
+    transparent: true,
+    backgroundColor: '#00000000', // Fully transparent background
+    type: 'panel', // Special window type with capture-resistant properties
+    frame: false, // Remove all window chrome and borders
+    skipTaskbar: true, // Hide from taskbar/dock
+    fullscreenable: false, // Prevent accidental full-screen
+    paintWhenInitiallyHidden: true, // Ensure rendering even when hidden
+    hasShadow: false, // Hide shadow
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
@@ -110,8 +185,59 @@ function createWindow(): void {
     }
   })
 
+  // Set advanced window attributes
+  mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+
+  // Enable content protection to prevent screen capture
+  mainWindow.setContentProtection(true)
+
+  // Set always on top with screen-saver priority
+  mainWindow.setAlwaysOnTop(true, 'screen-saver', 1)
+
+  // Start invisible with mouse pass-through
+  mainWindow.setOpacity(0)
+  mainWindow.setIgnoreMouseEvents(true, { forward: true })
+
+  // For macOS, hide during mission control
+  if (process.platform === 'darwin') {
+    mainWindow.setHiddenInMissionControl(true)
+  }
+
+  // Register keyboard shortcuts for window control
+
+  // Toggle visibility (Ctrl+B)
+  globalShortcut.register('CommandOrControl+B', toggleWindowVisibility)
+
+  // Adjust opacity (Ctrl+[ and Ctrl+])
+  globalShortcut.register('CommandOrControl+[', () => adjustOpacity(false))
+  globalShortcut.register('CommandOrControl+]', () => adjustOpacity(true))
+
+  // Move window with arrow keys
+  globalShortcut.register('CommandOrControl+Left', () => moveWindow('left'))
+  globalShortcut.register('CommandOrControl+Right', () => moveWindow('right'))
+  globalShortcut.register('CommandOrControl+Up', () => moveWindow('up'))
+  globalShortcut.register('CommandOrControl+Down', () => moveWindow('down'))
+
+  // Reset view
+  globalShortcut.register('CommandOrControl+R', () => {
+    if (!mainWindow) return
+    mainWindow.setPosition(100, 100, true)
+    windowOpacity = 0.8
+    mainWindow.setOpacity(windowOpacity)
+    windowVisible = true
+    mainWindow.setIgnoreMouseEvents(false, { forward: true })
+  })
+
+  // Quit app
+  globalShortcut.register('CommandOrControl+Q', () => {
+    app.quit()
+  })
+
   mainWindow.on('ready-to-show', () => {
+    if (!mainWindow) return
+    // Start hidden but technically "shown" to the system
     mainWindow.show()
+    mainWindow.setOpacity(0)
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -147,6 +273,11 @@ function createWindow(): void {
 
   // Set up IPC handlers for data persistence
   setupIpcHandlers()
+
+  // Handle app control events
+  ipcMain.on('close-app', () => {
+    app.quit()
+  })
 
   // Handle IPC requests for OpenAI token
   ipcMain.handle('get-openai-session', async () => {
@@ -331,8 +462,11 @@ app.on('window-all-closed', () => {
   }
 })
 
-// Clean up the Python process when the app is about to quit
+// Clean up global shortcuts when the app is about to quit
 app.on('will-quit', () => {
+  // Unregister the shortcut
+  globalShortcut.unregisterAll()
+
   if (pythonProcess) {
     // On Windows, sending SIGTERM might not work, so just kill it
     if (process.platform === 'win32') {
