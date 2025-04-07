@@ -978,7 +978,7 @@ function App(): JSX.Element {
                 px: 1
               }}
             >
-              Eye Area
+              Eye Contact
             </Typography>
             <AnimatePresence mode="wait">
               {bulletPoints[0] && (

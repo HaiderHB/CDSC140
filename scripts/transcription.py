@@ -55,6 +55,45 @@ recorder_initialized = False
 transcription_queue = queue.SimpleQueue()
 # Queue for similarity results
 similarity_queue = queue.SimpleQueue()
+# Flag to track if shutdown is in progress
+shutdown_in_progress = False
+# Flag to track if we're handling a signal
+handling_signal = False
+
+# Signal handler for graceful shutdown
+def signal_handler(sig, frame):
+    """Handle signals for graceful shutdown"""
+    global shutdown_in_progress, handling_signal
+    
+    if handling_signal:
+        return
+    
+    handling_signal = True
+    logging.info(f"Received signal {sig}, shutting down gracefully...")
+    
+    try:
+        # Set the shutdown flag
+        shutdown_in_progress = True
+        
+        # Stop recording if it's active
+        global recording
+        if recording:
+            recording = False
+            logging.info("Stopped recording before shutdown")
+        
+        # Properly shut down the recorder
+        shutdown_recorder()
+        
+        # Exit gracefully
+        logging.info("Shutdown complete, exiting")
+    except Exception as e:
+        logging.error(f"Error during signal handling: {e}")
+    finally:
+        sys.exit(0)
+
+# Register signal handlers
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
 
 # --- Sentence Similarity Functions ---
 def load_similarity_model(model_name=MODEL_NAME):
@@ -187,38 +226,81 @@ async def process_similarity_queue():
 
         await asyncio.sleep(0.01) # Check frequently
 
+# Custom AudioToTextRecorder class that properly handles shutdown
+class CustomAudioToTextRecorder(AudioToTextRecorder):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._stop_poll = False
+    
+    def poll_connection(self):
+        """Override the poll_connection method to respect the stop flag"""
+        try:
+            while not self._stop_poll:
+                try:
+                    if self.conn.poll(0.01):
+                        data = self.conn.recv()
+                        if isinstance(data, tuple):
+                            status, content = data
+                            if status == 'success':
+                                transcription, info = content
+                                if self.on_realtime_transcription_update:
+                                    self.on_realtime_transcription_update(transcription)
+                            elif status == 'error':
+                                logging.error(f"Error in transcription: {content}")
+                except (EOFError, BrokenPipeError) as e:
+                    if not self._stop_poll:  # Only log if not intentionally stopping
+                        logging.error(f"Connection error in poll_connection: {e}")
+                    break
+                except Exception as e:
+                    if not self._stop_poll:  # Only log if not intentionally stopping
+                        logging.error(f"Error in poll_connection: {e}")
+                    time.sleep(0.1)
+        except Exception as e:
+            if not self._stop_poll:  # Only log if not intentionally stopping
+                logging.error(f"Fatal error in poll_connection: {e}")
+        finally:
+            logging.debug("Poll connection thread ended")
+    
+    def shutdown(self):
+        """Properly shut down the recorder"""
+        try:
+            # Stop the poll_connection thread
+            self._stop_poll = True
+            if hasattr(self, '_poll_thread') and self._poll_thread:
+                self._poll_thread.join(timeout=1.0)
+            
+            # Call the parent's shutdown method if it exists
+            if hasattr(super(), 'shutdown'):
+                super().shutdown()
+        except Exception as e:
+            logging.error(f"Error in custom shutdown: {e}")
+
 def initialize_recorder():
     """Initialize the recorder if not already initialized"""
     global recorder, recorder_initialized
     
     if not recorder_initialized:
         try:
-            recorder = AudioToTextRecorder(
+            recorder = CustomAudioToTextRecorder(
                 spinner=False,
                 model='base.en',
-                realtime_model_type='base.en',
+                use_main_model_for_realtime=True,
+                # compute_type='int8_float32',
                 language='en',
-                silero_sensitivity=0.4,
-                webrtc_sensitivity=3,
-                post_speech_silence_duration=1.8,
-                min_length_of_recording=1.1,
-                min_gap_between_recordings=0,
+                silero_sensitivity=0.6,
+                webrtc_sensitivity=2,
+                post_speech_silence_duration=1.0,
+                min_length_of_recording=1.5,
+                min_gap_between_recordings=0.5,
                 enable_realtime_transcription=True,
                 # Reduce processing pause for more frequent updates
                 realtime_processing_pause=0.02,
                 silero_deactivity_detection=False,
-                early_transcription_on_silence=0,
+                early_transcription_on_silence=200,
                 beam_size=5,
                 beam_size_realtime=1,
+                debug_mode=True,
                 no_log_file=True,
-                initial_prompt=(
-                    "End incomplete sentences with ellipses.\n"
-                    "Examples:\n"
-                    "Complete: The sky is blue.\n"
-                    "Incomplete: When the sky...\n"
-                    "Complete: She walked home.\n"
-                    "Incomplete: Because he...\n"
-                )
             )
             recorder_initialized = True
             logging.info("Recorder initialized successfully")
@@ -247,7 +329,7 @@ async def handle_client(websocket):
         async for message in websocket:
             # Handle binary audio data
             if isinstance(message, bytes):
-                if recording and recorder:
+                if recording and recorder and not shutdown_in_progress:
                     try:
                         # Convert bytes to float32 array expected by RealtimeSTT
                         audio_data = np.frombuffer(message, dtype=np.int16)
@@ -272,7 +354,7 @@ async def handle_client(websocket):
                     if message_type == "control":
                         command = payload.get("command")
                         if command == "start":
-                            if not recording:
+                            if not recording and not shutdown_in_progress:
                                 logging.info("Start recording command received")
                                 recording = True
                                 # Clear old transcription data if needed
@@ -291,6 +373,14 @@ async def handle_client(websocket):
                                 # Optionally send final transcription fragments if any
                                 recorder.on_realtime_transcription_update = None # Detach callback
                                 await send_message(websocket, "status", {"status": "stopped"})
+                                
+                        elif command == "shutdown":
+                            logging.info("Shutdown command received")
+                            # Properly shut down the recorder
+                            await asyncio.get_event_loop().run_in_executor(None, shutdown_recorder)
+                            await send_message(websocket, "status", {"status": "shutdown_complete"})
+                            # Close the websocket connection
+                            await websocket.close(1000, "Shutdown requested by client")
 
                         elif command == "ping":
                             # Respond to pings to keep connection alive if needed
@@ -317,7 +407,9 @@ async def handle_client(websocket):
         logging.error(f"Error handling client: {e}", exc_info=True) # Log traceback
     finally:
         recording = False # Ensure recording stops on disconnect/error
-        # Clear associated data for this client? Depends on desired behavior.
+        # Properly shut down the recorder when the client disconnects
+        if not shutdown_in_progress:
+            await asyncio.get_event_loop().run_in_executor(None, shutdown_recorder)
         logging.info(f"Client connection handling completed for {websocket.remote_address}")
 
 def start_recording_loop():
@@ -326,17 +418,57 @@ def start_recording_loop():
     
     try:
         # Use a dedicated thread for recording to avoid blocking
-        while recording:
+        while recording and not shutdown_in_progress:
             try:
                 # Call text() without the unsupported timeout parameter
                 recorder.text(lambda text: None)  # We handle real-time updates via on_realtime_transcription_update
             except Exception as e:
-                logging.error(f"Error in recording iteration: {e}")
+                if not shutdown_in_progress:  # Only log if not shutting down
+                    logging.error(f"Error in recording iteration: {e}")
                 time.sleep(0.1)
     except Exception as e:
-        logging.error(f"Error in recording loop: {e}")
+        if not shutdown_in_progress:  # Only log if not shutting down
+            logging.error(f"Error in recording loop: {e}")
     finally:
         logging.debug("Recording loop ended")
+
+def shutdown_recorder():
+    """Properly shut down the recorder to prevent memory leaks"""
+    global recording, recorder, recorder_initialized, shutdown_in_progress
+    
+    if shutdown_in_progress:
+        return
+    
+    shutdown_in_progress = True
+    logging.info("Shutting down recorder...")
+    
+    try:
+        # First stop recording if it's active
+        if recording:
+            recording = False
+            logging.info("Stopped recording before shutdown")
+        
+        # Then properly shut down the recorder
+        if recorder and recorder_initialized:
+            try:
+                # Detach callback to prevent further callbacks during shutdown
+                recorder.on_realtime_transcription_update = None
+                
+                # Call the custom shutdown method
+                recorder.shutdown()
+                logging.info("Recorder shutdown method called")
+                
+                # Clear the recorder instance
+                recorder = None
+                recorder_initialized = False
+                logging.info("Recorder instance cleared")
+            except Exception as e:
+                logging.error(f"Error during recorder shutdown: {e}")
+    except Exception as e:
+        logging.error(f"Error in shutdown_recorder: {e}")
+    finally:
+        shutdown_in_progress = False
+        logging.info("Recorder shutdown completed")
 
 async def main():
     """Main function to start the WebSocket server"""
@@ -382,11 +514,8 @@ async def main():
             server.close()
             await server.wait_closed()
             logging.info("Server shut down gracefully")
-            if recorder:
-                try:
-                    recorder.shutdown()
-                except Exception as e:
-                    logging.error(f"Error shutting down recorder: {e}")
+            # Properly shut down the recorder
+            await asyncio.get_event_loop().run_in_executor(None, shutdown_recorder)
     except OSError as e:
         # Handle the case where the port is already in use
         if e.errno == 10048:  # Windows-specific error for "Address already in use"
@@ -397,10 +526,23 @@ async def main():
             # For other OSErrors, log and re-raise
             logging.error(f"Failed to start server: {e}")
             raise
+    finally:
+        # Ensure recorder is shut down even if there's an exception
+        if not shutdown_in_progress:
+            await asyncio.get_event_loop().run_in_executor(None, shutdown_recorder)
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         logging.info("Interrupted by user")
-        sys.exit(0) 
+        # Ensure recorder is shut down on keyboard interrupt
+        if not shutdown_in_progress:
+            asyncio.run(asyncio.get_event_loop().run_in_executor(None, shutdown_recorder))
+        sys.exit(0)
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
+        # Ensure recorder is shut down on unexpected errors
+        if not shutdown_in_progress:
+            asyncio.run(asyncio.get_event_loop().run_in_executor(None, shutdown_recorder))
+        sys.exit(1) 

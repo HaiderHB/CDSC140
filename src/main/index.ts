@@ -500,11 +500,14 @@ app.on('will-quit', () => {
   globalShortcut.unregisterAll();
 
   if (pythonProcess) {
-    // On Windows, sending SIGTERM might not work, so just kill it
-    if (process.platform === 'win32') {
-      pythonProcess.pid && process.kill(pythonProcess.pid);
-    } else {
+    try {
+      console.log('Properly shutting down transcription server...');
+      
+      // Send a termination signal to the Python process
       pythonProcess.kill('SIGTERM');
+      console.log(`Sent termination signal to Python process ${pythonProcess.pid}`);
+    } catch (error) {
+      console.error('Error shutting down transcription server:', error);
     }
   }
 
