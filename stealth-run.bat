@@ -16,23 +16,17 @@ echo.
 
 cd /D "%~dp0"
 
-echo === Step 1: Creating required directories... ===
-mkdir "%APPDATA%\interview-coder-v1\temp" 2>nul
-mkdir "%APPDATA%\interview-coder-v1\cache" 2>nul
-mkdir "%APPDATA%\interview-coder-v1\screenshots" 2>nul
-mkdir "%APPDATA%\interview-coder-v1\extra_screenshots" 2>nul
-
-echo === Step 2: Cleaning previous builds... ===
+echo === Step 1: Cleaning previous builds... ===
 echo Removing old build files to ensure a fresh start...
 rmdir /s /q dist dist-electron 2>nul
 del /q .env 2>nul
 
-echo === Step 3: Building application... ===
+echo === Step 2: Building application... ===
 echo This may take a moment...
 echo Building without TypeScript checking to avoid non-critical errors...
 electron-vite build
 
-echo === Step 4: Launching in stealth mode... ===
+echo === Step 3: Launching in stealth mode... ===
 echo Remember: Press Ctrl+B to make it visible, Ctrl+[ and Ctrl+] to adjust opacity!
 echo.
 set NODE_ENV=production
