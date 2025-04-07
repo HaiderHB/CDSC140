@@ -379,11 +379,7 @@ function App(): JSX.Element {
       // Get desktop audio stream
       const desktopStream = await navigator.mediaDevices.getDisplayMedia({
         audio: true,
-       video: {
-          width: 1280,
-          height: 720,
-          frameRate: 30
-        }
+       video: false
             })
 
       // Get microphone stream
