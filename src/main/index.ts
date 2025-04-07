@@ -2,7 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, session, globalShortcut } from 'ele
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { readFileSync } from 'fs'
+import { readFileSync, writeFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import path from 'path'
 import {
@@ -100,64 +100,74 @@ try {
 // Initialize the storage system
 initStorage()
 
+// Load saved window state
+let savedWindowState = { position: [100, 100], opacity: 0.8 };
+try {
+  const savedState = readFileSync(join(rootPath, 'window-state.json'), 'utf8');
+  savedWindowState = JSON.parse(savedState);
+  console.log('Loaded saved window state:', savedWindowState);
+} catch (error) {
+  console.error('Error loading saved window state:', error);
+}
+
 // Toggle window visibility
 function toggleWindowVisibility() {
-  if (!mainWindow) return
+  if (!mainWindow) return;
 
-  windowVisible = !windowVisible
+  windowVisible = !windowVisible;
 
   if (windowVisible) {
     // Make window visible
-    windowOpacity = 0.8
-    mainWindow.setOpacity(windowOpacity)
-    mainWindow.setIgnoreMouseEvents(false, { forward: true })
+    windowOpacity = savedWindowState.opacity;
+    mainWindow.setOpacity(windowOpacity);
+    mainWindow.setIgnoreMouseEvents(false, { forward: true });
   } else {
     // Make window invisible
-    windowOpacity = 0
-    mainWindow.setOpacity(windowOpacity)
-    mainWindow.setIgnoreMouseEvents(true, { forward: true })
+    windowOpacity = 0;
+    mainWindow.setOpacity(windowOpacity);
+    mainWindow.setIgnoreMouseEvents(true, { forward: true });
   }
 }
 
 // Adjust window opacity
 function adjustOpacity(increase: boolean) {
-  if (!mainWindow) return
+  if (!mainWindow) return;
 
   if (increase) {
-    windowOpacity = Math.min(1, windowOpacity + 0.1)
+    windowOpacity = Math.min(1, windowOpacity + 0.1);
   } else {
-    windowOpacity = Math.max(0, windowOpacity - 0.1)
+    windowOpacity = Math.max(0, windowOpacity - 0.1);
   }
 
-  mainWindow.setOpacity(windowOpacity)
+  mainWindow.setOpacity(windowOpacity);
 
   // Update mouse events based on opacity
   if (windowOpacity < 0.1) {
-    mainWindow.setIgnoreMouseEvents(true, { forward: true })
+    mainWindow.setIgnoreMouseEvents(true, { forward: true });
   } else {
-    mainWindow.setIgnoreMouseEvents(false, { forward: true })
+    mainWindow.setIgnoreMouseEvents(false, { forward: true });
   }
 }
 
 // Move window
 function moveWindow(direction: 'left' | 'right' | 'up' | 'down') {
-  if (!mainWindow) return
+  if (!mainWindow) return;
 
-  const [x, y] = mainWindow.getPosition()
+  const [x, y] = mainWindow.getPosition();
 
   switch (direction) {
     case 'left':
-      mainWindow.setPosition(x - moveStep, y, true)
-      break
+      mainWindow.setPosition(x - moveStep, y, true);
+      break;
     case 'right':
-      mainWindow.setPosition(x + moveStep, y, true)
-      break
+      mainWindow.setPosition(x + moveStep, y, true);
+      break;
     case 'up':
-      mainWindow.setPosition(x, y - moveStep, true)
-      break
+      mainWindow.setPosition(x, y - moveStep, true);
+      break;
     case 'down':
-      mainWindow.setPosition(x, y + moveStep, true)
-      break
+      mainWindow.setPosition(x, y + moveStep, true);
+      break;
   }
 }
 
@@ -166,7 +176,7 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
-    show: false,
+    show: true, // Start visible
     autoHideMenuBar: true,
     transparent: true,
     backgroundColor: '#00000000', // Fully transparent background
@@ -183,107 +193,110 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: true
     }
-  })
+  });
 
   // Set advanced window attributes
-  mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
   // Enable content protection to prevent screen capture
-  mainWindow.setContentProtection(true)
+  mainWindow.setContentProtection(true);
 
   // Set always on top with screen-saver priority
-  mainWindow.setAlwaysOnTop(true, 'screen-saver', 1)
+  mainWindow.setAlwaysOnTop(true, 'screen-saver', 1);
 
-  // Start invisible with mouse pass-through
-  mainWindow.setOpacity(0)
-  mainWindow.setIgnoreMouseEvents(true, { forward: true })
+  // Start with saved position and opacity
+  mainWindow.setPosition(savedWindowState.position[0], savedWindowState.position[1], true);
+  mainWindow.setOpacity(savedWindowState.opacity);
+  windowOpacity = savedWindowState.opacity;
+  windowVisible = true;
+  mainWindow.setIgnoreMouseEvents(false, { forward: true });
 
   // For macOS, hide during mission control
   if (process.platform === 'darwin') {
-    mainWindow.setHiddenInMissionControl(true)
+    mainWindow.setHiddenInMissionControl(true);
   }
 
   // Register keyboard shortcuts for window control
 
   // Toggle visibility (Ctrl+B)
-  globalShortcut.register('CommandOrControl+B', toggleWindowVisibility)
+  globalShortcut.register('CommandOrControl+B', toggleWindowVisibility);
 
   // Adjust opacity (Ctrl+[ and Ctrl+])
-  globalShortcut.register('CommandOrControl+[', () => adjustOpacity(false))
-  globalShortcut.register('CommandOrControl+]', () => adjustOpacity(true))
+  globalShortcut.register('CommandOrControl+[', () => adjustOpacity(false));
+  globalShortcut.register('CommandOrControl+]', () => adjustOpacity(true));
 
   // Move window with arrow keys
-  globalShortcut.register('CommandOrControl+Left', () => moveWindow('left'))
-  globalShortcut.register('CommandOrControl+Right', () => moveWindow('right'))
-  globalShortcut.register('CommandOrControl+Up', () => moveWindow('up'))
-  globalShortcut.register('CommandOrControl+Down', () => moveWindow('down'))
+  globalShortcut.register('CommandOrControl+Left', () => moveWindow('left'));
+  globalShortcut.register('CommandOrControl+Right', () => moveWindow('right'));
+  globalShortcut.register('CommandOrControl+Up', () => moveWindow('up'));
+  globalShortcut.register('CommandOrControl+Down', () => moveWindow('down'));
 
   // Reset view
   globalShortcut.register('CommandOrControl+R', () => {
-    if (!mainWindow) return
-    mainWindow.setPosition(100, 100, true)
-    windowOpacity = 0.8
-    mainWindow.setOpacity(windowOpacity)
-    windowVisible = true
-    mainWindow.setIgnoreMouseEvents(false, { forward: true })
-  })
+    if (!mainWindow) return;
+    mainWindow.setPosition(100, 100, true);
+    windowOpacity = 0.8;
+    mainWindow.setOpacity(windowOpacity);
+    windowVisible = true;
+    mainWindow.setIgnoreMouseEvents(false, { forward: true });
+  });
 
   // Quit app
   globalShortcut.register('CommandOrControl+Q', () => {
-    app.quit()
-  })
+    app.quit();
+  });
 
   mainWindow.on('ready-to-show', () => {
-    if (!mainWindow) return
+    if (!mainWindow) return;
     // Start hidden but technically "shown" to the system
-    mainWindow.show()
-    mainWindow.setOpacity(0)
-  })
+    mainWindow.show();
+    mainWindow.setOpacity(savedWindowState.opacity);
+  });
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
-    return { action: 'deny' }
-  })
+    shell.openExternal(details.url);
+    return { action: 'deny' };
+  });
 
   // Set up screen capture handler for audio and video
   session.defaultSession.setDisplayMediaRequestHandler(
     (_, callback) => {
       try {
-        console.log('Setting up audio capture')
+        console.log('Setting up audio capture');
         // Skip video capture completely
         callback({
           video: undefined,
           audio: 'loopback' // <- this enables system audio capture
-        })
-        console.log('Audio capture setup complete')
+        });
+        console.log('Audio capture setup complete');
       } catch (error) {
-        console.error('Error setting up audio capture:', error)
+        console.error('Error setting up audio capture:', error);
       }
     },
     { useSystemPicker: true }
-  )
+  );
 
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
   }
 
   // Set up IPC handlers for data persistence
-  setupIpcHandlers()
+  setupIpcHandlers();
 
   // Handle app control events
   ipcMain.on('close-app', () => {
-    app.quit()
-  })
+    app.quit();
+  });
 
   // Handle IPC requests for OpenAI token
   ipcMain.handle('get-openai-session', async () => {
     try {
       if (!openaiApiKey) {
-        throw new Error('OpenAI API key not found in .env file')
+        throw new Error('OpenAI API key not found in .env file');
       }
 
       const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
@@ -296,20 +309,20 @@ function createWindow(): void {
           model: model,
           modalities: ['text']
         })
-      })
+      });
 
-      return await response.json()
+      return await response.json();
     } catch (error) {
-      console.error('Error getting OpenAI session:', error)
-      throw error
+      console.error('Error getting OpenAI session:', error);
+      throw error;
     }
-  })
+  });
 
   // Handle IPC requests for WebRTC SDP exchange
   ipcMain.handle('openai-webrtc-sdp', async (_, sdp: string) => {
     try {
       if (!openaiApiKey) {
-        throw new Error('OpenAI API key not found in .env file')
+        throw new Error('OpenAI API key not found in .env file');
       }
 
       const response = await fetch(
@@ -322,14 +335,19 @@ function createWindow(): void {
             'Content-Type': 'application/sdp'
           }
         }
-      )
+      );
 
-      return await response.text()
+      return await response.text();
     } catch (error) {
-      console.error('Error in WebRTC SDP exchange:', error)
-      throw error
+      console.error('Error in WebRTC SDP exchange:', error);
+      throw error;
     }
-  })
+  });
+
+  // Handle window close event to prevent errors
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 }
 
 function setupIpcHandlers(): void {
@@ -462,20 +480,45 @@ app.on('window-all-closed', () => {
   }
 })
 
+// Save window state before quitting
+app.on('before-quit', () => {
+  if (mainWindow) {
+    const position = mainWindow.getPosition();
+    const state = { position, opacity: windowOpacity };
+    try {
+      writeFileSync(join(rootPath, 'window-state.json'), JSON.stringify(state));
+      console.log('Saved window state:', state);
+    } catch (error) {
+      console.error('Error saving window state:', error);
+    }
+  }
+});
+
 // Clean up global shortcuts when the app is about to quit
 app.on('will-quit', () => {
   // Unregister the shortcut
-  globalShortcut.unregisterAll()
+  globalShortcut.unregisterAll();
 
   if (pythonProcess) {
     // On Windows, sending SIGTERM might not work, so just kill it
     if (process.platform === 'win32') {
-      pythonProcess.pid && process.kill(pythonProcess.pid)
+      pythonProcess.pid && process.kill(pythonProcess.pid);
     } else {
-      pythonProcess.kill('SIGTERM')
+      pythonProcess.kill('SIGTERM');
     }
   }
-})
+
+  if (mainWindow) {
+    const position = mainWindow.getPosition()
+    const state = { position, opacity: windowOpacity }
+    try {
+      writeFileSync(join(rootPath, 'window-state.json'), JSON.stringify(state))
+      console.log('Saved window state:', state)
+    } catch (error) {
+      console.error('Error saving window state:', error)
+    }
+  }
+});
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
