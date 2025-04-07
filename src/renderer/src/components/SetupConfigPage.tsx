@@ -76,10 +76,10 @@ function AddResumeForm({ onSave, onCancel }: AddResumeFormProps) {
 interface SetupConfigProps {
   onSave: (config: { jobDescription: string; selectedResume: string }) => void
   resumes: Resume[]
-  onAddResume: (name: string, file: File) => Promise<void>
+  onAddResume: () => void
   onBack: () => void
-  skipEmptySessionWarning: boolean
-  onSetSkipEmptySessionWarning: (skip: boolean) => void
+  skipEmptySessionWarning?: boolean
+  onSetSkipEmptySessionWarning?: (skip: boolean) => void
 }
 
 function SetupConfigPage({ 
@@ -106,7 +106,7 @@ function SetupConfigPage({
   }
 
   const handleConfirmSave = () => {
-    if (dontShowAgain) {
+    if (dontShowAgain && onSetSkipEmptySessionWarning) {
       onSetSkipEmptySessionWarning(true)
     }
     setIsConfirmDialogOpen(false)
@@ -127,7 +127,7 @@ function SetupConfigPage({
 
   const handleSaveNewResume = async (name: string, file: File) => {
     try {
-      await onAddResume(name, file)
+      await onAddResume()
       setIsAddResumeModalOpen(false)
     } catch (error) {
       console.error("Error saving resume from modal:", error)
@@ -144,7 +144,7 @@ function SetupConfigPage({
   }
 
   return (
-    <Container maxWidth="md">
+    <Container sx={{ width: '100%' }}>
       <Box sx={{ py: 4 }}>
         <Box
           onClick={onBack}

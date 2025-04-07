@@ -1,19 +1,15 @@
-import { useState, useEffect } from 'react'
 import {
   Box,
-  Button,
   CardContent,
   Chip,
   Divider,
   IconButton,
   Paper,
-  Typography,
-  Grid
+  Typography
 } from '@mui/material'
+import Grid from '@mui/material/Grid'
 import { motion } from 'framer-motion'
 import AddIcon from '@mui/icons-material/Add'
-import DeleteIcon from '@mui/icons-material/Delete'
-import { format } from 'date-fns'
 
 interface Session {
   id: string
@@ -33,11 +29,15 @@ interface SessionListProps {
 // Define styles for the tiles
 const tileBaseStyle = {
   position: 'relative',
-  height: '180px',
+  width: '100%',
+  maxWidth: '200px',
+  minWidth: '200px',
+  aspectRatio: '1/1',
   display: 'flex',
   flexDirection: 'column',
-  justifyContent: 'space-between',
+  justifyContent: 'flex-start',
   borderRadius: 2,
+  margin: 1,
   overflow: 'hidden',
   bgcolor: 'rgba(30, 41, 59, 0.6)',
   backdropFilter: 'blur(4px)',
@@ -92,14 +92,15 @@ function SessionList({
 }: SessionListProps) {
   return (
     <Box>
-      <Grid container spacing={3}>
-        <Grid item xs={12} sm={6} md={4}>
+      <Grid container spacing={2}>
+        <Grid xs={12} sm={6} md={4}>
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
+            style={{ width: '100%' }}
           >
             <Paper sx={addTileStyle} onClick={onNewSession}>
               <Box sx={{ textAlign: 'center' }}>
@@ -117,13 +118,14 @@ function SessionList({
         </Grid>
 
         {sessions.map((session, index) => (
-          <Grid item xs={12} sm={6} md={4} key={session.id}>
+          <Grid xs={12} sm={6} md={4} key={session.id}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: (index + 1) * 0.05 }}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.98 }}
+              style={{ width: '100%' }}
             >
               <Paper sx={tileBaseStyle} onClick={() => onSelectSession(session.id)}>
                 <CardContent sx={{ p: 3, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
@@ -195,7 +197,7 @@ function SessionList({
         ))}
 
         {sessions.length === 0 && (
-          <Grid item xs={12}>
+          <Grid xs={12}>
             <Box
               sx={{
                 p: 4,

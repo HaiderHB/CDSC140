@@ -33,6 +33,12 @@ interface CurrentSession {
   jobDescription: string
 }
 
+// Add these new interfaces near the top of the file
+interface AudioStatus {
+  connection: 'disconnected' | 'connected';
+  listening: boolean;
+}
+
 const TEST_MODE = true
 
 function App(): JSX.Element {
@@ -59,6 +65,7 @@ function App(): JSX.Element {
   const [currentSession, setCurrentSession] = useState<CurrentSession | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [transcriptText, setTranscriptText] = useState<string>('')
+  const [transcriptHistory, setTranscriptHistory] = useState<string[]>([])
   const [wsStatus, setWsStatus] = useState('disconnected')
   const [wsError, setWsError] = useState<string | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
@@ -68,6 +75,16 @@ function App(): JSX.Element {
   const processingUpdatesRef = useRef(false)
   const bulletPointsRef = useRef<string[]>([])
   const bulletPointsInitializedRef = useRef(false)
+
+  // Add new state for audio status
+  const [desktopAudioStatus, setDesktopAudioStatus] = useState<AudioStatus>({
+    connection: 'disconnected',
+    listening: false
+  });
+  const [micAudioStatus, setMicAudioStatus] = useState<AudioStatus>({
+    connection: 'disconnected',
+    listening: false
+  });
 
   const {
     sessions,
@@ -379,8 +396,8 @@ function App(): JSX.Element {
       // Get desktop audio stream
       const desktopStream = await navigator.mediaDevices.getDisplayMedia({
         audio: true,
-       video: false
-            })
+        video: false
+      })
 
       // Get microphone stream
       console.log('Requesting microphone access...')
@@ -391,22 +408,46 @@ function App(): JSX.Element {
           autoGainControl: true
         }
       })
-      console.log('Microphone access granted')
 
-      // Check if we got audio tracks
-      const desktopAudioTracks = desktopStream.getAudioTracks()
-      if (desktopAudioTracks.length === 0) {
-        console.warn('No desktop audio track found in the stream')
-      } else {
-        console.log('Desktop audio track found:', desktopAudioTracks[0].label)
-      }
+      // Update connection status when streams are obtained
+      setDesktopAudioStatus(prev => ({ ...prev, connection: 'connected' }));
+      setMicAudioStatus(prev => ({ ...prev, connection: 'connected' }));
 
-      const micAudioTracks = micStream.getAudioTracks()
-      if (micAudioTracks.length === 0) {
-        console.warn('No microphone audio track found')
-      } else {
-        console.log('Microphone audio track found:', micAudioTracks[0].label)
-      }
+      // Set up audio analysis for desktop audio
+      audioContextRef.current = new AudioContext()
+      analyserRef.current = audioContextRef.current.createAnalyser()
+      const source = audioContextRef.current.createMediaStreamSource(desktopStream)
+      source.connect(analyserRef.current)
+      
+      // Set up audio monitoring for desktop
+      const desktopProcessor = audioContextRef.current.createScriptProcessor(2048, 1, 1);
+      desktopProcessor.addEventListener('audioprocess', (e) => {
+        const input = e.inputBuffer.getChannelData(0);
+        const sum = input.reduce((acc, val) => acc + Math.abs(val), 0);
+        if (sum > 0.01) { // Threshold for detecting audio
+          setDesktopAudioStatus(prev => ({ ...prev, listening: true }));
+        }
+      });
+      source.connect(desktopProcessor);
+      desktopProcessor.connect(audioContextRef.current.destination);
+
+      // Set up audio analysis for microphone
+      micAudioContextRef.current = new AudioContext()
+      micAnalyserRef.current = micAudioContextRef.current.createAnalyser()
+      const micSource = micAudioContextRef.current.createMediaStreamSource(micStream)
+      micSource.connect(micAnalyserRef.current)
+
+      // Set up audio monitoring for microphone
+      const micProcessor = micAudioContextRef.current.createScriptProcessor(2048, 1, 1);
+      micProcessor.addEventListener('audioprocess', (e) => {
+        const input = e.inputBuffer.getChannelData(0);
+        const sum = input.reduce((acc, val) => acc + Math.abs(val), 0);
+        if (sum > 0.01) { // Threshold for detecting audio
+          setMicAudioStatus(prev => ({ ...prev, listening: true }));
+        }
+      });
+      micSource.connect(micProcessor);
+      micProcessor.connect(micAudioContextRef.current.destination);
 
       streamRef.current = desktopStream
       micStreamRef.current = micStream
@@ -415,20 +456,6 @@ function App(): JSX.Element {
         videoRef.current.srcObject = desktopStream
         videoRef.current.onloadedmetadata = () => videoRef.current?.play()
       }
-
-      // Set up audio analysis for desktop audio
-      audioContextRef.current = new AudioContext()
-      analyserRef.current = audioContextRef.current.createAnalyser()
-      const source = audioContextRef.current.createMediaStreamSource(desktopStream)
-      source.connect(analyserRef.current)
-      analyserRef.current.fftSize = 256
-
-      // Set up audio analysis for microphone
-      micAudioContextRef.current = new AudioContext()
-      micAnalyserRef.current = micAudioContextRef.current.createAnalyser()
-      const micSource = micAudioContextRef.current.createMediaStreamSource(micStream)
-      micSource.connect(micAnalyserRef.current)
-      micAnalyserRef.current.fftSize = 256
 
       setIsCapturing(true)
       startVisualization()
@@ -493,6 +520,9 @@ function App(): JSX.Element {
     } catch (error: any) {
       console.error('Error starting capture:', error)
       setError(`Failed to start capture: ${error?.message || 'Unknown error'}`)
+      // Reset status on error
+      setDesktopAudioStatus({ connection: 'disconnected', listening: false });
+      setMicAudioStatus({ connection: 'disconnected', listening: false });
     }
   }
 
@@ -723,6 +753,10 @@ function App(): JSX.Element {
     }
 
     // Don't clear transcript - keep it visible after stopping
+
+    // Reset audio status
+    setDesktopAudioStatus({ connection: 'disconnected', listening: false });
+    setMicAudioStatus({ connection: 'disconnected', listening: false });
   }
 
   const startVisualization = (): void => {
@@ -741,17 +775,16 @@ function App(): JSX.Element {
 
       analyserRef.current.getByteFrequencyData(dataArray)
 
-      canvasCtx.fillStyle = '#f8f8f8'
-      canvasCtx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+      canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
 
-      const barWidth = (canvasRef.current.width / bufferLength) * 2.5
+      const barWidth = (canvasRef.current.width / bufferLength) * 1.5
       let barHeight
       let x = 0
 
       for (let i = 0; i < bufferLength; i++) {
         barHeight = dataArray[i] / 2
 
-        canvasCtx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`
+        canvasCtx.fillStyle = `hsl(${(i / bufferLength) * 360}, 100%, 50%)`
         canvasCtx.fillRect(x, canvasRef.current.height - barHeight, barWidth, barHeight)
 
         x += barWidth + 1
@@ -777,17 +810,16 @@ function App(): JSX.Element {
 
       micAnalyserRef.current.getByteFrequencyData(dataArray)
 
-      canvasCtx.fillStyle = '#f8f8f8'
-      canvasCtx.fillRect(0, 0, micCanvasRef.current.width, micCanvasRef.current.height)
+      canvasCtx.clearRect(0, 0, micCanvasRef.current.width, micCanvasRef.current.height)
 
-      const barWidth = (micCanvasRef.current.width / bufferLength) * 2.5
+      const barWidth = (micCanvasRef.current.width / bufferLength) * 1.5
       let barHeight
       let x = 0
 
       for (let i = 0; i < bufferLength; i++) {
         barHeight = dataArray[i] / 2
 
-        canvasCtx.fillStyle = `rgb(50, ${barHeight + 100}, 50)`
+        canvasCtx.fillStyle = `hsl(${(i / bufferLength) * 360}, 100%, 50%)`
         canvasCtx.fillRect(x, micCanvasRef.current.height - barHeight, barWidth, barHeight)
 
         x += barWidth + 1
@@ -917,16 +949,39 @@ function App(): JSX.Element {
           <span className="no-response">No response yet. Click "Start Capture" to begin.</span>
         </Paper>
       ) : (
-        <Paper
+        <Box
           sx={{
-            bgcolor: 'rgba(15, 23, 42, 0.3)',
-            maxHeight: '200px',
-            overflow: 'auto'
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2
           }}
         >
+          <Box
+            sx={{
+              border: '2px solid #10b981',
+              borderRadius: 2,
+              p: 2,
+              position: 'relative',
+              bgcolor: 'rgba(16, 185, 129, 0.1)'
+            }}
+          >
+            <Typography
+              variant="subtitle1"
+              sx={{
+                position: 'absolute',
+                top: -12,
+                left: 16,
+                bgcolor: 'rgba(16, 185, 129, 0.1)',
+                px: 1
+              }}
+            >
+              Eye Area
+            </Typography>
+            <ListItemText primary={bulletPoints[0]} />
+          </Box>
           <List sx={{ py: 0 }}>
             <AnimatePresence initial={false}>
-              {bulletPoints.map((point) => (
+              {bulletPoints.slice(1).map((point) => (
                 <motion.div
                   key={point}
                   initial={{ opacity: 0, height: 0 }}
@@ -938,7 +993,8 @@ function App(): JSX.Element {
                   exit={{ 
                     opacity: 0, 
                     height: 0, 
-                    transition: { duration: 0.2, ease: "easeIn" } 
+                    transition: { duration: 0.2, ease: "easeIn" },
+                    backgroundColor: '#9b59b6', // Purple highlight before collapse
                   }}
                   layout
                 >
@@ -954,20 +1010,20 @@ function App(): JSX.Element {
                   </ListItem>
                 </motion.div>
               ))}
+              {currentBulletPoint && (
+                <ListItem
+                  sx={{
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                    py: 1,
+                    px: 2
+                  }}
+                >
+                  <ListItemText primary={currentBulletPoint} sx={{ fontStyle: 'italic', opacity: 0.7 }} />
+                </ListItem>
+              )}
             </AnimatePresence>
-            {currentBulletPoint && (
-              <ListItem
-                sx={{
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                  py: 1,
-                  px: 2
-                }}
-              >
-                <ListItemText primary={currentBulletPoint} sx={{ fontStyle: 'italic', opacity: 0.7 }} />
-              </ListItem>
-            )}
           </List>
-        </Paper>
+        </Box>
       )}
     </Box>
   )
@@ -1049,6 +1105,77 @@ function App(): JSX.Element {
     </Box>
   )
 
+  const renderAudioStatus = () => (
+    <Box className="audio-status-container" sx={{ 
+      width: '100%', 
+      maxWidth: '800px', 
+      mx: 'auto',
+      display: 'flex',
+      gap: 4,
+      justifyContent: 'center'
+    }}>
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 1,
+        p: 2,
+        borderRadius: 1,
+        bgcolor: 'rgba(255, 255, 255, 0.05)'
+      }}>
+        <Box sx={{ 
+          display: 'flex',
+          alignItems: 'center',
+          color: desktopAudioStatus.connection === 'disconnected' 
+            ? '#ef4444' 
+            : desktopAudioStatus.listening 
+              ? '#10b981' 
+              : '#f59e0b'
+        }}>
+          {desktopAudioStatus.connection === 'disconnected' ? '✕' : '✓'}
+        </Box>
+        <Typography variant="subtitle2">
+          System Audio: {
+            desktopAudioStatus.connection === 'disconnected' 
+              ? 'Not Connected' 
+              : desktopAudioStatus.listening 
+                ? 'Connected, Listening' 
+                : 'Connected, No Audio'
+          }
+        </Typography>
+      </Box>
+
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 1,
+        p: 2,
+        borderRadius: 1,
+        bgcolor: 'rgba(255, 255, 255, 0.05)'
+      }}>
+        <Box sx={{ 
+          display: 'flex',
+          alignItems: 'center',
+          color: micAudioStatus.connection === 'disconnected' 
+            ? '#ef4444' 
+            : micAudioStatus.listening 
+              ? '#10b981' 
+              : '#f59e0b'
+        }}>
+          {micAudioStatus.connection === 'disconnected' ? '✕' : '✓'}
+        </Box>
+        <Typography variant="subtitle2">
+          Microphone: {
+            micAudioStatus.connection === 'disconnected' 
+              ? 'Not Connected' 
+              : micAudioStatus.listening 
+                ? 'Connected, Listening' 
+                : 'Connected, No Audio'
+          }
+        </Typography>
+      </Box>
+    </Box>
+  )
+
   const renderMainPage = () => (
     <>
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -1084,11 +1211,15 @@ function App(): JSX.Element {
     window.api.closeApp?.()
   }
 
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const commandKey = isMac ? '⌘' : 'Ctrl';
+
   return (
     <Box
       className="app-container"
       sx={{
         minHeight: '100vh',
+        width: '100%', // Remove max width constraint
         background: isClickThrough
           ? 'transparent'
           : 'linear-gradient(to bottom right, rgba(15, 23, 42, 0.4), rgba(30, 41, 59, 0.4))',
@@ -1135,41 +1266,28 @@ function App(): JSX.Element {
         </Box>
       </Box>
 
-      {/* Click-through indicator */}
-      {isClickThrough ? (
-        <Box
-          sx={{
-            position: 'fixed',
-            top: 30,
-            right: 10,
-            backgroundColor: 'rgba(255, 0, 0, 0.5)',
-            color: 'white',
-            padding: '4px 8px',
-            borderRadius: '4px',
-            fontSize: '10px',
-            opacity: 0.7,
-            zIndex: 9999
-          }}
-        >
-          Press Ctrl+Alt+T
-        </Box>
-      ) : (
-        <Box
-          sx={{
-            position: 'fixed',
-            top: 30,
-            right: 10,
-            backgroundColor: 'rgba(0, 255, 0, 0.2)',
-            color: 'white',
-            padding: '4px 8px',
-            borderRadius: '4px',
-            fontSize: '10px',
-            zIndex: 9999
-          }}
-        >
-          Interactive Mode
-        </Box>
-      )}
+      {/* Instructions Bar */}
+      <Box
+        sx={{
+          position: 'fixed',
+          top: 28,
+          left: 0,
+          right: 0,
+          display: 'flex',
+          justifyContent: 'space-around',
+          alignItems: 'center',
+          height: '24px',
+          backgroundColor: 'rgba(15, 23, 42, 0.8)',
+          color: 'lightblue', // Light-ish blue text color
+          zIndex: 9998,
+          fontSize: '12px',
+          paddingX: 2
+        }}
+      >
+        <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>Hide - <Box sx={{ fontWeight: 'bold', border: '1px solid white', paddingX: 1, borderRadius: 1 }}>{commandKey} + B</Box></Box>
+        <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>Move - <Box sx={{ fontWeight: 'bold', border: '1px solid white', paddingX: 1, borderRadius: 1 }}>{commandKey} + ← ↑ → ↓ </Box></Box>
+        <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>Opacity - <Box sx={{ fontWeight: 'bold', border: '1px solid white', paddingX: 1, borderRadius: 1 }}>{commandKey} +  </Box></Box>
+      </Box>
 
       {/* Add top margin to account for title bar */}
       <Box sx={{ pt: 3 }}>
@@ -1198,7 +1316,7 @@ function App(): JSX.Element {
         {currentPage === 'setup' && (
           <Box
             sx={{
-              maxWidth: 'md',
+              width: '100%',
               mx: 'auto',
               borderRadius: 2,
               overflow: 'hidden',
@@ -1216,7 +1334,6 @@ function App(): JSX.Element {
             />
           </Box>
         )}
-
         {currentPage === 'capture' && (
           <Box
             sx={{
@@ -1280,22 +1397,7 @@ function App(): JSX.Element {
               </Box>
 
               {/* Audio Visualizers - Centered within scrollable area */} 
-              <Box className="audio-container" sx={{ width: '100%', maxWidth: '800px', mx: 'auto' }}>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
-                    Desktop Audio
-                  </Typography>
-                  {/* Make canvas responsive */}
-                  <canvas ref={canvasRef} className="audio-canvas" style={{ width: '100%', height: '60px' }}></canvas>
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
-                    Microphone Audio
-                  </Typography>
-                  {/* Make canvas responsive */}
-                  <canvas ref={micCanvasRef} className="audio-canvas" style={{ width: '100%', height: '60px' }}></canvas>
-                </Box>
-              </Box>
+              {renderAudioStatus()}
             </Box> {/* End Scrollable Area */}
 
           </Box>
