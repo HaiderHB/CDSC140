@@ -11,30 +11,136 @@ import {
   FormControl,
   FormControlLabel,
   Radio,
-  RadioGroup
+  RadioGroup,
+  Modal,
+  Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Checkbox
 } from '@mui/material'
 import { motion } from 'framer-motion'
 import { Resume } from './ResumeManager'
 
+interface AddResumeFormProps {
+  onSave: (name: string, file: File) => void
+  onCancel: () => void
+}
+
+function AddResumeForm({ onSave, onCancel }: AddResumeFormProps) {
+  const [resumeName, setResumeName] = useState('')
+  const [resumeFile, setResumeFile] = useState<File | null>(null)
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setResumeFile(event.target.files[0])
+      if (!resumeName) {
+        setResumeName(event.target.files[0].name.replace(/\.[^/.]+$/, ''))
+      }
+    }
+  }
+
+  const handleSubmit = () => {
+    if (resumeName && resumeFile) {
+      onSave(resumeName, resumeFile)
+    }
+  }
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h6" mb={2}>Add New Resume</Typography>
+      <TextField
+        label="Resume Name"
+        value={resumeName}
+        onChange={(e) => setResumeName(e.target.value)}
+        fullWidth
+        sx={{ mb: 2 }}
+      />
+      <Button variant="contained" component="label" fullWidth sx={{ mb: 2 }}>
+        Upload Resume File
+        <input type="file" hidden onChange={handleFileChange} accept=".pdf,.doc,.docx" />
+      </Button>
+      {resumeFile && <Typography variant="body2" sx={{ mb: 2 }}>Selected: {resumeFile.name}</Typography>}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+        <Button onClick={onCancel}>Cancel</Button>
+        <Button onClick={handleSubmit} variant="contained" disabled={!resumeName || !resumeFile}>
+          Save Resume
+        </Button>
+      </Box>
+    </Box>
+  )
+}
+
 interface SetupConfigProps {
   onSave: (config: { jobDescription: string; selectedResume: string }) => void
   resumes: Resume[]
-  onAddResume: () => void
+  onAddResume: (name: string, file: File) => Promise<void>
   onBack: () => void
+  skipEmptySessionWarning: boolean
+  onSetSkipEmptySessionWarning: (skip: boolean) => void
 }
 
-function SetupConfigPage({ onSave, resumes, onAddResume, onBack }: SetupConfigProps) {
+function SetupConfigPage({ 
+  onSave, 
+  resumes, 
+  onAddResume, 
+  onBack, 
+  skipEmptySessionWarning, 
+  onSetSkipEmptySessionWarning 
+}: SetupConfigProps) {
   const [jobDescription, setJobDescription] = useState('')
   const [selectedResume, setSelectedResume] = useState('')
+  const [isAddResumeModalOpen, setIsAddResumeModalOpen] = useState(false)
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
+  const [dontShowAgain, setDontShowAgain] = useState(skipEmptySessionWarning)
 
   const handleSave = () => {
+    const isEmpty = !jobDescription || !selectedResume
+    if (isEmpty && !skipEmptySessionWarning) {
+      setIsConfirmDialogOpen(true)
+    } else {
+      onSave({ jobDescription, selectedResume })
+    }
+  }
+
+  const handleConfirmSave = () => {
+    if (dontShowAgain) {
+      onSetSkipEmptySessionWarning(true)
+    }
+    setIsConfirmDialogOpen(false)
     onSave({ jobDescription, selectedResume })
   }
 
-  const handleAddNewResume = () => {
-    // Go back to home screen and switch to Resume tab
-    onAddResume()
-    onBack()
+  const handleCloseDialog = () => {
+    setIsConfirmDialogOpen(false)
+  }
+
+  const handleAddNewResumeClick = () => {
+    setIsAddResumeModalOpen(true)
+  }
+
+  const handleCloseAddResumeModal = () => {
+    setIsAddResumeModalOpen(false)
+  }
+
+  const handleSaveNewResume = async (name: string, file: File) => {
+    try {
+      await onAddResume(name, file)
+      setIsAddResumeModalOpen(false)
+    } catch (error) {
+      console.error("Error saving resume from modal:", error)
+    }
+  }
+
+  const handleResumeSelectionChange = (event: React.ChangeEvent<{ value: unknown }>) => {
+    const value = event.target.value as string
+    if (value === 'add_new') {
+      handleAddNewResumeClick()
+    } else {
+      setSelectedResume(value)
+    }
   }
 
   return (
@@ -103,7 +209,7 @@ function SetupConfigPage({ onSave, resumes, onAddResume, onBack }: SetupConfigPr
                   select
                   fullWidth
                   value={selectedResume}
-                  onChange={(e) => setSelectedResume(e.target.value)}
+                  onChange={handleResumeSelectionChange}
                   variant="outlined"
                   sx={{
                     '& .MuiOutlinedInput-root': {
@@ -121,7 +227,6 @@ function SetupConfigPage({ onSave, resumes, onAddResume, onBack }: SetupConfigPr
                   ))}
                   <MenuItem
                     value="add_new"
-                    onClick={handleAddNewResume}
                     sx={{
                       color: 'primary.main',
                       fontWeight: 600
@@ -137,7 +242,6 @@ function SetupConfigPage({ onSave, resumes, onAddResume, onBack }: SetupConfigPr
                   variant="contained"
                   onClick={handleSave}
                   size="large"
-                  disabled={!jobDescription || !selectedResume}
                   sx={{ px: 4, py: 1.2 }}
                 >
                   Create Session
@@ -147,6 +251,61 @@ function SetupConfigPage({ onSave, resumes, onAddResume, onBack }: SetupConfigPr
           </Card>
         </motion.div>
       </Box>
+
+      <Modal
+        open={isAddResumeModalOpen}
+        onClose={handleCloseAddResumeModal}
+        aria-labelledby="add-resume-modal-title"
+      >
+        <Paper
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 400,
+            bgcolor: 'background.paper',
+            boxShadow: 24,
+            borderRadius: 2,
+          }}
+        >
+          <AddResumeForm onSave={handleSaveNewResume} onCancel={handleCloseAddResumeModal} />
+        </Paper>
+      </Modal>
+
+      <Dialog
+        open={isConfirmDialogOpen}
+        onClose={handleCloseDialog}
+        aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-description"
+      >
+        <DialogTitle id="confirm-dialog-title">
+          Create Session Without Full Details?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="confirm-dialog-description">
+            You haven't provided a job description or selected a resume. Adding these details will provide better assistance during your interview.
+            <br /><br />
+            Are you sure you want to proceed?
+          </DialogContentText>
+          <FormControlLabel
+            control={
+              <Checkbox 
+                checked={dontShowAgain}
+                onChange={(e) => setDontShowAgain(e.target.checked)} 
+              />
+            }
+            label="Don't show this warning again"
+            sx={{ mt: 2 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Cancel</Button>
+          <Button onClick={handleConfirmSave} autoFocus variant="contained">
+            Proceed Anyway
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   )
 }

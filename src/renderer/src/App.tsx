@@ -11,8 +11,7 @@ import {
   Alert,
   Tab,
   Tabs,
-  Typography
-  
+  Typography,
 } from '@mui/material'
 import './App.css'
 import SetupConfigPage from './components/SetupConfigPage'
@@ -22,6 +21,7 @@ import ResumeManager from './components/ResumeManager'
 import { useDataPersistence } from './hooks/useDataPersistence'
 import { useSpeechRecognition } from './hooks/useSpeechRecognition'
 import Fuse from 'fuse.js'
+import { motion, AnimatePresence } from 'framer-motion' // Import AnimatePresence
 
 // Use Session type from useDataPersistence for all session-related data
 interface CurrentSession {
@@ -33,7 +33,7 @@ interface CurrentSession {
   jobDescription: string
 }
 
-const TEST_MODE = false
+const TEST_MODE = true
 
 function App(): JSX.Element {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -379,8 +379,12 @@ function App(): JSX.Element {
       // Get desktop audio stream
       const desktopStream = await navigator.mediaDevices.getDisplayMedia({
         audio: true,
-        video: false
-      })
+       video: {
+          width: 1280,
+          height: 720,
+          frameRate: 30
+        }
+            })
 
       // Get microphone stream
       console.log('Requesting microphone access...')
@@ -908,8 +912,10 @@ function App(): JSX.Element {
         <Paper
           sx={{
             p: 2,
-            bgcolor: 'rgba(15, 23, 42, 0.3)',
-            color: 'text.secondary'
+            bgcolor: 'transparent',
+            border: '1px dashed rgba(255, 255, 255, 0.2)',
+            color: 'text.secondary',
+            textAlign: 'center'
           }}
         >
           <span className="no-response">No response yet. Click "Start Capture" to begin.</span>
@@ -918,30 +924,50 @@ function App(): JSX.Element {
         <Paper
           sx={{
             bgcolor: 'rgba(15, 23, 42, 0.3)',
-            maxHeight: 400,
+            maxHeight: '200px',
             overflow: 'auto'
           }}
         >
-          <List>
-            {bulletPoints.map((point, index) => (
-              <ListItem
-                key={index}
-                sx={{
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                  py: 1
-                }}
-              >
-                <ListItemText primary={point} />
-              </ListItem>
-            ))}
+          <List sx={{ py: 0 }}>
+            <AnimatePresence initial={false}>
+              {bulletPoints.map((point) => (
+                <motion.div
+                  key={point}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ 
+                    opacity: 1, 
+                    height: 'auto',
+                    transition: { duration: 0.3, ease: "easeOut" } 
+                  }}
+                  exit={{ 
+                    opacity: 0, 
+                    height: 0, 
+                    transition: { duration: 0.2, ease: "easeIn" } 
+                  }}
+                  layout
+                >
+                  <ListItem
+                    disablePadding
+                    sx={{
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                      px: 2,
+                      py: 1
+                    }}
+                  >
+                    <ListItemText primary={point} />
+                  </ListItem>
+                </motion.div>
+              ))}
+            </AnimatePresence>
             {currentBulletPoint && (
               <ListItem
                 sx={{
                   borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                  py: 1
+                  py: 1,
+                  px: 2
                 }}
               >
-                <ListItemText primary={currentBulletPoint} />
+                <ListItemText primary={currentBulletPoint} sx={{ fontStyle: 'italic', opacity: 0.7 }} />
               </ListItem>
             )}
           </List>
@@ -1198,14 +1224,16 @@ function App(): JSX.Element {
         {currentPage === 'capture' && (
           <Box
             sx={{
-              maxWidth: 'lg',
-              mx: 'auto',
-              borderRadius: 2,
-              overflow: 'hidden',
-              boxShadow: '0 0 40px rgba(236, 72, 153, 0.2)'
+              // Use Flexbox for overall layout
+              display: 'flex',
+              flexDirection: 'column',
+              // Calculate height: viewport height - title bar height - parent padding (p: 3 => 2 * 24px = 48px)
+              height: 'calc(100vh - 28px - 48px)',
+              overflow: 'hidden' // Hide overflow at the main container level
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', p: 2 }}>
+            {/* Back Button - Top Left */}
+            <Box sx={{ display: 'flex', alignItems: 'center', p: 1, flexShrink: 0 }}>
               <Box
                 onClick={() => setCurrentPage('main')}
                 sx={{
@@ -1220,10 +1248,14 @@ function App(): JSX.Element {
               </Box>
             </Box>
 
-            <h1>Screen Capture with OpenAI Realtime</h1>
+            {/* Bullet Points - Top Middle */}
+            <Box sx={{ width: '100%', maxWidth: '700px', mx: 'auto', px: 2, flexShrink: 0 }}>
+              {renderResponseOutput()} 
+            </Box>
 
-            <div className="controls">
-              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
+            {/* Controls - Centered below bullet points */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 2, flexShrink: 0 }}>
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 1 }}>
                 {!isCapturing ? (
                   <button onClick={startCapture} className="capture-button">
                     Start Capture
@@ -1242,26 +1274,34 @@ function App(): JSX.Element {
                   Listening for speech...
                 </Box>
               )}
-            </div>
+            </Box>
 
-            <div className="audio-container">
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
-                  Desktop Audio
-                </Typography>
-                <canvas ref={canvasRef} className="audio-canvas"></canvas>
+            {/* Scrollable Content Area */}
+            <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 3, py: 2 }}>
+              {/* Transcription - Centered within scrollable area */}
+              <Box sx={{ width: '100%', maxWidth: '800px', mx: 'auto', mb: 3 }}>
+                {renderTranscriptionDisplay()}
               </Box>
-              <Box>
-                <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
-                  Microphone Audio
-                </Typography>
-                <canvas ref={micCanvasRef} className="audio-canvas"></canvas>
+
+              {/* Audio Visualizers - Centered within scrollable area */} 
+              <Box className="audio-container" sx={{ width: '100%', maxWidth: '800px', mx: 'auto' }}>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
+                    Desktop Audio
+                  </Typography>
+                  {/* Make canvas responsive */}
+                  <canvas ref={canvasRef} className="audio-canvas" style={{ width: '100%', height: '60px' }}></canvas>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
+                    Microphone Audio
+                  </Typography>
+                  {/* Make canvas responsive */}
+                  <canvas ref={micCanvasRef} className="audio-canvas" style={{ width: '100%', height: '60px' }}></canvas>
+                </Box>
               </Box>
-            </div>
+            </Box> {/* End Scrollable Area */}
 
-            {renderTranscriptionDisplay()}
-
-            {renderResponseOutput()}
           </Box>
         )}
 
