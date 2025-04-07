@@ -65,7 +65,6 @@ function App(): JSX.Element {
   const [currentSession, setCurrentSession] = useState<CurrentSession | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [transcriptText, setTranscriptText] = useState<string>('')
-  const [transcriptHistory, setTranscriptHistory] = useState<string[]>([])
   const [wsStatus, setWsStatus] = useState('disconnected')
   const [wsError, setWsError] = useState<string | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
@@ -959,8 +958,12 @@ function App(): JSX.Element {
           <Box
             sx={{
               border: '2px solid #10b981',
+              width: '30%',
+              margin: '0 auto',
+              justifyContent: 'center',
+              textAlign: 'center',
               borderRadius: 2,
-              p: 2,
+              p: 1,
               position: 'relative',
               bgcolor: 'rgba(16, 185, 129, 0.1)'
             }}
@@ -977,24 +980,35 @@ function App(): JSX.Element {
             >
               Eye Area
             </Typography>
-            <ListItemText primary={bulletPoints[0]} />
+            <AnimatePresence mode="wait">
+              {bulletPoints[0] && (
+                <motion.div
+                  key={bulletPoints[0]}
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                >
+                  <ListItemText primary={bulletPoints[0]} />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Box>
           <List sx={{ py: 0 }}>
             <AnimatePresence initial={false}>
               {bulletPoints.slice(1).map((point) => (
                 <motion.div
                   key={point}
-                  initial={{ opacity: 0, height: 0 }}
+                  initial={{ opacity: 0, y: 20 }}
                   animate={{ 
                     opacity: 1, 
-                    height: 'auto',
+                    y: 0,
                     transition: { duration: 0.3, ease: "easeOut" } 
                   }}
                   exit={{ 
                     opacity: 0, 
-                    height: 0, 
-                    transition: { duration: 0.2, ease: "easeIn" },
-                    backgroundColor: '#9b59b6', // Purple highlight before collapse
+                    y: -20, 
+                    transition: { duration: 0.2, ease: "easeIn" }
                   }}
                   layout
                 >
@@ -1011,15 +1025,21 @@ function App(): JSX.Element {
                 </motion.div>
               ))}
               {currentBulletPoint && (
-                <ListItem
-                  sx={{
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                    py: 1,
-                    px: 2
-                  }}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 0.7, y: 0 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
                 >
-                  <ListItemText primary={currentBulletPoint} sx={{ fontStyle: 'italic', opacity: 0.7 }} />
-                </ListItem>
+                  <ListItem
+                    sx={{
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                      py: 1,
+                      px: 2
+                    }}
+                  >
+                    <ListItemText primary={currentBulletPoint} sx={{ fontStyle: 'italic' }} />
+                  </ListItem>
+                </motion.div>
               )}
             </AnimatePresence>
           </List>
