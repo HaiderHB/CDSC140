@@ -1533,6 +1533,92 @@ function App(): JSX.Element {
 
   // Add a function to handle window close
   const handleCloseApp = () => {
+    // Stop any ongoing capture first
+    if (isCapturing) {
+      stopCapture()
+    }
+
+    // Close WebSocket connection if it exists
+    if (wsRef.current) {
+      wsRef.current.close(1000, 'App closing')
+      wsRef.current = null
+    }
+
+    // Close WebRTC connection if it exists
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close()
+      peerConnectionRef.current = null
+    }
+
+    // Close data channel if it exists
+    if (dataChannelRef.current) {
+      dataChannelRef.current.close()
+      dataChannelRef.current = null
+    }
+
+    // Stop all media streams
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach((track) => track.stop())
+      micStreamRef.current = null
+    }
+
+    // Close audio contexts
+    if (audioContextRef.current) {
+      audioContextRef.current.close()
+      audioContextRef.current = null
+    }
+    if (micAudioContextRef.current) {
+      micAudioContextRef.current.close()
+      micAudioContextRef.current = null
+    }
+
+    // Clear video element
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+
+    // Cancel any animation frames
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
+    }
+    if (micAnimationFrameRef.current) {
+      cancelAnimationFrame(micAnimationFrameRef.current)
+      micAnimationFrameRef.current = null
+    }
+
+    // Clear canvases
+    if (canvasRef.current) {
+      const canvasCtx = canvasRef.current.getContext('2d')
+      if (canvasCtx) {
+        canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+      }
+    }
+    if (micCanvasRef.current) {
+      const micCanvasCtx = micCanvasRef.current.getContext('2d')
+      if (micCanvasCtx) {
+        micCanvasCtx.clearRect(0, 0, micCanvasRef.current.width, micCanvasRef.current.height)
+      }
+    }
+
+    // Stop speech recognition
+    stopListening()
+
+    // Reset all state
+    setIsCapturing(false)
+    setResponseText('')
+    setBulletPoints([])
+    setCurrentBulletPoint('')
+    setDesktopAudioStatus({ connection: 'disconnected', listening: false })
+    setMicAudioStatus({ connection: 'disconnected', listening: false })
+    setWsStatus('disconnected')
+    setWsError(null)
+
+    // Finally, close the app
     window.api.closeApp?.()
   }
 
