@@ -988,46 +988,54 @@ function App(): JSX.Element {
             gap: 2
           }}
         >
-          <Box
-            sx={{
-              border: '2px solid #10b981',
-              width: '30%',
-              margin: '0 auto',
-              justifyContent: 'center',
-              textAlign: 'center',
-              borderRadius: 2,
-              p: 1,
-              position: 'relative',
-              bgcolor: 'rgba(16, 185, 129, 0.1)'
-            }}
-          >
-            <Typography
-              variant="subtitle1"
-              sx={{
-                position: 'absolute',
-                top: -12,
-                left: 16,
-                bgcolor: 'rgba(16, 185, 129, 0.1)',
-                px: 1
-              }}
-            >
-              Eye Contact
-            </Typography>
-            <AnimatePresence mode="wait">
-              {bulletPoints[0] && (
-                <motion.div
-                  key={bulletPoints[0]}
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
-                >
-                  <ListItemText primary={bulletPoints[0]} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </Box>
-                <Box sx={{ 
+
+
+<Box
+  component="fieldset"
+  sx={{
+    border: '2px solid #10b981',
+    borderRadius: 2,
+    width: '30%',
+    margin: '0 auto',
+    position: 'relative',
+    textAlign: 'center',
+    px: 2,
+    pt: 1.5,
+    pb: 1.5,
+    bgcolor: 'rgba(16, 185, 129, 0.1)',
+  }}
+>
+  <legend
+    style={{
+      marginRight: '0 auto',
+      textAlign: 'center',
+      padding: '0 8px',
+      fontSize: '0.875rem',
+      color: '#10b981',
+      lineHeight: 1,
+    }}
+  >
+    Eye Contact
+  </legend>
+
+  <AnimatePresence mode="wait">
+    {bulletPoints[0] && (
+      <motion.div
+        key={bulletPoints[0]}
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+      >
+        <ListItemText primary={bulletPoints[0]} />
+      </motion.div>
+    )}
+  </AnimatePresence>
+</Box>
+
+
+
+      <Box sx={{ 
         display: 'flex', 
         flexDirection: 'row', 
         gap: 1, 
