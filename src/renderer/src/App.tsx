@@ -60,6 +60,7 @@ function App(): JSX.Element {
   const [responseText, setResponseText] = useState('')
   const [bulletPoints, setBulletPoints] = useState<string[]>([])
   const [currentBulletPoint, setCurrentBulletPoint] = useState('')
+  const [deletedBulletPoints, setDeletedBulletPoints] = useState<string[]>([]) // Stack to track deleted points
   const [currentPage, setCurrentPage] = useState('main')
   const [homeTab, setHomeTab] = useState(0)
   const [currentSession, setCurrentSession] = useState<CurrentSession | null>(null)
@@ -248,6 +249,22 @@ function App(): JSX.Element {
       window.removeEventListener('clickThroughToggled', handleClickThroughToggle as EventListener)
     }
   }, [])
+
+  // Add Ctrl+Z event listener
+  useEffect(() => {
+    const cleanup = window.api.onCtrlZ(() => {
+      handleManualDeleteEyeContact()
+    })
+    return cleanup
+  }, [bulletPoints, deletedBulletPoints])
+
+  // Add Ctrl+X event listener
+  useEffect(() => {
+    const cleanup = window.api.onCtrlX(() => {
+      handleRestoreLastDeleted()
+    })
+    return cleanup
+  }, [bulletPoints, deletedBulletPoints])
 
   const connectWebSocket = () => {
     // Prevent multiple connection attempts at the same time
@@ -931,10 +948,104 @@ function App(): JSX.Element {
     setError(null)
   }
 
+  // Add these new functions before the renderResponseOutput function
+  const handleManualDeleteEyeContact = () => {
+    if (bulletPoints.length > 0) {
+      const deletedPoint = bulletPoints[0];
+      setBulletPoints(prev => prev.slice(1));
+      setDeletedBulletPoints(prev => [...prev, deletedPoint]);
+    }
+  };
+
+  const handleRestoreLastDeleted = () => {
+    if (deletedBulletPoints.length > 0) {
+      const pointToRestore = deletedBulletPoints[deletedBulletPoints.length - 1];
+      setBulletPoints(prev => [pointToRestore, ...prev]);
+      setDeletedBulletPoints(prev => prev.slice(0, -1));
+    }
+  };
+
   // Replace the response-output div with this new component
   const renderResponseOutput = () => (
     <Box className="response-output" sx={{ mt: 3 }}>
-      <h3>OpenAI Response:</h3>
+            <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: 1, 
+        mb: 2,
+        p: 2,
+        borderRadius: 1,
+        bgcolor: 'rgba(255, 255, 255, 0.05)'
+      }}>
+        <Typography variant="subtitle2" sx={{ color: 'text.secondary' }}>
+          Bullet Point Commands:
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ 
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: 1,
+              px: 1,
+              py: 0.5,
+              fontSize: '0.8rem'
+            }}>
+              {commandKey} + X
+            </Box>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              Delete eye contact point
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ 
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: 1,
+              px: 1,
+              py: 0.5,
+              fontSize: '0.8rem'
+            }}>
+              {commandKey} + Z
+            </Box>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              Restore last deleted point
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <h3>OpenAI Response:</h3>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <button 
+            onClick={handleManualDeleteEyeContact}
+            disabled={bulletPoints.length === 0}
+            style={{
+              padding: '4px 8px',
+              borderRadius: '4px',
+              border: '1px solid #ef4444',
+              backgroundColor: 'transparent',
+              color: '#ef4444',
+              cursor: bulletPoints.length === 0 ? 'not-allowed' : 'pointer',
+              opacity: bulletPoints.length === 0 ? 0.5 : 1
+            }}
+          >
+            Delete Eye Contact
+          </button>
+          <button 
+            onClick={handleRestoreLastDeleted}
+            disabled={deletedBulletPoints.length === 0}
+            style={{
+              padding: '4px 8px',
+              borderRadius: '4px',
+              border: '1px solid #10b981',
+              backgroundColor: 'transparent',
+              color: '#10b981',
+              cursor: deletedBulletPoints.length === 0 ? 'not-allowed' : 'pointer',
+              opacity: deletedBulletPoints.length === 0 ? 0.5 : 1
+            }}
+          >
+            Restore Last Deleted
+          </button>
+        </Box>
+      </Box>
       {bulletPoints.length === 0 && !currentBulletPoint ? (
         <Paper
           sx={{

@@ -423,6 +423,20 @@ function setupIpcHandlers(): void {
       throw error
     }
   })
+
+  // Handle Ctrl+Z command
+  ipcMain.on('ctrl-z-pressed', () => {
+    if (mainWindow) {
+      mainWindow.webContents.send('ctrl-z-event')
+    }
+  })
+
+  // Handle Ctrl+X command
+  ipcMain.on('ctrl-x-pressed', () => {
+    if (mainWindow) {
+      mainWindow.webContents.send('ctrl-x-event')
+    }
+  })
 }
 
 // This method will be called when Electron has finished
@@ -438,6 +452,15 @@ app.whenReady().then(() => {
   // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
+  })
+
+  // Register Ctrl+Z global shortcut
+  globalShortcut.register('CommandOrControl+Z', () => {
+    ipcMain.emit('ctrl-z-pressed')
+  })
+
+  globalShortcut.register('CommandOrControl+X', () => {
+    ipcMain.emit('ctrl-x-pressed')
   })
 
   // IPC test

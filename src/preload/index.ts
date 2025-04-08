@@ -18,7 +18,23 @@ const api = {
   saveResumeFile: (id: string, fileData: ArrayBuffer, fileExtension: string) =>
     ipcRenderer.invoke('save-resume-file', id, fileData, fileExtension),
   readResumeFile: (filePath: string) => ipcRenderer.invoke('read-resume-file', filePath),
-  deleteResume: (filePath: string) => ipcRenderer.invoke('delete-resume', filePath)
+  deleteResume: (filePath: string) => ipcRenderer.invoke('delete-resume', filePath),
+
+  // Ctrl+Z event handler
+  onCtrlZ: (callback: () => void) => {
+    ipcRenderer.on('ctrl-z-event', callback)
+    return () => {
+      ipcRenderer.removeListener('ctrl-z-event', callback)
+    }
+  },
+
+  // Ctrl+X event handler
+  onCtrlX: (callback: () => void) => {
+    ipcRenderer.on('ctrl-x-event', callback)
+    return () => {
+      ipcRenderer.removeListener('ctrl-x-event', callback)
+    }
+  }
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
