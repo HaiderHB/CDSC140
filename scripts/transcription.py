@@ -283,9 +283,9 @@ def initialize_recorder():
         try:
             recorder = CustomAudioToTextRecorder(
                 spinner=False,
-                model='base.en',
+                model='tiny.en',
                 use_main_model_for_realtime=True,
-                # compute_type='int8_float32',
+                compute_type='int8_float32',
                 language='en',
                 silero_sensitivity=0.6,
                 webrtc_sensitivity=2,
