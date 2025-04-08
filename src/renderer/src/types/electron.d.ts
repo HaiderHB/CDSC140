@@ -3,7 +3,7 @@ interface OpenAIAPI {
   openAIWebRtcSdp: (sdp: string) => Promise<any>
   transcribeAudio: (audioData: Uint8Array) => Promise<string>
   closeApp: () => void
-  onCtrlZ: (callback: () => void) => () => void
+  onCtrlM: (callback: () => void) => () => void
 }
 
 interface ServerResult {

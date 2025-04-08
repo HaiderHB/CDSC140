@@ -114,6 +114,7 @@ try {
 function toggleWindowVisibility() {
   if (!mainWindow) return;
 
+  const MIN_OPACITY = 0.2;
   windowVisible = !windowVisible;
 
   if (windowVisible) {
@@ -122,8 +123,8 @@ function toggleWindowVisibility() {
     mainWindow.setOpacity(windowOpacity);
     mainWindow.setIgnoreMouseEvents(false, { forward: true });
   } else {
-    // Make window invisible
-    windowOpacity = 0;
+    // Make window invisible but not completely
+    windowOpacity = MIN_OPACITY;
     mainWindow.setOpacity(windowOpacity);
     mainWindow.setIgnoreMouseEvents(true, { forward: true });
   }
@@ -133,16 +134,18 @@ function toggleWindowVisibility() {
 function adjustOpacity(increase: boolean) {
   if (!mainWindow) return;
 
+  const MIN_OPACITY = 0.2;
+
   if (increase) {
     windowOpacity = Math.min(1, windowOpacity + 0.1);
   } else {
-    windowOpacity = Math.max(0, windowOpacity - 0.1);
+    windowOpacity = Math.max(MIN_OPACITY, windowOpacity - 0.1);
   }
 
   mainWindow.setOpacity(windowOpacity);
 
   // Update mouse events based on opacity
-  if (windowOpacity < 0.1) {
+  if (windowOpacity <= MIN_OPACITY) {
     mainWindow.setIgnoreMouseEvents(true, { forward: true });
   } else {
     mainWindow.setIgnoreMouseEvents(false, { forward: true });
@@ -218,8 +221,8 @@ function createWindow(): void {
 
   // Register keyboard shortcuts for window control
 
-  // Toggle visibility (Ctrl+B)
-  globalShortcut.register('CommandOrControl+B', toggleWindowVisibility);
+  // Toggle visibility (Ctrl+H)
+  // globalShortcut.register('CommandOrControl+H', toggleWindowVisibility);
 
   // Adjust opacity (Ctrl+[ and Ctrl+])
   globalShortcut.register('CommandOrControl+[', () => adjustOpacity(false));
@@ -231,15 +234,15 @@ function createWindow(): void {
   globalShortcut.register('CommandOrControl+Up', () => moveWindow('up'));
   globalShortcut.register('CommandOrControl+Down', () => moveWindow('down'));
 
-  // Reset view
-  globalShortcut.register('CommandOrControl+R', () => {
-    if (!mainWindow) return;
-    mainWindow.setPosition(100, 100, true);
-    windowOpacity = 0.8;
-    mainWindow.setOpacity(windowOpacity);
-    windowVisible = true;
-    mainWindow.setIgnoreMouseEvents(false, { forward: true });
-  });
+  // // Reset view
+  // globalShortcut.register('CommandOrControl+R', () => {
+  //   if (!mainWindow) return;
+  //   mainWindow.setPosition(100, 100, true);
+  //   windowOpacity = 0.8;
+  //   mainWindow.setOpacity(windowOpacity);
+  //   windowVisible = true;
+  //   mainWindow.setIgnoreMouseEvents(false, { forward: true });
+  // });
 
   // Quit app
   globalShortcut.register('CommandOrControl+Q', () => {
@@ -424,17 +427,17 @@ function setupIpcHandlers(): void {
     }
   })
 
-  // Handle Ctrl+Z command
-  ipcMain.on('ctrl-z-pressed', () => {
+  // Handle Ctrl+M command
+  ipcMain.on('ctrl-m-pressed', () => {
     if (mainWindow) {
-      mainWindow.webContents.send('ctrl-z-event')
+      mainWindow.webContents.send('ctrl-m-event')
     }
   })
 
-  // Handle Ctrl+X command
-  ipcMain.on('ctrl-x-pressed', () => {
+  // Handle Ctrl+N command
+  ipcMain.on('ctrl-n-pressed', () => {
     if (mainWindow) {
-      mainWindow.webContents.send('ctrl-x-event')
+      mainWindow.webContents.send('ctrl-n-event')
     }
   })
 }
@@ -454,13 +457,13 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // Register Ctrl+Z global shortcut
-  globalShortcut.register('CommandOrControl+Z', () => {
-    ipcMain.emit('ctrl-z-pressed')
+  // Register Ctrl+M global shortcut
+  globalShortcut.register('CommandOrControl+M', () => {
+    ipcMain.emit('ctrl-m-pressed')
   })
 
-  globalShortcut.register('CommandOrControl+X', () => {
-    ipcMain.emit('ctrl-x-pressed')
+  globalShortcut.register('CommandOrControl+N', () => {
+    ipcMain.emit('ctrl-n-pressed')
   })
 
   // IPC test

@@ -20,19 +20,19 @@ const api = {
   readResumeFile: (filePath: string) => ipcRenderer.invoke('read-resume-file', filePath),
   deleteResume: (filePath: string) => ipcRenderer.invoke('delete-resume', filePath),
 
-  // Ctrl+Z event handler
-  onCtrlZ: (callback: () => void) => {
-    ipcRenderer.on('ctrl-z-event', callback)
+  // Ctrl+M event handler
+  onCtrlM: (callback: () => void) => {
+    ipcRenderer.on('ctrl-m-event', callback)
     return () => {
-      ipcRenderer.removeListener('ctrl-z-event', callback)
+      ipcRenderer.removeListener('ctrl-m-event', callback)
     }
   },
 
-  // Ctrl+X event handler
-  onCtrlX: (callback: () => void) => {
-    ipcRenderer.on('ctrl-x-event', callback)
+  // Ctrl+N event handler
+  onCtrlN: (callback: () => void) => {
+    ipcRenderer.on('ctrl-n-event', callback)
     return () => {
-      ipcRenderer.removeListener('ctrl-x-event', callback)
+      ipcRenderer.removeListener('ctrl-n-event', callback)
     }
   }
 }

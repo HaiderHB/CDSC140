@@ -250,21 +250,21 @@ function App(): JSX.Element {
     }
   }, [])
 
-  // Add Ctrl+Z event listener
-  useEffect(() => {
-    const cleanup = window.api.onCtrlZ(() => {
-      handleManualDeleteEyeContact()
-    })
-    return cleanup
-  }, [bulletPoints, deletedBulletPoints])
+  // Add Ctrl+M event listener
+    useEffect(() => {
+      const cleanup = window.api.onCtrlM(() => {
+        handleManualDeleteEyeContact()
+      })
+      return cleanup
+    }, [bulletPoints, deletedBulletPoints])
 
-  // Add Ctrl+X event listener
-  useEffect(() => {
-    const cleanup = window.api.onCtrlX(() => {
-      handleRestoreLastDeleted()
-    })
-    return cleanup
-  }, [bulletPoints, deletedBulletPoints])
+    // Add Ctrl+N event listener
+    useEffect(() => {
+      const cleanup = window.api.onCtrlN(() => {
+        handleRestoreLastDeleted()
+      })
+      return cleanup
+    }, [bulletPoints, deletedBulletPoints])
 
   const connectWebSocket = () => {
     // Prevent multiple connection attempts at the same time
@@ -968,84 +968,6 @@ function App(): JSX.Element {
   // Replace the response-output div with this new component
   const renderResponseOutput = () => (
     <Box className="response-output" sx={{ mt: 3 }}>
-            <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        gap: 1, 
-        mb: 2,
-        p: 2,
-        borderRadius: 1,
-        bgcolor: 'rgba(255, 255, 255, 0.05)'
-      }}>
-        <Typography variant="subtitle2" sx={{ color: 'text.secondary' }}>
-          Bullet Point Commands:
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ 
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: 1,
-              px: 1,
-              py: 0.5,
-              fontSize: '0.8rem'
-            }}>
-              {commandKey} + X
-            </Box>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              Delete eye contact point
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ 
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: 1,
-              px: 1,
-              py: 0.5,
-              fontSize: '0.8rem'
-            }}>
-              {commandKey} + Z
-            </Box>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              Restore last deleted point
-            </Typography>
-          </Box>
-        </Box>
-      </Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <h3>OpenAI Response:</h3>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <button 
-            onClick={handleManualDeleteEyeContact}
-            disabled={bulletPoints.length === 0}
-            style={{
-              padding: '4px 8px',
-              borderRadius: '4px',
-              border: '1px solid #ef4444',
-              backgroundColor: 'transparent',
-              color: '#ef4444',
-              cursor: bulletPoints.length === 0 ? 'not-allowed' : 'pointer',
-              opacity: bulletPoints.length === 0 ? 0.5 : 1
-            }}
-          >
-            Delete Eye Contact
-          </button>
-          <button 
-            onClick={handleRestoreLastDeleted}
-            disabled={deletedBulletPoints.length === 0}
-            style={{
-              padding: '4px 8px',
-              borderRadius: '4px',
-              border: '1px solid #10b981',
-              backgroundColor: 'transparent',
-              color: '#10b981',
-              cursor: deletedBulletPoints.length === 0 ? 'not-allowed' : 'pointer',
-              opacity: deletedBulletPoints.length === 0 ? 0.5 : 1
-            }}
-          >
-            Restore Last Deleted
-          </button>
-        </Box>
-      </Box>
       {bulletPoints.length === 0 && !currentBulletPoint ? (
         <Paper
           sx={{
@@ -1105,6 +1027,24 @@ function App(): JSX.Element {
               )}
             </AnimatePresence>
           </Box>
+                <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'row', 
+        gap: 1, 
+        p: 2,
+        borderRadius: 1,
+        // bgcolor: 'rgba(255, 255, 255, 0.05)',
+        justifyContent: 'space-around',
+        color: 'text.secondary',
+        fontSize: '14px'
+      }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1,  }}>
+              Complete Current - <Key>{commandKey}</Key> + <Key>M</Key>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+               Restore Previous - <Key>{commandKey}</Key> + <Key>N</Key>
+          </Box>
+      </Box>
           <List sx={{ py: 0 }}>
             <AnimatePresence initial={false}>
               {bulletPoints.slice(1).map((point) => (
@@ -1342,6 +1282,24 @@ function App(): JSX.Element {
     window.api.closeApp?.()
   }
 
+  const Key = ({ children }: { children: React.ReactNode }) => (
+    <Box
+      component="span"
+      sx={{
+        display: 'inline-block',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        borderRadius: '4px',
+        px: 0.8,
+        py: 0.3,
+        fontSize: '0.65rem',
+        fontFamily: "sans-serif",
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      }}
+    >
+      {children}
+    </Box>
+  );
+
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const commandKey = isMac ? '⌘' : 'Ctrl';
 
@@ -1405,20 +1363,27 @@ function App(): JSX.Element {
           left: 0,
           right: 0,
           display: 'flex',
-          justifyContent: 'space-around',
+          justifyContent: 'space-around', // spreads items evenly
           alignItems: 'center',
           height: '30px',
           backgroundColor: 'rgba(21, 21, 21, 0.9)',
           color: '#909090',
           zIndex: 9999,
           fontSize: '12px',
-          paddingBottom: 0, 
+          px: 2,
         }}
       >
-        <Box sx={{display: 'flex', alignItems: 'center', gap: 1, paddingBottom: 1}}>Hide - <Box sx={{ fontWeight: 'bold', border: '1px solid #909090', paddingX: 1, borderRadius: 1 }}>{commandKey} + B</Box></Box>
-        <Box sx={{display: 'flex', alignItems: 'center', gap: 1, paddingBottom: 1}}>Move - <Box sx={{ fontWeight: 'bold', border: '1px solid #909090', paddingX: 1, borderRadius: 1 }}>{commandKey} + ← ↑ → ↓ </Box></Box>
-        <Box sx={{display: 'flex', alignItems: 'center', gap: 1, paddingBottom: 1}}>Opacity - <Box sx={{ fontWeight: 'bold', border: '1px solid #909090', paddingX: 1, borderRadius: 1 }}>{commandKey} +  </Box></Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          Opacity – <Key>{commandKey}</Key> + <Key>&#91;</Key> <Key>&#93;</Key>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          Move – <Key>{commandKey}</Key> + <Key>←</Key> <Key>↑</Key> <Key>→</Key> <Key>↓</Key>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          Quit – <Key>{commandKey}</Key> + <Key>Q</Key>
+        </Box>
       </Box>
+
 
       {/* Add top margin to account for title bar */}
       <Box sx={{ pt: 3 }}>
