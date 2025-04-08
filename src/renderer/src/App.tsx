@@ -43,7 +43,7 @@ interface AudioStatus {
   listening: boolean;
 }
 
-const TEST_MODE = true
+const TEST_MODE = false
 
 function App(): JSX.Element {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -1001,7 +1001,7 @@ function App(): JSX.Element {
   sx={{
     border: '2px solid #10b981',
     borderRadius: 2,
-    width: '30%',
+    width: '35%',
     margin: '0 auto',
     position: 'relative',
     textAlign: 'center',
@@ -1214,25 +1214,36 @@ function App(): JSX.Element {
       gap: 4,
       justifyContent: 'center'
     }}>
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 1,
-        p: 2,
-        borderRadius: 1,
-        bgcolor: 'rgba(255, 255, 255, 0.05)'
-      }}>
+      <Paper
+        elevation={0}
+        sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1,
+          p: 2,
+          borderRadius: 1,
+          bgcolor: 'rgba(30, 41, 59, 0.4)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          transition: 'all 0.2s ease',
+          '&:hover': {
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+          }
+        }}
+      >
         <Box sx={{ 
           display: 'flex',
           alignItems: 'center',
-          color: desktopAudioStatus.connection === 'disconnected' 
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          mr: 1,
+          bgcolor: desktopAudioStatus.connection === 'disconnected' 
             ? '#ef4444' 
             : desktopAudioStatus.listening 
               ? '#10b981' 
-              : '#f59e0b'
-        }}>
-          {desktopAudioStatus.connection === 'disconnected' ? '✕' : '✓'}
-        </Box>
+              : '#f59e0b',
+          boxShadow: desktopAudioStatus.listening ? '0 0 0 4px rgba(16, 185, 129, 0.2)' : 'none'
+        }}/>
         <Typography variant="subtitle2">
           System Audio: {
             desktopAudioStatus.connection === 'disconnected' 
@@ -1242,27 +1253,38 @@ function App(): JSX.Element {
                 : 'Connected, No Audio'
           }
         </Typography>
-      </Box>
+      </Paper>
 
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 1,
-        p: 2,
-        borderRadius: 1,
-        bgcolor: 'rgba(255, 255, 255, 0.05)'
-      }}>
+      <Paper
+        elevation={0}
+        sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1,
+          p: 2,
+          borderRadius: 1,
+          bgcolor: 'rgba(30, 41, 59, 0.4)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          transition: 'all 0.2s ease',
+          '&:hover': {
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+          }
+        }}
+      >
         <Box sx={{ 
           display: 'flex',
           alignItems: 'center',
-          color: micAudioStatus.connection === 'disconnected' 
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          mr: 1,
+          bgcolor: micAudioStatus.connection === 'disconnected' 
             ? '#ef4444' 
             : micAudioStatus.listening 
               ? '#10b981' 
-              : '#f59e0b'
-        }}>
-          {micAudioStatus.connection === 'disconnected' ? '✕' : '✓'}
-        </Box>
+              : '#f59e0b',
+          boxShadow: micAudioStatus.listening ? '0 0 0 4px rgba(16, 185, 129, 0.2)' : 'none'
+        }}/>
         <Typography variant="subtitle2">
           Microphone: {
             micAudioStatus.connection === 'disconnected' 
@@ -1272,7 +1294,7 @@ function App(): JSX.Element {
                 : 'Connected, No Audio'
           }
         </Typography>
-      </Box>
+      </Paper>
     </Box>
   )
 
@@ -1514,13 +1536,45 @@ function App(): JSX.Element {
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 2, flexShrink: 0 }}>
               <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 1 }}>
                 {!isCapturing ? (
-                  <button onClick={startCapture} className="capture-button">
+                  <Button
+                    onClick={startCapture}
+                    variant="contained"
+                    sx={{
+                      bgcolor: 'rgba(233, 104, 12, 0.9)',
+                      color: 'white',
+                      px: 3,
+                      py: 1,
+                      fontSize: '1rem',
+                      fontWeight: 500,
+                      boxShadow: '0 4px 14px rgba(233, 104, 12, 0.4)',
+                      '&:hover': {
+                        bgcolor: 'rgba(233, 104, 12, 1)',
+                        boxShadow: '0 6px 20px rgba(233, 104, 12, 0.6)',
+                      }
+                    }}
+                  >
                     Start Capture
-                  </button>
+                  </Button>
                 ) : (
-                  <button onClick={stopCapture} className="stop-button">
+                  <Button
+                    onClick={stopCapture}
+                    variant="contained"
+                    sx={{
+                      bgcolor: 'rgba(239, 68, 68, 0.9)',
+                      color: 'white',
+                      px: 3,
+                      py: 1,
+                      fontSize: '1rem',
+                      fontWeight: 500,
+                      boxShadow: '0 4px 14px rgba(239, 68, 68, 0.4)',
+                      '&:hover': {
+                        bgcolor: 'rgba(239, 68, 68, 1)',
+                        boxShadow: '0 6px 20px rgba(239, 68, 68, 0.6)',
+                      }
+                    }}
+                  >
                     Stop Capture
-                  </button>
+                  </Button>
                 )}
               </Box>
               {isListening && (
