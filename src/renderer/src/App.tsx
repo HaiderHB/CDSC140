@@ -984,7 +984,11 @@ function App(): JSX.Element {
             textAlign: 'center'
           }}
         >
-          <span className="no-response">No response yet. Click "Start Capture" to begin.</span>
+          {isCapturing ? (
+            <span className="no-response">Bullet points complete. Waiting for next question...</span>
+          ) : (
+            <span className="no-response">Click "Start Capture" to begin.</span>
+          )}
         </Paper>
       ) : (
         <Box
@@ -1135,8 +1139,11 @@ function App(): JSX.Element {
         mt: 3,
         p: 2,
         borderRadius: 2,
-        bgcolor: 'rgba(30, 41, 59, 0.3)',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+        bgcolor: 'background.paper',
+        backgroundImage: 'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
+        backdropFilter: 'blur(12px)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
         maxWidth: '800px',
         margin: '0 auto',
         display: isCapturing || transcriptText ? 'block' : 'none'
@@ -1222,8 +1229,10 @@ function App(): JSX.Element {
           gap: 1,
           p: 2,
           borderRadius: 1,
-          bgcolor: 'rgba(30, 41, 59, 0.4)',
+          backgroundImage: 'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
+          backdropFilter: 'blur(12px)',
           border: '1px solid rgba(255, 255, 255, 0.1)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',    
           transition: 'all 0.2s ease',
           '&:hover': {
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
@@ -1262,9 +1271,10 @@ function App(): JSX.Element {
           alignItems: 'center', 
           gap: 1,
           p: 2,
-          borderRadius: 1,
-          bgcolor: 'rgba(30, 41, 59, 0.4)',
+          backgroundImage: 'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
+          backdropFilter: 'blur(12px)',
           border: '1px solid rgba(255, 255, 255, 0.1)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
           transition: 'all 0.2s ease',
           '&:hover': {
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
