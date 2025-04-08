@@ -12,7 +12,11 @@ import {
   Tab,
   Tabs,
   Typography,
+  Collapse,
+  Button,
 } from '@mui/material'
+import VisibilityIcon from '@mui/icons-material/Visibility'
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
 import './App.css'
 import SetupConfigPage from './components/SetupConfigPage'
 import SessionList from './components/SessionList'
@@ -85,6 +89,8 @@ function App(): JSX.Element {
     connection: 'disconnected',
     listening: false
   });
+
+  const [showCommands, setShowCommands] = useState(false);
 
   const {
     sessions,
@@ -1037,71 +1043,86 @@ function App(): JSX.Element {
 
       <Box sx={{ 
         display: 'flex', 
-        flexDirection: 'row', 
-        gap: 1, 
-        p: 2,
+        flexDirection: 'column',
+        width: '100%',
         borderRadius: 1,
-        // bgcolor: 'rgba(255, 255, 255, 0.05)',
-        justifyContent: 'space-around',
         color: 'text.secondary',
-        fontSize: '14px'
+        bgcolor: 'rgba(255, 255, 255, 0.05)',
       }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1,  }}>
-              Complete Current - <Key>{commandKey}</Key> + <Key>M</Key>
+        <Collapse in={showCommands}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'row', 
+            gap: 1, 
+            p: 2,
+            borderRadius: 1,
+            // bgcolor: 'rgba(255, 255, 255, 0.05)',
+            justifyContent: 'space-around',
+            fontSize: '14px'
+          }}>
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'start', gap: 1,  }}>
+                  Skip Current - <Key>{commandKey}</Key> + <Key>M</Key>
+              </Box>
+              <Box sx={{ fontSize: '9px', marginTop: '8px' }}>
+                * Manual option — AI does this by automatically as you speak.
+              </Box>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'start', gap: 1 }}>
+                Restore Previous - <Key>{commandKey}</Key> + <Key>N</Key>
+            </Box>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-               Restore Previous - <Key>{commandKey}</Key> + <Key>N</Key>
-          </Box>
+        </Collapse>
       </Box>
-          <List sx={{ py: 0 }}>
-            <AnimatePresence initial={false}>
-              {bulletPoints.slice(1).map((point) => (
-                <motion.div
-                  key={point}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ 
-                    opacity: 1, 
-                    y: 0,
-                    transition: { duration: 0.3, ease: "easeOut" } 
-                  }}
-                  exit={{ 
-                    opacity: 0, 
-                    y: -20, 
-                    transition: { duration: 0.2, ease: "easeIn" }
-                  }}
-                  layout
-                >
-                  <ListItem
-                    disablePadding
-                    sx={{
-                      borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                      px: 2,
-                      py: 1
-                    }}
-                  >
-                    <ListItemText primary={point} />
-                  </ListItem>
-                </motion.div>
-              ))}
-              {currentBulletPoint && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 0.7, y: 0 }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
-                >
-                  <ListItem
-                    sx={{
-                      borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                      py: 1,
-                      px: 2
-                    }}
-                  >
-                    <ListItemText primary={currentBulletPoint} sx={{ fontStyle: 'italic' }} />
-                  </ListItem>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </List>
+      <List sx={{ py: 0 }}>
+        <AnimatePresence initial={false}>
+          {bulletPoints.slice(1).map((point) => (
+            <motion.div
+              key={point}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ 
+                opacity: 1, 
+                y: 0,
+                transition: { duration: 0.3, ease: "easeOut" } 
+              }}
+              exit={{ 
+                opacity: 0, 
+                y: -20, 
+                transition: { duration: 0.2, ease: "easeIn" }
+              }}
+              layout
+            >
+              <ListItem
+                disablePadding
+                sx={{
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  px: 2,
+                  py: 1
+                }}
+              >
+                <ListItemText primary={point} />
+              </ListItem>
+            </motion.div>
+          ))}
+          {currentBulletPoint && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 0.7, y: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <ListItem
+                sx={{
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  py: 1,
+                  px: 2
+                }}
+              >
+                <ListItemText primary={currentBulletPoint} sx={{ fontStyle: 'italic' }} />
+              </ListItem>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </List>
         </Box>
       )}
     </Box>
@@ -1341,7 +1362,7 @@ function App(): JSX.Element {
           paddingX: 2
         }}
       >
-        <Typography variant="subtitle2" sx={{ color: isClickThrough ? 'transparent' : 'white' }}>
+        <Typography variant="subtitle2" sx={{ color: isClickThrough ? 'transparent' : 'white', opacity: 0.7 }}>
           Interview Speaker
         </Typography>
         <Box sx={{ display: 'flex', WebkitAppRegion: 'no-drag' }}>
@@ -1373,12 +1394,13 @@ function App(): JSX.Element {
           display: 'flex',
           justifyContent: 'space-around', // spreads items evenly
           alignItems: 'center',
-          height: '30px',
+          height: '34px',
           backgroundColor: 'rgba(21, 21, 21, 0.9)',
           color: '#909090',
           zIndex: 9999,
           fontSize: '12px',
-          px: 2,
+          px: 4,
+          pb: 1
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1450,7 +1472,7 @@ function App(): JSX.Element {
             }}
           >
             {/* Back Button - Top Left */}
-            <Box sx={{ display: 'flex', alignItems: 'center', p: 1, flexShrink: 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', p: 1, flexShrink: 0, justifyContent: 'space-between' }}>
               <Box
                 onClick={() => setCurrentPage('main')}
                 sx={{
@@ -1458,10 +1480,28 @@ function App(): JSX.Element {
                   display: 'flex',
                   alignItems: 'center',
                   color: '#E9680C',
+                  marginTop: '10px',
                   '&:hover': { color: '#FF8534' }
                 }}
               >
                 ← Back to Home
+              </Box>
+              
+              {/* Commands toggle - Top Right */}
+              <Box 
+                onClick={() => setShowCommands(!showCommands)}
+                sx={{
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  color: 'text.secondary',
+                  marginTop: '10px',
+                  '&:hover': { color: 'white' }
+                }}
+              >
+                {showCommands ? <VisibilityIcon fontSize="small" sx={{ fontSize: '0.85rem' }} /> : <VisibilityOffIcon fontSize="small" sx={{ fontSize: '0.85rem' }} />}
+                <Typography variant="caption" sx={{ fontSize: '0.85rem' }}>Commands</Typography>
               </Box>
             </Box>
 
