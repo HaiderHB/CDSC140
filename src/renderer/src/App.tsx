@@ -880,14 +880,14 @@ function App(): JSX.Element {
     }
   }
 
-  const handleSaveConfig = async (config: { jobDescription: string; selectedResume: string }) => {
+  const handleSaveConfig = async (config: { sessionName?: string; jobDescription: string; selectedResume: string }) => {
     try {
       // Find the selected resume
       const selectedResume = resumes.find((r) => r.id === config.selectedResume)
 
       // Create a new session
       const newSession = await addSession({
-        name: `Interview Session - ${new Date().toLocaleDateString()}`,
+        name: config.sessionName || `Interview Session - ${new Date().toLocaleDateString()}`,
         jobDescription: config.jobDescription,
         resumeId: selectedResume?.id,
         resumeName: selectedResume?.name
@@ -1353,7 +1353,7 @@ function App(): JSX.Element {
         width: '100%', // Remove max width constraint
         background: isClickThrough
           ? 'transparent'
-          : 'linear-gradient(to bottom right, rgba(15, 23, 42, 0.4), rgba(30, 41, 59, 0.4))',
+          : 'linear-gradient(to bottom right, rgba(21, 21, 21, 0.4), rgba(37, 37, 37, 0.4))',
         backdropFilter: 'blur(2px)',
         p: 3
       }}
@@ -1369,14 +1369,14 @@ function App(): JSX.Element {
           justifyContent: 'space-between',
           alignItems: 'center',
           height: '28px',
-          backgroundColor: isClickThrough ? 'transparent' : 'rgba(15, 23, 42, 0.6)',
+          backgroundColor: isClickThrough ? 'transparent' : 'rgba(21, 21, 21, 0.9)',
           WebkitAppRegion: 'drag', // Make draggable on macOS and Windows
-          zIndex: 9999,
+          zIndex: 9998,
           paddingX: 2
         }}
       >
         <Typography variant="subtitle2" sx={{ color: isClickThrough ? 'transparent' : 'white' }}>
-          Interview Assistant
+          Interview Speaker
         </Typography>
         <Box sx={{ display: 'flex', WebkitAppRegion: 'no-drag' }}>
           {' '}
@@ -1407,17 +1407,17 @@ function App(): JSX.Element {
           display: 'flex',
           justifyContent: 'space-around',
           alignItems: 'center',
-          height: '24px',
-          backgroundColor: 'rgba(15, 23, 42, 0.8)',
-          color: 'lightblue', // Light-ish blue text color
-          zIndex: 9998,
+          height: '30px',
+          backgroundColor: 'rgba(21, 21, 21, 0.9)',
+          color: '#909090',
+          zIndex: 9999,
           fontSize: '12px',
-          paddingX: 2
+          paddingBottom: 0, 
         }}
       >
-        <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>Hide - <Box sx={{ fontWeight: 'bold', border: '1px solid white', paddingX: 1, borderRadius: 1 }}>{commandKey} + B</Box></Box>
-        <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>Move - <Box sx={{ fontWeight: 'bold', border: '1px solid white', paddingX: 1, borderRadius: 1 }}>{commandKey} + ← ↑ → ↓ </Box></Box>
-        <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>Opacity - <Box sx={{ fontWeight: 'bold', border: '1px solid white', paddingX: 1, borderRadius: 1 }}>{commandKey} +  </Box></Box>
+        <Box sx={{display: 'flex', alignItems: 'center', gap: 1, paddingBottom: 1}}>Hide - <Box sx={{ fontWeight: 'bold', border: '1px solid #909090', paddingX: 1, borderRadius: 1 }}>{commandKey} + B</Box></Box>
+        <Box sx={{display: 'flex', alignItems: 'center', gap: 1, paddingBottom: 1}}>Move - <Box sx={{ fontWeight: 'bold', border: '1px solid #909090', paddingX: 1, borderRadius: 1 }}>{commandKey} + ← ↑ → ↓ </Box></Box>
+        <Box sx={{display: 'flex', alignItems: 'center', gap: 1, paddingBottom: 1}}>Opacity - <Box sx={{ fontWeight: 'bold', border: '1px solid #909090', paddingX: 1, borderRadius: 1 }}>{commandKey} +  </Box></Box>
       </Box>
 
       {/* Add top margin to account for title bar */}
@@ -1434,7 +1434,7 @@ function App(): JSX.Element {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              bgcolor: 'rgba(15, 23, 42, 0.3)',
+              bgcolor: 'rgba(21, 21, 21, 0.3)',
               zIndex: 9999
             }}
           >
@@ -1451,7 +1451,7 @@ function App(): JSX.Element {
               mx: 'auto',
               borderRadius: 2,
               overflow: 'hidden',
-              boxShadow: '0 0 40px rgba(99, 102, 241, 0.2)'
+              boxShadow: '0 0 40px rgba(233, 104, 12, 0.2)'
             }}
           >
             <SetupConfigPage
@@ -1484,8 +1484,8 @@ function App(): JSX.Element {
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  color: '#6366f1',
-                  '&:hover': { color: '#818cf8' }
+                  color: '#E9680C',
+                  '&:hover': { color: '#FF8534' }
                 }}
               >
                 ← Back to Home

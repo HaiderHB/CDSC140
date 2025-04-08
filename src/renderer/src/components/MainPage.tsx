@@ -32,7 +32,7 @@ function MainPage({ onNewSession, onLoadSession }: MainPageProps) {
               fontWeight: 700
             }}
           >
-            Interview Assistant
+            Interview Speaker
           </Typography>
         </motion.div>
 

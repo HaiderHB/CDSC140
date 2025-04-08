@@ -4,22 +4,22 @@ const theme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#6366f1',
-      light: '#818cf8',
-      dark: '#4f46e5'
+      main: '#E9680C',
+      light: '#FF8534',
+      dark: '#C45400'
     },
     secondary: {
-      main: '#ec4899',
-      light: '#f472b6',
-      dark: '#db2777'
+      main: '#444444',
+      light: '#666666',
+      dark: '#333333'
     },
     background: {
-      default: '#0f172a',
-      paper: '#1e293b'
+      default: '#151515',
+      paper: '#252525'
     },
     text: {
-      primary: '#f8fafc',
-      secondary: '#cbd5e1'
+      primary: '#f8f8f8',
+      secondary: '#d0d0d0'
     }
   },
   typography: {
@@ -43,22 +43,22 @@ const theme = createTheme({
         root: {
           textTransform: 'none',
           padding: '10px 20px',
-          backgroundImage: 'linear-gradient(to right, #4f46e5, #6366f1)',
-          boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)',
+          backgroundImage: 'linear-gradient(to right, #C45400, #E9680C)',
+          boxShadow: '0 4px 14px rgba(233, 104, 12, 0.4)',
           '&:hover': {
-            backgroundImage: 'linear-gradient(to right, #4338ca, #4f46e5)',
-            boxShadow: '0 6px 20px rgba(99, 102, 241, 0.6)'
+            backgroundImage: 'linear-gradient(to right, #B34800, #D05800)',
+            boxShadow: '0 6px 20px rgba(233, 104, 12, 0.6)'
           }
         },
         contained: {
           backdropFilter: 'blur(4px)'
         },
         containedSecondary: {
-          backgroundImage: 'linear-gradient(to right, #db2777, #ec4899)',
-          boxShadow: '0 4px 14px rgba(236, 72, 153, 0.4)',
+          backgroundImage: 'linear-gradient(to right, #333333, #444444)',
+          boxShadow: '0 4px 14px rgba(68, 68, 68, 0.4)',
           '&:hover': {
-            backgroundImage: 'linear-gradient(to right, #be185d, #db2777)',
-            boxShadow: '0 6px 20px rgba(236, 72, 153, 0.6)'
+            backgroundImage: 'linear-gradient(to right, #222222, #333333)',
+            boxShadow: '0 6px 20px rgba(68, 68, 68, 0.6)'
           }
         }
       }
@@ -67,10 +67,10 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage:
-            'linear-gradient(to bottom right, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9))',
+            'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
           backdropFilter: 'blur(12px)',
           border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 8px 32px rgba(31, 38, 135, 0.2)'
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)'
         }
       }
     },
@@ -85,9 +85,9 @@ const theme = createTheme({
               borderColor: 'rgba(255, 255, 255, 0.3)'
             },
             '&.Mui-focused fieldset': {
-              borderColor: '#6366f1'
+              borderColor: '#E9680C'
             },
-            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            backgroundColor: 'rgba(21, 21, 21, 0.6)',
             backdropFilter: 'blur(4px)'
           }
         }
@@ -96,7 +96,7 @@ const theme = createTheme({
     MuiTabs: {
       styleOverrides: {
         indicator: {
-          background: 'linear-gradient(to right, #6366f1, #ec4899)',
+          background: 'linear-gradient(to right, #E9680C, #FF8534)',
           height: 3
         }
       }

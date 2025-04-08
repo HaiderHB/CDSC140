@@ -145,7 +145,7 @@ function ResumeManager({ onAddResume, resumes = [], onDeleteResume }: ResumeMana
           sx={{
             p: 4,
             textAlign: 'center',
-            bgcolor: 'rgba(30, 41, 59, 0.4)',
+            bgcolor: 'background.paper',
             borderRadius: 2,
             border: '1px dashed rgba(255, 255, 255, 0.1)'
           }}
@@ -166,11 +166,13 @@ function ResumeManager({ onAddResume, resumes = [], onDeleteResume }: ResumeMana
               <Paper
                 sx={{
                   p: 2,
-                  bgcolor: 'rgba(30, 41, 59, 0.6)',
-                  backdropFilter: 'blur(4px)',
+                  backgroundImage: 'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
+                  backdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
                   transition: 'all 0.2s ease',
                   '&:hover': {
-                    bgcolor: 'rgba(30, 41, 59, 0.8)'
+                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.3)'
                   }
                 }}
               >
@@ -193,7 +195,7 @@ function ResumeManager({ onAddResume, resumes = [], onDeleteResume }: ResumeMana
                         label={resume.fileType.split('/')[1]?.toUpperCase() || 'FILE'}
                         size="small"
                         sx={{
-                          bgcolor: 'rgba(99, 102, 241, 0.2)',
+                          bgcolor: 'rgba(233, 104, 12, 0.2)',
                           color: 'primary.light'
                         }}
                       />
@@ -205,8 +207,8 @@ function ResumeManager({ onAddResume, resumes = [], onDeleteResume }: ResumeMana
                         sx={{
                           color: 'rgba(255,255,255,0.6)',
                           '&:hover': {
-                            color: '#ec4899',
-                            bgcolor: 'rgba(236, 72, 153, 0.1)'
+                            color: 'primary.main',
+                            bgcolor: 'rgba(233, 104, 12, 0.1)'
                           }
                         }}
                       >
