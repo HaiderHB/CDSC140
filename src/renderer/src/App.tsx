@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, ElementType } from 'react'
 import {
   Box,
   CircularProgress,
@@ -14,6 +14,13 @@ import {
   Typography,
   Collapse,
   Button,
+  Modal,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
+  FormControl,
+  FormLabel,
+  Grid
 } from '@mui/material'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
@@ -26,6 +33,7 @@ import { useDataPersistence } from './hooks/useDataPersistence'
 import { useSpeechRecognition } from './hooks/useSpeechRecognition'
 import Fuse from 'fuse.js'
 import { motion, AnimatePresence } from 'framer-motion' // Import AnimatePresence
+import { SpritzReader, RapidRead } from './components/SpeedReaders'
 
 // Use Session type from useDataPersistence for all session-related data
 interface CurrentSession {
@@ -40,14 +48,16 @@ interface CurrentSession {
 
 // Add these new interfaces near the top of the file
 interface AudioStatus {
-  connection: 'disconnected' | 'connected';
-  listening: boolean;
+  connection: 'disconnected' | 'connected'
+  listening: boolean
 }
+
+type ReadingMode = 'normal' | 'rapid' | 'spritz'
 
 const TEST_MODE = false
 
 const testBulletPoints = [
-  "Example Text. Keep your eyes on the red dot and read using your peripheral vision.",
+  'Example Text. Keep your eyes on the red dot and read using your peripheral vision.',
   'I have 5 years of experience in software development',
   "I'm proficient in Python and JavaScript",
   "I've worked on large-scale distributed systems",
@@ -94,13 +104,16 @@ function App(): JSX.Element {
   const [desktopAudioStatus, setDesktopAudioStatus] = useState<AudioStatus>({
     connection: 'disconnected',
     listening: false
-  });
+  })
   const [micAudioStatus, setMicAudioStatus] = useState<AudioStatus>({
     connection: 'disconnected',
     listening: false
-  });
+  })
 
-  const [showCommands, setShowCommands] = useState(true);
+  const [showCommands, setShowCommands] = useState(true)
+
+  const [readingMode, setReadingMode] = useState<ReadingMode>('normal')
+  const [showReadingModeModal, setShowReadingModeModal] = useState(false)
 
   const {
     sessions,
@@ -260,20 +273,22 @@ function App(): JSX.Element {
   }, [])
 
   // Add Ctrl+M event listener
-    useEffect(() => {
-      const cleanup = window.api.onCtrlM(() => {
-        handleManualDeleteEyeContact()
-      })
-      return cleanup
-    }, [bulletPoints, deletedBulletPoints])
+  useEffect(() => {
+    // @ts-ignore
+    const cleanup = window.api.onCtrlM(() => {
+      handleManualDeleteEyeContact()
+    })
+    return cleanup
+  }, [bulletPoints, deletedBulletPoints])
 
-    // Add Ctrl+N event listener
-    useEffect(() => {
-      const cleanup = window.api.onCtrlN(() => {
-        handleRestoreLastDeleted()
-      })
-      return cleanup
-    }, [bulletPoints, deletedBulletPoints])
+  // Add Ctrl+N event listener
+  useEffect(() => {
+    // @ts-ignore
+    const cleanup = window.api.onCtrlN(() => {
+      handleRestoreLastDeleted()
+    })
+    return cleanup
+  }, [bulletPoints, deletedBulletPoints])
 
   const connectWebSocket = () => {
     // Prevent multiple connection attempts at the same time
@@ -435,26 +450,27 @@ function App(): JSX.Element {
       })
 
       // Update connection status when streams are obtained
-      setDesktopAudioStatus(prev => ({ ...prev, connection: 'connected' }));
-      setMicAudioStatus(prev => ({ ...prev, connection: 'connected' }));
+      setDesktopAudioStatus((prev) => ({ ...prev, connection: 'connected' }))
+      setMicAudioStatus((prev) => ({ ...prev, connection: 'connected' }))
 
       // Set up audio analysis for desktop audio
       audioContextRef.current = new AudioContext()
       analyserRef.current = audioContextRef.current.createAnalyser()
       const source = audioContextRef.current.createMediaStreamSource(desktopStream)
       source.connect(analyserRef.current)
-      
+
       // Set up audio monitoring for desktop
-      const desktopProcessor = audioContextRef.current.createScriptProcessor(2048, 1, 1);
+      const desktopProcessor = audioContextRef.current.createScriptProcessor(2048, 1, 1)
       desktopProcessor.addEventListener('audioprocess', (e) => {
-        const input = e.inputBuffer.getChannelData(0);
-        const sum = input.reduce((acc, val) => acc + Math.abs(val), 0);
-        if (sum > 0.01) { // Threshold for detecting audio
-          setDesktopAudioStatus(prev => ({ ...prev, listening: true }));
+        const input = e.inputBuffer.getChannelData(0)
+        const sum = input.reduce((acc, val) => acc + Math.abs(val), 0)
+        if (sum > 0.01) {
+          // Threshold for detecting audio
+          setDesktopAudioStatus((prev) => ({ ...prev, listening: true }))
         }
-      });
-      source.connect(desktopProcessor);
-      desktopProcessor.connect(audioContextRef.current.destination);
+      })
+      source.connect(desktopProcessor)
+      desktopProcessor.connect(audioContextRef.current.destination)
 
       // Set up audio analysis for microphone
       micAudioContextRef.current = new AudioContext()
@@ -463,16 +479,17 @@ function App(): JSX.Element {
       micSource.connect(micAnalyserRef.current)
 
       // Set up audio monitoring for microphone
-      const micProcessor = micAudioContextRef.current.createScriptProcessor(2048, 1, 1);
+      const micProcessor = micAudioContextRef.current.createScriptProcessor(2048, 1, 1)
       micProcessor.addEventListener('audioprocess', (e) => {
-        const input = e.inputBuffer.getChannelData(0);
-        const sum = input.reduce((acc, val) => acc + Math.abs(val), 0);
-        if (sum > 0.01) { // Threshold for detecting audio
-          setMicAudioStatus(prev => ({ ...prev, listening: true }));
+        const input = e.inputBuffer.getChannelData(0)
+        const sum = input.reduce((acc, val) => acc + Math.abs(val), 0)
+        if (sum > 0.01) {
+          // Threshold for detecting audio
+          setMicAudioStatus((prev) => ({ ...prev, listening: true }))
         }
-      });
-      micSource.connect(micProcessor);
-      micProcessor.connect(micAudioContextRef.current.destination);
+      })
+      micSource.connect(micProcessor)
+      micProcessor.connect(micAudioContextRef.current.destination)
 
       streamRef.current = desktopStream
       micStreamRef.current = micStream
@@ -486,8 +503,7 @@ function App(): JSX.Element {
       startVisualization()
       startMicVisualization()
 
-
-        const sessionInfo = currentSession
+      const sessionInfo = currentSession
         ? `Use the following job description and resume to help answer the questions. Job Description: ${currentSession.jobDescription}, Resume: ${currentSession.resumeContent}`
         : ''
       console.log('--------sessionInfo', sessionInfo)
@@ -552,8 +568,8 @@ function App(): JSX.Element {
       console.error('Error starting capture:', error)
       setError(`Failed to start capture: ${error?.message || 'Unknown error'}`)
       // Reset status on error
-      setDesktopAudioStatus({ connection: 'disconnected', listening: false });
-      setMicAudioStatus({ connection: 'disconnected', listening: false });
+      setDesktopAudioStatus({ connection: 'disconnected', listening: false })
+      setMicAudioStatus({ connection: 'disconnected', listening: false })
     }
   }
 
@@ -788,8 +804,8 @@ function App(): JSX.Element {
     // Don't clear transcript - keep it visible after stopping
 
     // Reset audio status
-    setDesktopAudioStatus({ connection: 'disconnected', listening: false });
-    setMicAudioStatus({ connection: 'disconnected', listening: false });
+    setDesktopAudioStatus({ connection: 'disconnected', listening: false })
+    setMicAudioStatus({ connection: 'disconnected', listening: false })
   }
 
   const startVisualization = (): void => {
@@ -898,7 +914,11 @@ function App(): JSX.Element {
     }
   }
 
-  const handleSaveConfig = async (config: { sessionName?: string; jobDescription: string; selectedResume: string }) => {
+  const handleSaveConfig = async (config: {
+    sessionName?: string
+    jobDescription: string
+    selectedResume: string
+  }) => {
     try {
       // Find the selected resume
       const selectedResume = resumes.find((r) => r.id === config.selectedResume)
@@ -971,35 +991,46 @@ function App(): JSX.Element {
   // Add these new functions before the renderResponseOutput function
   const handleManualDeleteEyeContact = () => {
     if (bulletPoints.length > 0) {
-      const deletedPoint = bulletPoints[0];
-      setBulletPoints(prev => prev.slice(1));
-      setDeletedBulletPoints(prev => [...prev, deletedPoint]);
+      const deletedPoint = bulletPoints[0]
+      setBulletPoints((prev) => prev.slice(1))
+      setDeletedBulletPoints((prev) => [...prev, deletedPoint])
     }
-  };
+  }
 
   const handleRestoreLastDeleted = () => {
     if (deletedBulletPoints.length > 0) {
-      const pointToRestore = deletedBulletPoints[deletedBulletPoints.length - 1];
-      setBulletPoints(prev => [pointToRestore, ...prev]);
-      setDeletedBulletPoints(prev => prev.slice(0, -1));
+      const pointToRestore = deletedBulletPoints[deletedBulletPoints.length - 1]
+      setBulletPoints((prev) => [pointToRestore, ...prev])
+      setDeletedBulletPoints((prev) => prev.slice(0, -1))
     }
-  };
+  }
 
-  const eyeContactBox = (text: string) => {
+  const eyeContactBox = (text: string, mode: ReadingMode = readingMode, width: string = '30%') => {
+    const formatText = (text: string, mode: ReadingMode): React.ReactNode => {
+      if (!text) return ''
+      switch (mode) {
+        case 'rapid':
+          return <RapidRead text={text} />
+        case 'spritz':
+          return <SpritzReader text={text} wpm={400} />
+        default:
+          return text
+      }
+    }
+
     return (
       <Box
         component="fieldset"
         sx={{
           border: '2px solid #10b981',
           borderRadius: 2,
-          width: '35%',
-          margin: '0 auto',
-          position: 'relative',
+          width: width,
+          mx: 'auto',
           textAlign: 'center',
           px: 2,
           pt: 1.5,
           pb: 1.5,
-          bgcolor: 'rgba(16, 185, 129, 0.1)',
+          bgcolor: 'rgba(16, 185, 129, 0.1)'
         }}
       >
         <legend
@@ -1009,7 +1040,7 @@ function App(): JSX.Element {
             padding: '0 8px',
             fontSize: '0.875rem',
             color: '#10b981',
-            lineHeight: 1,
+            lineHeight: 1
           }}
         >
           Eye Contact
@@ -1024,58 +1055,209 @@ function App(): JSX.Element {
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
             >
-              <ListItemText primary={text} />
+              {mode === 'spritz' ? (
+                <Box
+                  sx={{
+                    position: 'relative',
+                    height: '60px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      position: 'relative',
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '2px',
+                        height: '1.2em',
+                        backgroundColor: '#10b981',
+                        opacity: 0.7,
+                        animation: 'focusPoint 2s ease-in-out infinite'
+                      }
+                    }}
+                  >
+                    <SpritzReader text={text} wpm={400} />
+                  </Typography>
+                </Box>
+              ) : (
+                <ListItemText primary={<div>{formatText(text, mode)}</div>} />
+              )}
             </motion.div>
           )}
         </AnimatePresence>
       </Box>
     )
   }
-  
+
+  const renderReadingModeModal = () => (
+    <Modal
+      open={showReadingModeModal}
+      onClose={() => setShowReadingModeModal(false)}
+      aria-labelledby="reading-mode-modal"
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+    >
+      <Box
+        sx={{
+          bgcolor: 'background.paper',
+          borderRadius: 2,
+          p: 4,
+          maxWidth: 900,
+          width: '90%',
+          maxHeight: '90vh',
+          overflow: 'auto'
+        }}
+      >
+        <Typography variant="h6" sx={{ mb: 3 }}>
+          Speed Reading Mode
+        </Typography>
+
+        <FormControl component="fieldset" sx={{ width: '100%' }}>
+          <FormLabel component="legend" sx={{ mb: 2 }}>
+            Select Reading Mode
+          </FormLabel>
+          <RadioGroup
+            row
+            value={readingMode}
+            onChange={(e) => setReadingMode(e.target.value as ReadingMode)}
+            sx={{ width: '100%' }}
+          >
+            <Grid
+              container
+              spacing={3}
+              direction="row"
+              justifyContent="space-between"
+              wrap="nowrap"
+            >
+              {['normal', 'rapid', 'spritz'].map((mode) => (
+                <Grid
+                  key={mode}
+                  item
+                  sx={{
+                    width: '33.33%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center'
+                  }}
+                >
+                  <FormControlLabel
+                    value={mode}
+                    control={<Radio />}
+                    label={
+                      mode === 'normal'
+                        ? 'Normal'
+                        : mode === 'rapid'
+                          ? 'Rapid Read'
+                          : 'Spritz Reading'
+                    }
+                  />
+                  {eyeContactBox(
+                    mode === 'normal'
+                      ? 'This is how normal text will appear in the eye contact box.'
+                      : mode === 'rapid'
+                        ? 'This is how rapid reading text will appear with bold red first halves.'
+                        : 'This is how spritz reading will appear with centered focus point.',
+                    mode as ReadingMode,
+                    '100%'
+                  )}
+                  <Typography
+                    variant="body2"
+                    sx={{ mt: 1, textAlign: 'center', color: 'text.secondary' }}
+                  >
+                    {mode === 'normal'
+                      ? 'Regular reading with no enhancements.'
+                      : mode === 'rapid'
+                        ? 'Bolds the start of each word to guide your eyes. Increases reading speed by 200%.'
+                        : 'Displays one word at a time with a fixed focus. Increases reading speed by 400%.'}
+                  </Typography>
+                </Grid>
+              ))}
+            </Grid>
+          </RadioGroup>
+        </FormControl>
+
+        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+          <Button onClick={() => setShowReadingModeModal(false)} variant="contained">
+            Close
+          </Button>
+        </Box>
+      </Box>
+    </Modal>
+  )
 
   // Replace the response-output div with this new component
   const renderResponseOutput = () => (
     <Box className="response-output" sx={{ mt: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+        <Button
+          onClick={() => setShowReadingModeModal(true)}
+          variant="outlined"
+          size="small"
+          sx={{
+            color: '#10b981',
+            borderColor: '#10b981',
+            '&:hover': {
+              borderColor: '#10b981',
+              bgcolor: 'rgba(16, 185, 129, 0.1)'
+            }
+          }}
+        >
+          Speed Reading
+        </Button>
+      </Box>
 
-      {isCapturing ? (
-        eyeContactBox("Waiting for next question...")
-      ) : (
-        eyeContactBox(bulletPoints[0] || "Example text to minimise eye tracking. Click 'Start Capture' to begin session.")
-      )}
-
-
+      {isCapturing
+        ? eyeContactBox('Waiting for next question...')
+        : eyeContactBox(
+            bulletPoints[0] ||
+              "Example text to minimise eye tracking. Click 'Start Capture' to begin session."
+          )}
 
       {/* Commands */}
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'column',
-        width: '100%',
-        borderRadius: 1,
-        color: 'text.secondary',
-        bgcolor: 'rgba(255, 255, 255, 0.05)',
-        mt: 2
-      }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          width: '100%',
+          borderRadius: 1,
+          color: 'text.secondary',
+          bgcolor: 'rgba(255, 255, 255, 0.05)',
+          mt: 2
+        }}
+      >
         <Collapse in={showCommands}>
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'row', 
-            gap: 1, 
-            p: 2,
-            borderRadius: 1,
-            // bgcolor: 'rgba(255, 255, 255, 0.05)',
-            justifyContent: 'space-around',
-            fontSize: '14px'
-          }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'row',
+              gap: 1,
+              p: 2,
+              borderRadius: 1,
+              // bgcolor: 'rgba(255, 255, 255, 0.05)',
+              justifyContent: 'space-around',
+              fontSize: '14px'
+            }}
+          >
             <Box>
-              <Box sx={{ display: 'flex', alignItems: 'start', gap: 1,  }}>
-                  Skip Current - <Key>{commandKey}</Key> + <Key>M</Key>
+              <Box sx={{ display: 'flex', alignItems: 'start', gap: 1 }}>
+                Skip Current - <Key>{commandKey}</Key> + <Key>M</Key>
               </Box>
               <Box sx={{ fontSize: '9px', marginTop: '8px' }}>
                 * Manual option — AI does this by automatically as you speak.
               </Box>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'start', gap: 1 }}>
-                Restore Previous - <Key>{commandKey}</Key> + <Key>N</Key>
+              Restore Previous - <Key>{commandKey}</Key> + <Key>N</Key>
             </Box>
           </Box>
         </Collapse>
@@ -1087,15 +1269,15 @@ function App(): JSX.Element {
             <motion.div
               key={point}
               initial={{ opacity: 0, y: 20 }}
-              animate={{ 
-                opacity: 1, 
+              animate={{
+                opacity: 1,
                 y: 0,
-                transition: { duration: 0.3, ease: "easeOut" } 
+                transition: { duration: 0.3, ease: 'easeOut' }
               }}
-              exit={{ 
-                opacity: 0, 
-                y: -20, 
-                transition: { duration: 0.2, ease: "easeIn" }
+              exit={{
+                opacity: 0,
+                y: -20,
+                transition: { duration: 0.2, ease: 'easeIn' }
               }}
               layout
             >
@@ -1115,7 +1297,7 @@ function App(): JSX.Element {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 0.7, y: 0 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
             >
               <ListItem
                 sx={{
@@ -1130,7 +1312,7 @@ function App(): JSX.Element {
           )}
         </AnimatePresence>
       </List>
-        </Box>
+    </Box>
   )
 
   const renderTranscriptionDisplay = () => (
@@ -1141,7 +1323,8 @@ function App(): JSX.Element {
         p: 2,
         borderRadius: 2,
         bgcolor: 'background.paper',
-        backgroundImage: 'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
+        backgroundImage:
+          'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
         backdropFilter: 'blur(12px)',
         border: '1px solid rgba(255, 255, 255, 0.1)',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
@@ -1214,65 +1397,27 @@ function App(): JSX.Element {
   )
 
   const renderAudioStatus = () => (
-    <Box className="audio-status-container" sx={{ 
-      width: '100%', 
-      maxWidth: '800px', 
-      mx: 'auto',
-      display: 'flex',
-      gap: 4,
-      justifyContent: 'center'
-    }}>
+    <Box
+      className="audio-status-container"
+      sx={{
+        width: '100%',
+        maxWidth: '800px',
+        mx: 'auto',
+        display: 'flex',
+        gap: 4,
+        justifyContent: 'center'
+      }}
+    >
       <Paper
         elevation={0}
-        sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
           gap: 1,
           p: 2,
           borderRadius: 1,
-          backgroundImage: 'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
-          backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',    
-          transition: 'all 0.2s ease',
-          '&:hover': {
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
-          }
-        }}
-      >
-        <Box sx={{ 
-          display: 'flex',
-          alignItems: 'center',
-          width: 8,
-          height: 8,
-          borderRadius: '50%',
-          mr: 1,
-          bgcolor: desktopAudioStatus.connection === 'disconnected' 
-            ? '#ef4444' 
-            : desktopAudioStatus.listening 
-              ? '#10b981' 
-              : '#f59e0b',
-          boxShadow: desktopAudioStatus.listening ? '0 0 0 4px rgba(16, 185, 129, 0.2)' : 'none'
-        }}/>
-        <Typography variant="subtitle2">
-          System Audio: {
-            desktopAudioStatus.connection === 'disconnected' 
-              ? 'Not Connected' 
-              : desktopAudioStatus.listening 
-                ? 'Connected, Listening' 
-                : 'Connected, No Audio'
-          }
-        </Typography>
-      </Paper>
-
-      <Paper
-        elevation={0}
-        sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: 1,
-          p: 2,
-          backgroundImage: 'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
+          backgroundImage:
+            'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
           backdropFilter: 'blur(12px)',
           border: '1px solid rgba(255, 255, 255, 0.1)',
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
@@ -1282,28 +1427,75 @@ function App(): JSX.Element {
           }
         }}
       >
-        <Box sx={{ 
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            mr: 1,
+            bgcolor:
+              desktopAudioStatus.connection === 'disconnected'
+                ? '#ef4444'
+                : desktopAudioStatus.listening
+                  ? '#10b981'
+                  : '#f59e0b',
+            boxShadow: desktopAudioStatus.listening ? '0 0 0 4px rgba(16, 185, 129, 0.2)' : 'none'
+          }}
+        />
+        <Typography variant="subtitle2">
+          System Audio:{' '}
+          {desktopAudioStatus.connection === 'disconnected'
+            ? 'Not Connected'
+            : desktopAudioStatus.listening
+              ? 'Connected, Listening'
+              : 'Connected, No Audio'}
+        </Typography>
+      </Paper>
+
+      <Paper
+        elevation={0}
+        sx={{
           display: 'flex',
           alignItems: 'center',
-          width: 8,
-          height: 8,
-          borderRadius: '50%',
-          mr: 1,
-          bgcolor: micAudioStatus.connection === 'disconnected' 
-            ? '#ef4444' 
-            : micAudioStatus.listening 
-              ? '#10b981' 
-              : '#f59e0b',
-          boxShadow: micAudioStatus.listening ? '0 0 0 4px rgba(16, 185, 129, 0.2)' : 'none'
-        }}/>
-        <Typography variant="subtitle2">
-          Microphone: {
-            micAudioStatus.connection === 'disconnected' 
-              ? 'Not Connected' 
-              : micAudioStatus.listening 
-                ? 'Connected, Listening' 
-                : 'Connected, No Audio'
+          gap: 1,
+          p: 2,
+          backgroundImage:
+            'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
+          backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+          transition: 'all 0.2s ease',
+          '&:hover': {
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
           }
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            mr: 1,
+            bgcolor:
+              micAudioStatus.connection === 'disconnected'
+                ? '#ef4444'
+                : micAudioStatus.listening
+                  ? '#10b981'
+                  : '#f59e0b',
+            boxShadow: micAudioStatus.listening ? '0 0 0 4px rgba(16, 185, 129, 0.2)' : 'none'
+          }}
+        />
+        <Typography variant="subtitle2">
+          Microphone:{' '}
+          {micAudioStatus.connection === 'disconnected'
+            ? 'Not Connected'
+            : micAudioStatus.listening
+              ? 'Connected, Listening'
+              : 'Connected, No Audio'}
         </Typography>
       </Paper>
     </Box>
@@ -1354,16 +1546,16 @@ function App(): JSX.Element {
         px: 0.8,
         py: 0.3,
         fontSize: '0.65rem',
-        fontFamily: "sans-serif",
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        fontFamily: 'sans-serif',
+        backgroundColor: 'rgba(255, 255, 255, 0.05)'
       }}
     >
       {children}
     </Box>
-  );
+  )
 
-  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-  const commandKey = isMac ? '⌘' : 'Ctrl';
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const commandKey = isMac ? '⌘' : 'Ctrl'
 
   return (
     <Box
@@ -1395,7 +1587,10 @@ function App(): JSX.Element {
           paddingX: 2
         }}
       >
-        <Typography variant="subtitle2" sx={{ color: isClickThrough ? 'transparent' : 'white', opacity: 0.7 }}>
+        <Typography
+          variant="subtitle2"
+          sx={{ color: isClickThrough ? 'transparent' : 'white', opacity: 0.7 }}
+        >
           Interview Speaker
         </Typography>
         <Box sx={{ display: 'flex', WebkitAppRegion: 'no-drag' }}>
@@ -1447,9 +1642,10 @@ function App(): JSX.Element {
         </Box>
       </Box>
 
-
       {/* Add top margin to account for title bar */}
-      <Box sx={{ pt: '32px' }}> {/* Increased padding to account for title (28px) + instructions (34px) */}
+      <Box sx={{ pt: '32px' }}>
+        {' '}
+        {/* Increased padding to account for title (28px) + instructions (34px) */}
         {/* Loading indicator */}
         {(loadingSessions || loadingResumes) && (
           <Box
@@ -1469,9 +1665,7 @@ function App(): JSX.Element {
             <CircularProgress color="primary" size={60} />
           </Box>
         )}
-
         {currentPage === 'main' && renderMainPage()}
-
         {currentPage === 'setup' && (
           <Box
             sx={{
@@ -1502,21 +1696,29 @@ function App(): JSX.Element {
               position: 'relative',
               // Account for fixed header elements in height calculation
               height: 'calc(100vh - 28px - 34px - 48px)',
-              flexGrow: 1, 
-              overflowY: 'auto', 
-              px: 3, 
+              flexGrow: 1,
+              overflowY: 'auto',
+              px: 3,
               py: 2,
               // Add more space at the top to clear the instruction bar
               '&::-webkit-scrollbar': {
-                display: 'block',
+                display: 'block'
               },
               '&::-webkit-scrollbar-track': {
-                marginTop: '34px',
+                marginTop: '34px'
               }
             }}
           >
             {/* Back Button - Top Left */}
-            <Box sx={{ display: 'flex', alignItems: 'center', p: 1, flexShrink: 0, justifyContent: 'space-between' }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                p: 1,
+                flexShrink: 0,
+                justifyContent: 'space-between'
+              }}
+            >
               <Box
                 onClick={() => setCurrentPage('main')}
                 sx={{
@@ -1530,9 +1732,9 @@ function App(): JSX.Element {
               >
                 ← Back to Home
               </Box>
-              
+
               {/* Commands toggle - Top Right */}
-              <Box 
+              <Box
                 onClick={() => setShowCommands(!showCommands)}
                 sx={{
                   cursor: 'pointer',
@@ -1544,18 +1746,32 @@ function App(): JSX.Element {
                   '&:hover': { color: 'white' }
                 }}
               >
-                {showCommands ? <VisibilityIcon fontSize="small" sx={{ fontSize: '0.85rem' }} /> : <VisibilityOffIcon fontSize="small" sx={{ fontSize: '0.85rem' }} />}
-                <Typography variant="caption" sx={{ fontSize: '0.85rem' }}>Commands</Typography>
+                {showCommands ? (
+                  <VisibilityIcon fontSize="small" sx={{ fontSize: '0.85rem' }} />
+                ) : (
+                  <VisibilityOffIcon fontSize="small" sx={{ fontSize: '0.85rem' }} />
+                )}
+                <Typography variant="caption" sx={{ fontSize: '0.85rem' }}>
+                  Commands
+                </Typography>
               </Box>
             </Box>
 
             {/* Bullet Points - Top Middle */}
             <Box sx={{ width: '100%', maxWidth: '700px', mx: 'auto', px: 2, flexShrink: 0 }}>
-              {renderResponseOutput()} 
+              {renderResponseOutput()}
             </Box>
 
             {/* Controls - Centered below bullet points */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 2, flexShrink: 0 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                p: 2,
+                flexShrink: 0
+              }}
+            >
               <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 1 }}>
                 {!isCapturing ? (
                   <Button
@@ -1571,7 +1787,7 @@ function App(): JSX.Element {
                       boxShadow: '0 4px 14px rgba(233, 104, 12, 0.4)',
                       '&:hover': {
                         bgcolor: 'rgba(233, 104, 12, 1)',
-                        boxShadow: '0 6px 20px rgba(233, 104, 12, 0.6)',
+                        boxShadow: '0 6px 20px rgba(233, 104, 12, 0.6)'
                       }
                     }}
                   >
@@ -1591,7 +1807,7 @@ function App(): JSX.Element {
                       boxShadow: '0 4px 14px rgba(239, 68, 68, 0.4)',
                       '&:hover': {
                         bgcolor: 'rgba(239, 68, 68, 1)',
-                        boxShadow: '0 6px 20px rgba(239, 68, 68, 0.6)',
+                        boxShadow: '0 6px 20px rgba(239, 68, 68, 0.6)'
                       }
                     }}
                   >
@@ -1614,12 +1830,10 @@ function App(): JSX.Element {
               {renderTranscriptionDisplay()}
             </Box>
 
-            {/* Audio Visualizers - Centered within scrollable area */} 
+            {/* Audio Visualizers - Centered within scrollable area */}
             {renderAudioStatus()}
-
           </Box>
         )}
-
         {/* Error Snackbar */}
         <Snackbar
           open={!!error}
@@ -1632,6 +1846,9 @@ function App(): JSX.Element {
           </Alert>
         </Snackbar>
       </Box>
+
+      {/* Add the reading mode modal */}
+      {renderReadingModeModal()}
     </Box>
   )
 }

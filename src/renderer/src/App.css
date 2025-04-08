@@ -3,3 +3,7 @@
 * {
   margin: 0;
 }
+
+.spritz-text::before {
+  animation: focusPoint 2s ease-in-out infinite;
+}
