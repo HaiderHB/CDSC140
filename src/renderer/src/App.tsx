@@ -43,7 +43,7 @@ interface AudioStatus {
   listening: boolean;
 }
 
-const TEST_MODE = false
+const TEST_MODE = true
 
 function App(): JSX.Element {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -90,7 +90,7 @@ function App(): JSX.Element {
     listening: false
   });
 
-  const [showCommands, setShowCommands] = useState(false);
+  const [showCommands, setShowCommands] = useState(true);
 
   const {
     sessions,
@@ -1448,7 +1448,7 @@ function App(): JSX.Element {
 
 
       {/* Add top margin to account for title bar */}
-      <Box sx={{ pt: 3 }}>
+      <Box sx={{ pt: '32px' }}> {/* Increased padding to account for title (28px) + instructions (34px) */}
         {/* Loading indicator */}
         {(loadingSessions || loadingResumes) && (
           <Box
@@ -1498,9 +1498,20 @@ function App(): JSX.Element {
               // Use Flexbox for overall layout
               display: 'flex',
               flexDirection: 'column',
-              // Calculate height: viewport height - title bar height - parent padding (p: 3 => 2 * 24px = 48px)
-              height: 'calc(100vh - 28px - 48px)',
-              overflow: 'hidden' // Hide overflow at the main container level
+              position: 'relative',
+              // Account for fixed header elements in height calculation
+              height: 'calc(100vh - 28px - 34px - 48px)',
+              flexGrow: 1, 
+              overflowY: 'auto', 
+              px: 3, 
+              py: 2,
+              // Add more space at the top to clear the instruction bar
+              '&::-webkit-scrollbar': {
+                display: 'block',
+              },
+              '&::-webkit-scrollbar-track': {
+                marginTop: '34px',
+              }
             }}
           >
             {/* Back Button - Top Left */}
@@ -1597,16 +1608,13 @@ function App(): JSX.Element {
               )}
             </Box>
 
-            {/* Scrollable Content Area */}
-            <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 3, py: 2 }}>
-              {/* Transcription - Centered within scrollable area */}
-              <Box sx={{ width: '100%', maxWidth: '800px', mx: 'auto', mb: 3 }}>
-                {renderTranscriptionDisplay()}
-              </Box>
+            {/* Transcription - Centered within scrollable area */}
+            <Box sx={{ width: '100%', maxWidth: '800px', mx: 'auto', mb: 3 }}>
+              {renderTranscriptionDisplay()}
+            </Box>
 
-              {/* Audio Visualizers - Centered within scrollable area */} 
-              {renderAudioStatus()}
-            </Box> {/* End Scrollable Area */}
+            {/* Audio Visualizers - Centered within scrollable area */} 
+            {renderAudioStatus()}
 
           </Box>
         )}
