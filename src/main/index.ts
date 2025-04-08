@@ -80,7 +80,7 @@ const rootPath = path.resolve(__dirname, '../../..')
 let openaiApiKey: string | undefined
 const model = 'gpt-4o-mini-realtime-preview-2024-12-17'
 
-const envFilePath = path.join(rootPath, 'whisper-node-test', '.env')
+const envFilePath = path.join(rootPath, 'interview-speaker-fresh', '.env')
 
 try {
   const envFile = readFileSync(envFilePath, 'utf8')

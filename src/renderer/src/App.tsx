@@ -1045,7 +1045,6 @@ function App(): JSX.Element {
         >
           Eye Contact
         </legend>
-
         <AnimatePresence mode="wait">
           {text && (
             <motion.div
@@ -1204,10 +1203,8 @@ function App(): JSX.Element {
           variant="outlined"
           size="small"
           sx={{
-            color: '#10b981',
-            borderColor: '#10b981',
+            color: 'white',
             '&:hover': {
-              borderColor: '#10b981',
               bgcolor: 'rgba(16, 185, 129, 0.1)'
             }
           }}
@@ -1217,7 +1214,7 @@ function App(): JSX.Element {
       </Box>
 
       {isCapturing
-        ? eyeContactBox('Waiting for next question...')
+        ? eyeContactBox(bulletPoints[0] || 'Waiting for next question...')
         : eyeContactBox(
             bulletPoints[0] ||
               "Example text to minimise eye tracking. Click 'Start Capture' to begin session."
