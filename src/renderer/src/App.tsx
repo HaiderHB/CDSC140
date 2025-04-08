@@ -35,6 +35,7 @@ interface CurrentSession {
   resumeId?: string
   resumeName?: string
   jobDescription: string
+  resumeContent?: string
 }
 
 // Add these new interfaces near the top of the file
@@ -43,7 +44,16 @@ interface AudioStatus {
   listening: boolean;
 }
 
-const TEST_MODE = true
+const TEST_MODE = false
+
+const testBulletPoints = [
+  "Example Text. Keep your eyes on the red dot and read using your peripheral vision.",
+  'I have 5 years of experience in software development',
+  "I'm proficient in Python and JavaScript",
+  "I've worked on large-scale distributed systems",
+  'I have experience with cloud platforms like AWS',
+  "I'm familiar with agile development methodologies"
+]
 
 function App(): JSX.Element {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -192,13 +202,6 @@ function App(): JSX.Element {
   // Test mode effect - set test bullet points only once
   useEffect(() => {
     if (TEST_MODE && bulletPoints.length === 0 && !bulletPointsInitializedRef.current) {
-      const testBulletPoints = [
-        'I have 5 years of experience in software development',
-        "I'm proficient in Python and JavaScript",
-        "I've worked on large-scale distributed systems",
-        'I have experience with cloud platforms like AWS',
-        "I'm familiar with agile development methodologies"
-      ]
       console.log('🔄 Test mode: Setting bullet points for semantic matching:', testBulletPoints)
       setBulletPoints(testBulletPoints)
       bulletPointsInitializedRef.current = true
@@ -483,6 +486,12 @@ function App(): JSX.Element {
       startVisualization()
       startMicVisualization()
 
+
+        const sessionInfo = currentSession
+        ? `Use the following job description and resume to help answer the questions. Job Description: ${currentSession.jobDescription}, Resume: ${currentSession.resumeContent}`
+        : ''
+      console.log('--------sessionInfo', sessionInfo)
+
       // Start speech recognition
       console.log('Starting speech recognition...')
       startListening()
@@ -577,6 +586,8 @@ function App(): JSX.Element {
       const sessionInfo = currentSession
         ? `Use the following job description and resume to help answer the questions. Job Description: ${currentSession.jobDescription}, Resume: ${currentSession.resumeName}`
         : ''
+
+      console.log('----sessionInfo', sessionInfo)
 
       const prompt = `You are a meeting assistant to help during a meeting.
         The user is being asked questions by an interviewer and you must help them answer the questions.
@@ -880,7 +891,8 @@ function App(): JSX.Element {
         date: session.date,
         jobDescription: session.jobDescription,
         resumeId: session.resumeId,
-        resumeName: session.resumeName
+        resumeName: session.resumeName,
+        resumeContent: session.resumeContent
       })
       setCurrentPage('capture')
     }
@@ -896,7 +908,8 @@ function App(): JSX.Element {
         name: config.sessionName || `Interview Session - ${new Date().toLocaleDateString()}`,
         jobDescription: config.jobDescription,
         resumeId: selectedResume?.id,
-        resumeName: selectedResume?.name
+        resumeName: selectedResume?.name,
+        resumeContent: selectedResume?.resumeContent
       })
 
       // Set as current session
@@ -906,7 +919,8 @@ function App(): JSX.Element {
         date: newSession.date,
         jobDescription: newSession.jobDescription,
         resumeId: newSession.resumeId,
-        resumeName: newSession.resumeName
+        resumeName: newSession.resumeName,
+        resumeContent: newSession.resumeContent
       })
 
       // Navigate to capture page
@@ -971,80 +985,67 @@ function App(): JSX.Element {
     }
   };
 
+  const eyeContactBox = (text: string) => {
+    return (
+      <Box
+        component="fieldset"
+        sx={{
+          border: '2px solid #10b981',
+          borderRadius: 2,
+          width: '35%',
+          margin: '0 auto',
+          position: 'relative',
+          textAlign: 'center',
+          px: 2,
+          pt: 1.5,
+          pb: 1.5,
+          bgcolor: 'rgba(16, 185, 129, 0.1)',
+        }}
+      >
+        <legend
+          style={{
+            marginRight: '0 auto',
+            textAlign: 'center',
+            padding: '0 8px',
+            fontSize: '0.875rem',
+            color: '#10b981',
+            lineHeight: 1,
+          }}
+        >
+          Eye Contact
+        </legend>
+
+        <AnimatePresence mode="wait">
+          {text && (
+            <motion.div
+              key={text}
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+            >
+              <ListItemText primary={text} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Box>
+    )
+  }
+  
+
   // Replace the response-output div with this new component
   const renderResponseOutput = () => (
     <Box className="response-output" sx={{ mt: 3 }}>
-      {bulletPoints.length === 0 && !currentBulletPoint ? (
-        <Paper
-          sx={{
-            p: 2,
-            bgcolor: 'transparent',
-            border: '1px dashed rgba(255, 255, 255, 0.2)',
-            color: 'text.secondary',
-            textAlign: 'center'
-          }}
-        >
-          {isCapturing ? (
-            <span className="no-response">Bullet points complete. Waiting for next question...</span>
-          ) : (
-            <span className="no-response">Click "Start Capture" to begin.</span>
-          )}
-        </Paper>
+
+      {isCapturing ? (
+        eyeContactBox("Waiting for next question...")
       ) : (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2
-          }}
-        >
-
-
-<Box
-  component="fieldset"
-  sx={{
-    border: '2px solid #10b981',
-    borderRadius: 2,
-    width: '35%',
-    margin: '0 auto',
-    position: 'relative',
-    textAlign: 'center',
-    px: 2,
-    pt: 1.5,
-    pb: 1.5,
-    bgcolor: 'rgba(16, 185, 129, 0.1)',
-  }}
->
-  <legend
-    style={{
-      marginRight: '0 auto',
-      textAlign: 'center',
-      padding: '0 8px',
-      fontSize: '0.875rem',
-      color: '#10b981',
-      lineHeight: 1,
-    }}
-  >
-    Eye Contact
-  </legend>
-
-  <AnimatePresence mode="wait">
-    {bulletPoints[0] && (
-      <motion.div
-        key={bulletPoints[0]}
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 20 }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
-      >
-        <ListItemText primary={bulletPoints[0]} />
-      </motion.div>
-    )}
-  </AnimatePresence>
-</Box>
+        eyeContactBox(bulletPoints[0] || "Example text to minimise eye tracking. Click 'Start Capture' to begin session.")
+      )}
 
 
 
+      {/* Commands */}
       <Box sx={{ 
         display: 'flex', 
         flexDirection: 'column',
@@ -1052,6 +1053,7 @@ function App(): JSX.Element {
         borderRadius: 1,
         color: 'text.secondary',
         bgcolor: 'rgba(255, 255, 255, 0.05)',
+        mt: 2
       }}>
         <Collapse in={showCommands}>
           <Box sx={{ 
@@ -1078,6 +1080,7 @@ function App(): JSX.Element {
           </Box>
         </Collapse>
       </Box>
+
       <List sx={{ py: 0 }}>
         <AnimatePresence initial={false}>
           {bulletPoints.slice(1).map((point) => (
@@ -1128,8 +1131,6 @@ function App(): JSX.Element {
         </AnimatePresence>
       </List>
         </Box>
-      )}
-    </Box>
   )
 
   const renderTranscriptionDisplay = () => (

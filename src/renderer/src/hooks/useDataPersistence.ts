@@ -8,6 +8,7 @@ export interface Resume {
   fileType?: string
   filePath?: string
   dateAdded?: string
+  resumeContent?: string
 }
 
 export interface Session {
@@ -17,6 +18,7 @@ export interface Session {
   jobDescription: string
   resumeId?: string
   resumeName?: string
+  resumeContent?: string
 }
 
 export interface DataPersistence {
@@ -142,6 +144,9 @@ export function useDataPersistence(): DataPersistence {
         // Save file to disk
         const filePath = await window.api.saveResumeFile(id, arrayBuffer, fileExtension)
 
+        // Read the file content
+        const fileContent = await window.api.readResumeFile(filePath)
+
         // Create resume metadata
         const newResume: Resume = {
           id,
@@ -149,7 +154,8 @@ export function useDataPersistence(): DataPersistence {
           fileName: file.name,
           fileType: file.type,
           filePath,
-          dateAdded: new Date().toISOString()
+          dateAdded: new Date().toISOString(),
+          resumeContent: fileContent
         }
 
         const updatedResumes = [...resumes, newResume]
