@@ -39,7 +39,7 @@ function startPythonScript() {
 
   // Spawn the Python process
   try {
-    console.log(`Starting Python transcription server...`)
+    console.log(`Spawning Python process...`)
 
     pythonProcess = spawn(pythonCommand, pythonArgs, {
       stdio: 'inherit'

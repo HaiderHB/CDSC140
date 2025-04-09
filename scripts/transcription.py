@@ -2,37 +2,6 @@ import sys
 import logging
 import os
 from install_packages import check_and_install_packages
-
-# Configure logging
-logging.basicConfig(
-    level=print,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)  # Explicitly set to stdout
-    ]
-)
-
-# Print a startup banner
-print("\n" + "="*50)
-print("Starting Transcription Server")
-print("="*50 + "\n")
-
-# Suppress ctranslate2 warnings
-os.environ['CT2_VERBOSE'] = '0'  # Suppress ctranslate2 logger
-logging.getLogger('ctranslate2').setLevel(logging.ERROR)
-# Suppress sentence_transformers INFO messages
-logging.getLogger('sentence_transformers').setLevel(logging.WARNING)
-
-# Check and install required packages
-check_and_install_packages([
-    {'import_name': 'websockets'},
-    {'import_name': 'RealtimeSTT'},
-    {'import_name': 'asyncio'},
-    # Added for sentence similarity
-    {'import_name': 'sentence_transformers'},
-    {'import_name': 'numpy'},
-])
-
 from RealtimeSTT import AudioToTextRecorder
 import asyncio
 import websockets
@@ -42,9 +11,16 @@ import sys
 import time
 import queue
 import numpy as np
-# Added for sentence similarity
 from sentence_transformers import SentenceTransformer, util
-from pathlib import Path
+
+# Configure logging
+logging.basicConfig(
+    level=print,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)  # Explicitly set to stdout
+    ]
+)
 
 # --- Sentence Similarity Setup ---
 MODEL_NAME = 'sentence-transformers/multi-qa-MiniLM-L6-cos-v1'
@@ -101,10 +77,6 @@ def signal_handler(sig, frame):
         logging.error(f"Error during signal handling: {e}")
     finally:
         sys.exit(0)
-
-# Register signal handlers
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
 
 # --- Sentence Similarity Functions ---
 def load_similarity_model(model_name=MODEL_NAME):
@@ -481,28 +453,88 @@ def shutdown_recorder():
         shutdown_in_progress = False
         print("Recorder shutdown completed")
 
+has_started = False
+
 async def main():
     """Main function to start the WebSocket server"""
+    global has_started
+    if has_started:
+        print("Server already started")
+        return
+    has_started = True
+
+    # Print a startup banner
+    print("\n" + "="*50)
+    print("Starting Transcription Server")
+    print("="*50 + "\n")
+
+    start_time = time.time()
+    last_step_time = start_time
+
+    # Suppress ctranslate2 warnings
+    os.environ['CT2_VERBOSE'] = '0'  # Suppress ctranslate2 logger
+    logging.getLogger('ctranslate2').setLevel(logging.ERROR)
+    # Suppress sentence_transformers INFO messages
+    logging.getLogger('sentence_transformers').setLevel(logging.WARNING)
+
+    current_time = time.time()
+    print(f"Initial setup completed in {current_time - last_step_time:.2f} seconds")
+    last_step_time = current_time
+
+    print("Checking and installing required packages...")
+    # Check and install required packages
+    check_and_install_packages([
+        {'import_name': 'websockets'},
+        {'import_name': 'RealtimeSTT'},
+        {'import_name': 'asyncio'},
+        {'import_name': 'sentence_transformers'},
+        {'import_name': 'numpy'},
+    ])
+    
+    current_time = time.time()
+    print(f"Package installation completed in {current_time - last_step_time:.2f} seconds")
+    last_step_time = current_time
+    
+    # Register signal handlers
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
     # --- Initialize Model and Recorder ---
     # Load sentence transformer model at startup
+    print("Loading sentence transformer model...")
     model_loaded = load_similarity_model()
     if not model_loaded:
         logging.error("---CRITICAL---: Failed to load sentence similarity model. Matching will be disabled.")
         # Decide if server should exit or run without matching
         # sys.exit(1) # Or just continue without matching features
 
+    current_time = time.time()
+    print(f"Model loading completed in {current_time - last_step_time:.2f} seconds")
+    last_step_time = current_time
+
     # Pre-initialize the recorder
+    print("Initializing recorder...")
     initialize_recorder()
     if not recorder_initialized:
          logging.error("---CRITICAL---: Failed to initialize recorder. Server cannot start.")
          sys.exit(1)
     # --- End Initialization ---
 
+    current_time = time.time()
+    print(f"Recorder initialization completed in {current_time - last_step_time:.2f} seconds")
+    last_step_time = current_time
+
     # Start the transcription and similarity queue processors
+    print("Starting transcription and similarity queue processors...")
     asyncio.create_task(process_transcription_queue())
     asyncio.create_task(process_similarity_queue()) # Start the new queue processor
 
+    current_time = time.time()
+    print(f"Queue processors started in {current_time - last_step_time:.2f} seconds")
+    last_step_time = current_time
+
     try:
+        print("Starting WebSocket server...")
         # Use larger buffer sizes for better performance
         server = await websockets.serve(
             handle_client, 
@@ -513,8 +545,10 @@ async def main():
             max_queue=64  # Larger queue for messages
         )
         
-        print("Transcription server successfully started")
-        print("Server listening on ws://127.0.0.1:9876")
+        current_time = time.time()
+        print(f"WebSocket server started in {current_time - last_step_time:.2f} seconds")
+        print(f"Total startup time: {current_time - start_time:.2f} seconds")
+        print("\nServer listening on ws://127.0.0.1:9876")
         print("Ready to accept WebSocket connections")
         
         # On Windows, signal handlers with asyncio can cause issues
