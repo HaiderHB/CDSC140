@@ -1,13 +1,34 @@
+import React from 'react'
 import { useState, useEffect } from 'react'
-import { Box, Typography, Button, Container, Card, CardContent } from '@mui/material'
+import { Box, Typography, Button, Container, Card, CardContent, Tabs, Tab } from '@mui/material'
 import { motion } from 'framer-motion'
+import SessionList from './SessionList'
+import ResumeManager from './ResumeManager'
+import { Session, Resume } from '../hooks/useDataPersistence'
 
 interface MainPageProps {
+  sessions: Session[]
+  resumes: Resume[]
+  homeTab: number
+  onTabChange: (event: React.SyntheticEvent, newValue: number) => void
   onNewSession: () => void
-  onLoadSession: () => void
+  onSelectSession: (sessionId: string) => void
+  onDeleteSession: (sessionId: string) => void
+  onAddResume: (resume: { name: string; file: File }) => void
+  onDeleteResume: (resumeId: string) => void
 }
 
-function MainPage({ onNewSession, onLoadSession }: MainPageProps) {
+export const MainPage: React.FC<MainPageProps> = ({
+  sessions,
+  resumes,
+  homeTab,
+  onTabChange,
+  onNewSession,
+  onSelectSession,
+  onDeleteSession,
+  onAddResume,
+  onDeleteResume
+}) => {
   return (
     <Container maxWidth="lg">
       <Box
@@ -82,7 +103,7 @@ function MainPage({ onNewSession, onLoadSession }: MainPageProps) {
               variant="contained"
               color="secondary"
               size="large"
-              onClick={onLoadSession}
+              onClick={onNewSession}
               sx={{
                 px: 4,
                 py: 1.5,
@@ -114,6 +135,32 @@ function MainPage({ onNewSession, onLoadSession }: MainPageProps) {
             </Card>
           </motion.div>
         </Box>
+
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs value={homeTab} onChange={onTabChange} aria-label="main navigation tabs">
+            <Tab label="Sessions" />
+            <Tab label="Resumes" />
+          </Tabs>
+        </Box>
+
+        {/* Sessions Tab */}
+        {homeTab === 0 && (
+          <SessionList
+            sessions={sessions}
+            onNewSession={onNewSession}
+            onSelectSession={onSelectSession}
+            onDeleteSession={onDeleteSession}
+          />
+        )}
+
+        {/* Resumes Tab */}
+        {homeTab === 1 && (
+          <ResumeManager
+            resumes={resumes}
+            onAddResume={onAddResume}
+            onDeleteResume={onDeleteResume}
+          />
+        )}
       </Box>
     </Container>
   )

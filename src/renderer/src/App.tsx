@@ -1,26 +1,14 @@
-import { useEffect, useRef, useState, ElementType } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Box,
   CircularProgress,
   IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  Paper,
   Snackbar,
   Alert,
   Tab,
   Tabs,
   Typography,
-  Collapse,
-  Button,
-  Modal,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  FormControl,
-  FormLabel,
-  Grid
+  Button
 } from '@mui/material'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
@@ -32,8 +20,13 @@ import ResumeManager from './components/ResumeManager'
 import { useDataPersistence } from './hooks/useDataPersistence'
 import { useSpeechRecognition } from './hooks/useSpeechRecognition'
 import Fuse from 'fuse.js'
-import { motion, AnimatePresence } from 'framer-motion' // Import AnimatePresence
-import { SpritzReader, RapidRead } from './components/SpeedReaders'
+// import { SpritzReader, RapidRead } from './components/SpeedReaders'
+import { Key } from './components/Key' // Import the Key component
+// import { EyeContactBox } from './components/EyeContactBox' // Import EyeContactBox
+import { ReadingModeModal } from './components/ReadingModeModal' // Import ReadingModeModal
+import { ResponseOutput } from './components/ResponseOutput' // Import ResponseOutput
+import { TranscriptionDisplay } from './components/TranscriptionDisplay' // Import TranscriptionDisplay
+import { AudioStatusDisplay } from './components/AudioStatusDisplay' // Import AudioStatusDisplay
 
 // Use Session type from useDataPersistence for all session-related data
 interface CurrentSession {
@@ -51,6 +44,8 @@ interface AudioStatus {
   connection: 'disconnected' | 'connected'
   listening: boolean
 }
+
+type WsStatus = 'disconnected' | 'connecting' | 'connected' // Define specific type
 
 type ReadingMode = 'normal' | 'rapid' | 'spritz'
 
@@ -90,7 +85,7 @@ function App(): JSX.Element {
   const [currentSession, setCurrentSession] = useState<CurrentSession | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [transcriptText, setTranscriptText] = useState<string>('')
-  const [wsStatus, setWsStatus] = useState('disconnected')
+  const [wsStatus, setWsStatus] = useState<WsStatus>('disconnected') // Use specific type
   const [wsError, setWsError] = useState<string | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const connectionAttemptsRef = useRef(0)
@@ -1005,499 +1000,6 @@ function App(): JSX.Element {
     }
   }
 
-  const eyeContactBox = (text: string, mode: ReadingMode = readingMode, width: string = '30%') => {
-    const formatText = (text: string, mode: ReadingMode): React.ReactNode => {
-      if (!text) return ''
-      switch (mode) {
-        case 'rapid':
-          return <RapidRead text={text} />
-        case 'spritz':
-          return <SpritzReader text={text} wpm={400} />
-        default:
-          return text
-      }
-    }
-
-    return (
-      <Box
-        component="fieldset"
-        sx={{
-          border: '2px solid #10b981',
-          borderRadius: 2,
-          width: width,
-          mx: 'auto',
-          textAlign: 'center',
-          px: 2,
-          pt: 1.5,
-          pb: 1.5,
-          bgcolor: 'rgba(16, 185, 129, 0.1)'
-        }}
-      >
-        <legend
-          style={{
-            marginRight: '0 auto',
-            textAlign: 'center',
-            padding: '0 8px',
-            fontSize: '0.875rem',
-            color: '#10b981',
-            lineHeight: 1
-          }}
-        >
-          Eye Contact
-        </legend>
-        <AnimatePresence mode="wait">
-          {text && (
-            <motion.div
-              key={text}
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-            >
-              {mode === 'spritz' ? (
-                <Box
-                  sx={{
-                    position: 'relative',
-                    height: '60px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  <Typography
-                    variant="body1"
-                    sx={{
-                      position: 'relative',
-                      '&::before': {
-                        content: '""',
-                        position: 'absolute',
-                        left: '50%',
-                        top: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        width: '2px',
-                        height: '1.2em',
-                        backgroundColor: '#10b981',
-                        opacity: 0.7,
-                        animation: 'focusPoint 2s ease-in-out infinite'
-                      }
-                    }}
-                  >
-                    <SpritzReader text={text} wpm={400} />
-                  </Typography>
-                </Box>
-              ) : (
-                <ListItemText primary={<div>{formatText(text, mode)}</div>} />
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </Box>
-    )
-  }
-
-  const renderReadingModeModal = () => (
-    <Modal
-      open={showReadingModeModal}
-      onClose={() => setShowReadingModeModal(false)}
-      aria-labelledby="reading-mode-modal"
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}
-    >
-      <Box
-        sx={{
-          bgcolor: 'background.paper',
-          borderRadius: 2,
-          p: 4,
-          maxWidth: 900,
-          width: '90%',
-          maxHeight: '90vh',
-          overflow: 'auto'
-        }}
-      >
-        <Typography variant="h6" sx={{ mb: 3 }}>
-          Speed Reading Mode
-        </Typography>
-
-        <FormControl component="fieldset" sx={{ width: '100%' }}>
-          <FormLabel component="legend" sx={{ mb: 2 }}>
-            Select Reading Mode
-          </FormLabel>
-          <RadioGroup
-            row
-            value={readingMode}
-            onChange={(e) => setReadingMode(e.target.value as ReadingMode)}
-            sx={{ width: '100%' }}
-          >
-            <Grid
-              container
-              spacing={3}
-              direction="row"
-              justifyContent="space-between"
-              wrap="nowrap"
-            >
-              {['normal', 'rapid', 'spritz'].map((mode) => (
-                <Grid
-                  key={mode}
-                  item
-                  sx={{
-                    width: '33.33%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center'
-                  }}
-                >
-                  <FormControlLabel
-                    value={mode}
-                    control={<Radio />}
-                    label={
-                      mode === 'normal'
-                        ? 'Normal'
-                        : mode === 'rapid'
-                          ? 'Rapid Read'
-                          : 'Spritz Reading'
-                    }
-                  />
-                  {eyeContactBox(
-                    mode === 'normal'
-                      ? 'This is how normal text will appear in the eye contact box.'
-                      : mode === 'rapid'
-                        ? 'This is how rapid reading text will appear with bold red first halves.'
-                        : 'This is how spritz reading will appear with centered focus point.',
-                    mode as ReadingMode,
-                    '100%'
-                  )}
-                  <Typography
-                    variant="body2"
-                    sx={{ mt: 1, textAlign: 'center', color: 'text.secondary' }}
-                  >
-                    {mode === 'normal'
-                      ? 'Regular reading with no enhancements.'
-                      : mode === 'rapid'
-                        ? 'Bolds the start of each word to guide your eyes. Increases reading speed by 200%.'
-                        : 'Displays one word at a time with a fixed focus. Increases reading speed by 400%.'}
-                  </Typography>
-                </Grid>
-              ))}
-            </Grid>
-          </RadioGroup>
-        </FormControl>
-
-        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-          <Button onClick={() => setShowReadingModeModal(false)} variant="contained">
-            Close
-          </Button>
-        </Box>
-      </Box>
-    </Modal>
-  )
-
-  // Replace the response-output div with this new component
-  const renderResponseOutput = () => (
-    <Box className="response-output" sx={{ mt: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-        <Button
-          onClick={() => setShowReadingModeModal(true)}
-          variant="outlined"
-          size="small"
-          sx={{
-            color: 'white',
-            '&:hover': {
-              bgcolor: 'rgba(16, 185, 129, 0.1)'
-            }
-          }}
-        >
-          Speed Reading
-        </Button>
-      </Box>
-
-      {isCapturing
-        ? eyeContactBox(bulletPoints[0] || 'Waiting for next question...')
-        : eyeContactBox(
-            bulletPoints[0] ||
-              "Example text to minimise eye tracking. Click 'Start Capture' to begin session."
-          )}
-
-      {/* Commands */}
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          width: '100%',
-          borderRadius: 1,
-          color: 'text.secondary',
-          bgcolor: 'rgba(255, 255, 255, 0.05)',
-          mt: 2
-        }}
-      >
-        <Collapse in={showCommands}>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'row',
-              gap: 1,
-              p: 2,
-              borderRadius: 1,
-              // bgcolor: 'rgba(255, 255, 255, 0.05)',
-              justifyContent: 'space-around',
-              fontSize: '14px'
-            }}
-          >
-            <Box>
-              <Box sx={{ display: 'flex', alignItems: 'start', gap: 1 }}>
-                Skip Current - <Key>{commandKey}</Key> + <Key>M</Key>
-              </Box>
-              <Box sx={{ fontSize: '9px', marginTop: '8px' }}>
-                * Manual option — AI does this by automatically as you speak.
-              </Box>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'start', gap: 1 }}>
-              Restore Previous - <Key>{commandKey}</Key> + <Key>N</Key>
-            </Box>
-          </Box>
-        </Collapse>
-      </Box>
-
-      <List sx={{ py: 0 }}>
-        <AnimatePresence initial={false}>
-          {bulletPoints.slice(1).map((point) => (
-            <motion.div
-              key={point}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{
-                opacity: 1,
-                y: 0,
-                transition: { duration: 0.3, ease: 'easeOut' }
-              }}
-              exit={{
-                opacity: 0,
-                y: -20,
-                transition: { duration: 0.2, ease: 'easeIn' }
-              }}
-              layout
-            >
-              <ListItem
-                disablePadding
-                sx={{
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                  px: 2,
-                  py: 1
-                }}
-              >
-                <ListItemText primary={point} />
-              </ListItem>
-            </motion.div>
-          ))}
-          {currentBulletPoint && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 0.7, y: 0 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-            >
-              <ListItem
-                sx={{
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                  py: 1,
-                  px: 2
-                }}
-              >
-                <ListItemText primary={currentBulletPoint} sx={{ fontStyle: 'italic' }} />
-              </ListItem>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </List>
-    </Box>
-  )
-
-  const renderTranscriptionDisplay = () => (
-    <Box
-      className="transcription-container"
-      sx={{
-        mt: 3,
-        p: 2,
-        borderRadius: 2,
-        bgcolor: 'background.paper',
-        backgroundImage:
-          'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
-        backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-        maxWidth: '800px',
-        margin: '0 auto',
-        display: isCapturing || transcriptText ? 'block' : 'none'
-      }}
-    >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-        <Typography variant="h6" sx={{ color: '#4ade80' }}>
-          Transcription
-        </Typography>
-
-        {/* Show WebSocket connection status */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <div
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: '50%',
-              backgroundColor:
-                wsStatus === 'connected'
-                  ? '#10b981'
-                  : wsStatus === 'connecting'
-                    ? '#f59e0b'
-                    : '#ef4444',
-              boxShadow: wsStatus === 'connected' ? '0 0 0 3px rgba(16, 185, 129, 0.2)' : 'none'
-            }}
-          />
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            {wsStatus === 'connected'
-              ? 'Transcription Service Connected'
-              : wsStatus === 'connecting'
-                ? 'Connecting...'
-                : 'Transcription Service Disconnected'}
-          </Typography>
-        </Box>
-      </Box>
-
-      {wsError && (
-        <Box
-          sx={{
-            bgcolor: 'rgba(239, 68, 68, 0.1)',
-            borderLeft: '3px solid #ef4444',
-            color: '#ef4444',
-            borderRadius: '4px',
-            p: 1,
-            mb: 2,
-            fontSize: '0.9rem'
-          }}
-        >
-          {wsError}
-        </Box>
-      )}
-
-      <Typography
-        variant="body1"
-        sx={{
-          color: 'white',
-          fontWeight: transcriptText ? 'normal' : 'light',
-          fontStyle: transcriptText ? 'normal' : 'italic',
-          maxHeight: '200px',
-          overflowY: 'auto',
-          p: 1
-        }}
-      >
-        {transcriptText || 'Waiting for speech...'}
-      </Typography>
-    </Box>
-  )
-
-  const renderAudioStatus = () => (
-    <Box
-      className="audio-status-container"
-      sx={{
-        width: '100%',
-        maxWidth: '800px',
-        mx: 'auto',
-        display: 'flex',
-        gap: 4,
-        justifyContent: 'center'
-      }}
-    >
-      <Paper
-        elevation={0}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          p: 2,
-          borderRadius: 1,
-          backgroundImage:
-            'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
-          backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-          transition: 'all 0.2s ease',
-          '&:hover': {
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
-          }
-        }}
-      >
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            width: 8,
-            height: 8,
-            borderRadius: '50%',
-            mr: 1,
-            bgcolor:
-              desktopAudioStatus.connection === 'disconnected'
-                ? '#ef4444'
-                : desktopAudioStatus.listening
-                  ? '#10b981'
-                  : '#f59e0b',
-            boxShadow: desktopAudioStatus.listening ? '0 0 0 4px rgba(16, 185, 129, 0.2)' : 'none'
-          }}
-        />
-        <Typography variant="subtitle2">
-          System Audio:{' '}
-          {desktopAudioStatus.connection === 'disconnected'
-            ? 'Not Connected'
-            : desktopAudioStatus.listening
-              ? 'Connected, Listening'
-              : 'Connected, No Audio'}
-        </Typography>
-      </Paper>
-
-      <Paper
-        elevation={0}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          p: 2,
-          backgroundImage:
-            'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
-          backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-          transition: 'all 0.2s ease',
-          '&:hover': {
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
-          }
-        }}
-      >
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            width: 8,
-            height: 8,
-            borderRadius: '50%',
-            mr: 1,
-            bgcolor:
-              micAudioStatus.connection === 'disconnected'
-                ? '#ef4444'
-                : micAudioStatus.listening
-                  ? '#10b981'
-                  : '#f59e0b',
-            boxShadow: micAudioStatus.listening ? '0 0 0 4px rgba(16, 185, 129, 0.2)' : 'none'
-          }}
-        />
-        <Typography variant="subtitle2">
-          Microphone:{' '}
-          {micAudioStatus.connection === 'disconnected'
-            ? 'Not Connected'
-            : micAudioStatus.listening
-              ? 'Connected, Listening'
-              : 'Connected, No Audio'}
-        </Typography>
-      </Paper>
-    </Box>
-  )
-
   const renderMainPage = () => (
     <>
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -1618,24 +1120,6 @@ function App(): JSX.Element {
     // Finally, close the app
     window.api.closeApp?.()
   }
-
-  const Key = ({ children }: { children: React.ReactNode }) => (
-    <Box
-      component="span"
-      sx={{
-        display: 'inline-block',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
-        borderRadius: '4px',
-        px: 0.8,
-        py: 0.3,
-        fontSize: '0.65rem',
-        fontFamily: 'sans-serif',
-        backgroundColor: 'rgba(255, 255, 255, 0.05)'
-      }}
-    >
-      {children}
-    </Box>
-  )
 
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const commandKey = isMac ? '⌘' : 'Ctrl'
@@ -1842,7 +1326,15 @@ function App(): JSX.Element {
 
             {/* Bullet Points - Top Middle */}
             <Box sx={{ width: '100%', maxWidth: '700px', mx: 'auto', px: 2, flexShrink: 0 }}>
-              {renderResponseOutput()}
+              <ResponseOutput
+                isCapturing={isCapturing}
+                bulletPoints={bulletPoints}
+                currentBulletPoint={currentBulletPoint}
+                readingMode={readingMode}
+                showCommands={showCommands}
+                commandKey={commandKey}
+                onShowReadingModeModal={() => setShowReadingModeModal(true)}
+              />
             </Box>
 
             {/* Controls - Centered below bullet points */}
@@ -1910,11 +1402,19 @@ function App(): JSX.Element {
 
             {/* Transcription - Centered within scrollable area */}
             <Box sx={{ width: '100%', maxWidth: '800px', mx: 'auto', mb: 3 }}>
-              {renderTranscriptionDisplay()}
+              <TranscriptionDisplay
+                isCapturing={isCapturing}
+                transcriptText={transcriptText}
+                wsStatus={wsStatus}
+                wsError={wsError}
+              />
             </Box>
 
             {/* Audio Visualizers - Centered within scrollable area */}
-            {renderAudioStatus()}
+            <AudioStatusDisplay
+              desktopAudioStatus={desktopAudioStatus}
+              micAudioStatus={micAudioStatus}
+            />
           </Box>
         )}
         {/* Error Snackbar */}
@@ -1930,8 +1430,13 @@ function App(): JSX.Element {
         </Snackbar>
       </Box>
 
-      {/* Add the reading mode modal */}
-      {renderReadingModeModal()}
+      {/* Add the reading mode modal using the component */}
+      <ReadingModeModal
+        open={showReadingModeModal}
+        onClose={() => setShowReadingModeModal(false)}
+        value={readingMode}
+        onChange={(e) => setReadingMode(e.target.value as ReadingMode)}
+      />
     </Box>
   )
 }
