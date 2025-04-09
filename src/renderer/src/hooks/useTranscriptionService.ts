@@ -76,51 +76,39 @@ export const useTranscriptionService = ({
   }
 
   const connectWebSocket = () => {
-    // Prevent multiple connection attempts at the same time
-    if (isConnectingRef.current) return
+    if (isConnectingRef.current || wsRef.current) return
 
     try {
+      console.log('🔄 [useTranscriptionService] Starting WebSocket connection...')
       isConnectingRef.current = true
-      setWsStatus('connecting')
-      setWsError(null)
 
       wsRef.current = new WebSocket('ws://localhost:9876')
 
       wsRef.current.onopen = () => {
-        console.log('WebSocket connection established')
-        setWsStatus('connected')
-        setWsError(null)
+        console.log('✅ [useTranscriptionService] WebSocket connection established')
         connectionAttemptsRef.current = 0
         isConnectingRef.current = false
-
-        // Send current bullet points once connected
-        sendBulletPoints(bulletPointsRef.current)
+        setWsStatus('connected')
+        setWsError(null)
       }
 
       wsRef.current.onclose = (event) => {
-        console.log(`WebSocket closed with code: ${event.code}`)
+        console.log(`❌ [useTranscriptionService] WebSocket closed with code: ${event.code}`)
         setWsStatus('disconnected')
         isConnectingRef.current = false
 
-        // Only show error if we've attempted to connect multiple times
         if (connectionAttemptsRef.current >= 2) {
           setWsError('Failed to connect to transcription service')
         }
 
-        // Only attempt to reconnect if we're still capturing
-        if (isCapturing) {
-          // Exponential backoff for reconnection attempts
-          const delay = Math.min(3000 * Math.pow(1.5, connectionAttemptsRef.current), 10000)
-          connectionAttemptsRef.current++
-
-          // Try to reconnect after a delay
-          setTimeout(connectWebSocket, delay)
-        }
+        const delay = Math.min(3000 * Math.pow(1.5, connectionAttemptsRef.current), 10000)
+        connectionAttemptsRef.current++
+        console.log(`🔄 [useTranscriptionService] Attempting reconnect in ${delay}ms...`)
+        setTimeout(connectWebSocket, delay)
       }
 
       wsRef.current.onerror = (error) => {
-        console.error('WebSocket error:', error)
-        // Don't set error message immediately during initial connection
+        console.error('❌ [useTranscriptionService] WebSocket error:', error)
         if (wsStatus !== 'connecting' || connectionAttemptsRef.current >= 2) {
           setWsError('Failed to connect to transcription service')
         }
@@ -202,20 +190,24 @@ export const useTranscriptionService = ({
   }
 
   const startRecording = () => {
+    console.log('🎤 [useTranscriptionService] Starting transcription recording...')
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      console.log('Starting transcription recording')
       setWsError(null)
       setTranscriptText('')
       pendingUpdatesRef.current = []
 
       // Send current bullet points right before starting recording
       if (bulletPointsRef.current.length > 0) {
+        console.log(
+          '📝 [useTranscriptionService] Sending bullet points before starting recording:',
+          bulletPointsRef.current
+        )
         sendBulletPoints(bulletPointsRef.current)
       }
 
       // Wait a short moment for bullet points to be processed
       setTimeout(() => {
-        // Then start recording
+        console.log('▶️ [useTranscriptionService] Sending start command to server')
         wsRef.current?.send(
           JSON.stringify({
             type: 'control',
@@ -224,24 +216,31 @@ export const useTranscriptionService = ({
         )
       }, 200) // Small delay to ensure bullet points are processed first
     } else if (wsStatus === 'connecting') {
-      // If still connecting, try again shortly
+      console.log(
+        '⏳ [useTranscriptionService] WebSocket still connecting, will retry start in 500ms'
+      )
       setTimeout(startRecording, 500)
     } else {
-      console.error('WebSocket is not connected, cannot start recording')
+      console.error(
+        '❌ [useTranscriptionService] WebSocket is not connected, cannot start recording'
+      )
       connectWebSocket() // Try to reconnect
       setTimeout(startRecording, 1000) // Try again shortly
     }
   }
 
   const stopRecording = () => {
+    console.log('⏹️ [useTranscriptionService] Stopping transcription recording...')
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      console.log('Stopping transcription recording')
       wsRef.current.send(
         JSON.stringify({
           type: 'control',
           payload: { command: 'stop' }
         })
       )
+      console.log('✅ [useTranscriptionService] Stop command sent to server')
+    } else {
+      console.warn('⚠️ [useTranscriptionService] WebSocket not open when trying to stop recording')
     }
   }
 

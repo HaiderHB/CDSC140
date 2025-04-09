@@ -4,7 +4,18 @@ import os
 from install_packages import check_and_install_packages
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.basicConfig(
+    level=print,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)  # Explicitly set to stdout
+    ]
+)
+
+# Print a startup banner
+print("\n" + "="*50)
+print("Starting Transcription Server")
+print("="*50 + "\n")
 
 # Suppress ctranslate2 warnings
 os.environ['CT2_VERBOSE'] = '0'  # Suppress ctranslate2 logger
@@ -69,7 +80,7 @@ def signal_handler(sig, frame):
         return
     
     handling_signal = True
-    logging.info(f"Received signal {sig}, shutting down gracefully...")
+    print(f"Received signal {sig}, shutting down gracefully...")
     
     try:
         # Set the shutdown flag
@@ -79,13 +90,13 @@ def signal_handler(sig, frame):
         global recording
         if recording:
             recording = False
-            logging.info("Stopped recording before shutdown")
+            print("Stopped recording before shutdown")
         
         # Properly shut down the recorder
         shutdown_recorder()
         
         # Exit gracefully
-        logging.info("Shutdown complete, exiting")
+        print("Shutdown complete, exiting")
     except Exception as e:
         logging.error(f"Error during signal handling: {e}")
     finally:
@@ -101,7 +112,7 @@ def load_similarity_model(model_name=MODEL_NAME):
     global model
     try:
         model = SentenceTransformer(model_name)
-        logging.info(f"Loaded SentenceTransformer model: {model_name}")
+        print(f"Loaded SentenceTransformer model: {model_name}")
         return True
     except Exception as e:
         logging.error(f"Failed to load sentence similarity model: {e}")
@@ -114,16 +125,16 @@ def precompute_bullet_embeddings(points):
     bullet_points = points
     if not points:
         bullet_embeddings = None
-        logging.info("Bullet points list is empty. Cleared embeddings.")
+        print("Bullet points list is empty. Cleared embeddings.")
         return
     
-    logging.info(f"Precomputing embeddings for {len(points)} bullet points...")
+    print(f"Precomputing embeddings for {len(points)} bullet points...")
     start_time = time.time()
     
     try:
         bullet_embeddings = model.encode(points, convert_to_tensor=True)
         end_time = time.time()
-        logging.info(f"Precomputation finished in {end_time - start_time:.2f} seconds.")
+        print(f"Precomputation finished in {end_time - start_time:.2f} seconds.")
     except Exception as e:
         bullet_embeddings = None
         logging.error(f"Failed to precompute bullet embeddings: {e}")
@@ -196,14 +207,14 @@ async def process_transcription_queue():
                 # Perform similarity matching
                 match, score = find_best_match(text)
                 if match:
-                    logging.info(f"Match found: '{match}' (Score: {score:.2f}) for transcript: '{text[:50]}...'")
+                    print(f"Match found: '{match}' (Score: {score:.2f}) for transcript: '{text[:50]}...'")
                     # Put result in another queue to be sent by the main loop
                     similarity_queue.put((websocket, match, score))
                 else:
                     # Add debug logging for when no match is found but we have bullets
                     if bullet_points and len(bullet_points) > 0:
-                        logging.info(f"No match found (Score: {score:.2f}) for transcript: '{text[:50]}...'")
-                        logging.info(f"Current bullet points ({len(bullet_points)}): {', '.join(bullet_points[:3])}{'...' if len(bullet_points) > 3 else ''}")
+                        print(f"No match found (Score: {score:.2f}) for transcript: '{text[:50]}...'")
+                        print(f"Current bullet points ({len(bullet_points)}): {', '.join(bullet_points[:3])}{'...' if len(bullet_points) > 3 else ''}")
                     # logging.debug(f"No match found (Score: {score:.2f}) for transcript: '{text[:50]}...'")
 
         except Exception as e:
@@ -303,7 +314,7 @@ def initialize_recorder():
                 no_log_file=True,
             )
             recorder_initialized = True
-            logging.info("Recorder initialized successfully")
+            print("Recorder initialized successfully")
         except Exception as e:
             logging.error(f"Error initializing recorder: {e}")
             return False
@@ -323,7 +334,7 @@ async def handle_client(websocket):
 
     # Send initial connection status
     await send_message(websocket, "status", {"status": "connected"})
-    logging.info("Client connected to transcription server")
+    print("Client connected to transcription server")
 
     try:
         async for message in websocket:
@@ -355,7 +366,7 @@ async def handle_client(websocket):
                         command = payload.get("command")
                         if command == "start":
                             if not recording and not shutdown_in_progress:
-                                logging.info("Start recording command received")
+                                print("Start recording command received")
                                 recording = True
                                 # Clear old transcription data if needed
                                 while not transcription_queue.empty(): transcription_queue.get()
@@ -368,14 +379,14 @@ async def handle_client(websocket):
 
                         elif command == "stop":
                             if recording:
-                                logging.info("Stop recording command received")
+                                print("Stop recording command received")
                                 recording = False
                                 # Optionally send final transcription fragments if any
                                 recorder.on_realtime_transcription_update = None # Detach callback
                                 await send_message(websocket, "status", {"status": "stopped"})
                                 
                         elif command == "shutdown":
-                            logging.info("Shutdown command received")
+                            print("Shutdown command received")
                             # Properly shut down the recorder
                             await asyncio.get_event_loop().run_in_executor(None, shutdown_recorder)
                             await send_message(websocket, "status", {"status": "shutdown_complete"})
@@ -388,7 +399,7 @@ async def handle_client(websocket):
 
                     elif message_type == "set_bullet_points":
                         points = payload.get("points", [])
-                        logging.info(f"Received {len(points)} bullet points from client.")
+                        print(f"Received {len(points)} bullet points from client.")
                         # Run blocking precomputation in executor
                         await asyncio.get_event_loop().run_in_executor(None, precompute_bullet_embeddings, points)
                         await send_message(websocket, "status", {"status": "bullets_updated", "count": len(bullet_points)})
@@ -402,7 +413,7 @@ async def handle_client(websocket):
                     logging.error(f"Error processing message: {e} | Raw: {message}")
 
     except websockets.exceptions.ConnectionClosed as e:
-        logging.info(f"Client disconnected with code {e.code}: {e.reason}")
+        print(f"Client disconnected with code {e.code}: {e.reason}")
     except Exception as e:
         logging.error(f"Error handling client: {e}", exc_info=True) # Log traceback
     finally:
@@ -410,7 +421,7 @@ async def handle_client(websocket):
         # Properly shut down the recorder when the client disconnects
         if not shutdown_in_progress:
             await asyncio.get_event_loop().run_in_executor(None, shutdown_recorder)
-        logging.info(f"Client connection handling completed for {websocket.remote_address}")
+        print(f"Client connection handling completed for {websocket.remote_address}")
 
 def start_recording_loop():
     """Function to run in a separate thread for continuous recording"""
@@ -440,13 +451,13 @@ def shutdown_recorder():
         return
     
     shutdown_in_progress = True
-    logging.info("Shutting down recorder...")
+    print("Shutting down recorder...")
     
     try:
         # First stop recording if it's active
         if recording:
             recording = False
-            logging.info("Stopped recording before shutdown")
+            print("Stopped recording before shutdown")
         
         # Then properly shut down the recorder
         if recorder and recorder_initialized:
@@ -456,19 +467,19 @@ def shutdown_recorder():
                 
                 # Call the custom shutdown method
                 recorder.shutdown()
-                logging.info("Recorder shutdown method called")
+                print("Recorder shutdown method called")
                 
                 # Clear the recorder instance
                 recorder = None
                 recorder_initialized = False
-                logging.info("Recorder instance cleared")
+                print("Recorder instance cleared")
             except Exception as e:
                 logging.error(f"Error during recorder shutdown: {e}")
     except Exception as e:
         logging.error(f"Error in shutdown_recorder: {e}")
     finally:
         shutdown_in_progress = False
-        logging.info("Recorder shutdown completed")
+        print("Recorder shutdown completed")
 
 async def main():
     """Main function to start the WebSocket server"""
@@ -476,14 +487,14 @@ async def main():
     # Load sentence transformer model at startup
     model_loaded = load_similarity_model()
     if not model_loaded:
-        logging.error("CRITICAL: Failed to load sentence similarity model. Matching will be disabled.")
+        logging.error("---CRITICAL---: Failed to load sentence similarity model. Matching will be disabled.")
         # Decide if server should exit or run without matching
         # sys.exit(1) # Or just continue without matching features
 
     # Pre-initialize the recorder
     initialize_recorder()
     if not recorder_initialized:
-         logging.error("CRITICAL: Failed to initialize recorder. Server cannot start.")
+         logging.error("---CRITICAL---: Failed to initialize recorder. Server cannot start.")
          sys.exit(1)
     # --- End Initialization ---
 
@@ -502,7 +513,9 @@ async def main():
             max_queue=64  # Larger queue for messages
         )
         
-        logging.info("Transcription server started on ws://127.0.0.1:9876")
+        print("Transcription server successfully started")
+        print("Server listening on ws://127.0.0.1:9876")
+        print("Ready to accept WebSocket connections")
         
         # On Windows, signal handlers with asyncio can cause issues
         # Just run the server indefinitely
@@ -513,13 +526,13 @@ async def main():
         finally:
             server.close()
             await server.wait_closed()
-            logging.info("Server shut down gracefully")
+            print("Server shut down gracefully")
             # Properly shut down the recorder
             await asyncio.get_event_loop().run_in_executor(None, shutdown_recorder)
     except OSError as e:
         # Handle the case where the port is already in use
         if e.errno == 10048:  # Windows-specific error for "Address already in use"
-            logging.info("Transcription server is already running on port 9876")
+            print("Transcription server is already running on port 9876")
             # Exit gracefully - this is not an error
             return
         else:
@@ -535,7 +548,7 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logging.info("Interrupted by user")
+        print("Interrupted by user")
         # Ensure recorder is shut down on keyboard interrupt
         if not shutdown_in_progress:
             asyncio.run(asyncio.get_event_loop().run_in_executor(None, shutdown_recorder))

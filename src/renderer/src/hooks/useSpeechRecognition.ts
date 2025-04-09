@@ -69,75 +69,68 @@ export const useSpeechRecognition = ({
 
   // WebSocket connection logic
   const connectWebSocket = () => {
-    // Prevent multiple connection attempts at the same time
-    if (isConnectingRef.current || wsRef.current) return // Don't reconnect if already connected or connecting
+    if (isConnectingRef.current || wsRef.current) return
 
     try {
+      console.log('🔄 [useSpeechRecognition] Starting WebSocket connection...')
       isConnectingRef.current = true
-      console.log('Connecting to transcription WebSocket server...')
 
       wsRef.current = new WebSocket('ws://localhost:9876')
 
       wsRef.current.onopen = () => {
-        console.log('WebSocket connection established')
+        console.log('✅ [useSpeechRecognition] WebSocket connection established')
         connectionAttemptsRef.current = 0
         isConnectingRef.current = false
 
         // Send current bullet points immediately upon connection
-        console.log('🔄 Sending initial bullet points to backend:', bulletPoints)
+        console.log(
+          '🔄 [useSpeechRecognition] Sending initial bullet points to backend:',
+          bulletPoints
+        )
         sendWsMessage(wsRef.current, {
           type: 'set_bullet_points',
           payload: { points: bulletPoints }
         })
 
-        // Start recording process (send start command) if isListening is true
+        // Start recording process if isListening is true
         if (isListening) {
-          console.log('WebSocket reconnected while listening, sending start command...')
+          console.log(
+            '🔄 [useSpeechRecognition] WebSocket reconnected while listening, sending start command...'
+          )
           sendWsMessage(wsRef.current, {
             type: 'control',
             payload: { command: 'start' }
           })
 
-          // Send a periodic ping to keep the connection alive
-          // Clear previous interval if any
+          // Set up ping interval
           if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current)
           recordingIntervalRef.current = setInterval(() => {
+            console.log('🔄 [useSpeechRecognition] Sending ping to keep connection alive...')
             sendWsMessage(wsRef.current, {
               type: 'control',
               payload: { command: 'ping' }
             })
-          }, 30000) as unknown as number // Ping every 30 seconds
+          }, 30000) as unknown as number
         }
       }
 
       wsRef.current.onclose = (event) => {
-        console.log(`WebSocket closed with code: ${event.code}`)
+        console.log(`❌ [useSpeechRecognition] WebSocket closed with code: ${event.code}`)
         isConnectingRef.current = false
-        wsRef.current = null // Clear the ref
-        // Clear ping interval
-        if (recordingIntervalRef.current) {
-          clearInterval(recordingIntervalRef.current)
-          recordingIntervalRef.current = null
-        }
+        wsRef.current = null
 
-        // Only attempt to reconnect if we intended to be listening
         if (isListening) {
-          // Exponential backoff for reconnection attempts
           const delay = Math.min(3000 * Math.pow(1.5, connectionAttemptsRef.current), 10000)
           connectionAttemptsRef.current++
-          console.log(`WebSocket disconnected, attempting reconnect in ${delay}ms...`)
-          // Try to reconnect after a delay
+          console.log(`🔄 [useSpeechRecognition] Attempting reconnect in ${delay}ms...`)
           setTimeout(connectWebSocket, delay)
         }
       }
 
       wsRef.current.onerror = (error) => {
-        console.error('WebSocket error:', error)
-        // Consider closing and triggering reconnect on error as well
-        if (wsRef.current) {
-          wsRef.current.close() // This will trigger onclose handler for reconnect logic
-        }
-        isConnectingRef.current = false // Ensure connection attempts can proceed
+        console.error('❌ [useSpeechRecognition] WebSocket error:', error)
+        isConnectingRef.current = false
+        wsRef.current = null
       }
 
       wsRef.current.onmessage = (event) => {
@@ -203,41 +196,40 @@ export const useSpeechRecognition = ({
   const startListening = async () => {
     // Guard against starting if already listening
     if (isListening) {
-      console.warn('startListening called while already listening.')
+      console.warn('⚠️ [useSpeechRecognition] startListening called while already listening')
       return
     }
     try {
-      console.log('Requesting microphone access...')
+      console.log('🎤 [useSpeechRecognition] Requesting microphone access...')
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          // Optional: Add constraints for better quality if needed
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true
         }
       })
-      console.log('Microphone access granted')
+      console.log('✅ [useSpeechRecognition] Microphone access granted')
       streamRef.current = stream
 
       setIsListening(true) // Set state first
-
-      // Start WebSocket connection (will handle sending bullets/start command onopen)
+      console.log('🔄 [useSpeechRecognition] Starting WebSocket connection for audio streaming...')
       connectWebSocket() // This now handles sending bullets and start command on successful connection
 
       const audioContext = new AudioContext()
+      console.log('🎵 [useSpeechRecognition] Setting up audio processing...')
 
       // Use the correct path to the audio processor script
-      const processorUrl = '/scripts/audio-processor.js' // Relative path should work if served correctly
-      console.log('Loading audio processor from:', processorUrl)
+      const processorUrl = '/scripts/audio-processor.js'
+      console.log('📥 [useSpeechRecognition] Loading audio processor from:', processorUrl)
 
       try {
         await audioContext.audioWorklet.addModule(processorUrl)
-        console.log('Audio processor loaded successfully')
+        console.log('✅ [useSpeechRecognition] Audio processor loaded successfully')
       } catch (err) {
-        console.error('Failed to load audio processor:', err)
-        setIsListening(false) // Reset state on failure
-        if (streamRef.current) streamRef.current.getTracks().forEach((track) => track.stop()) // Clean up stream
-        throw err // Re-throw error
+        console.error('❌ [useSpeechRecognition] Failed to load audio processor:', err)
+        setIsListening(false)
+        if (streamRef.current) streamRef.current.getTracks().forEach((track) => track.stop())
+        throw err
       }
 
       const audioWorkletNode = new AudioWorkletNode(audioContext, 'audio-processor')
@@ -251,19 +243,14 @@ export const useSpeechRecognition = ({
       audioWorkletNode.port.onmessage = (event) => {
         const audioChunk = event.data
         if (audioChunk.byteLength > 0) {
-          // Add to pending chunks instead of processing immediately
           pendingChunksRef.current.push(audioChunk)
         }
       }
 
-      console.log(
-        'Speech recognition setup complete, waiting for WebSocket connection to start sending audio.'
-      )
-      // NOTE: Actual audio sending starts when WebSocket connection is open (handled by useEffect + sendAudioChunk)
+      console.log('✅ [useSpeechRecognition] Audio processing setup complete')
     } catch (error) {
-      console.error('Error starting audio recording:', error)
+      console.error('❌ [useSpeechRecognition] Error starting audio recording:', error)
       setIsListening(false)
-      // Clean up stream if acquired
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop())
         streamRef.current = null
@@ -272,34 +259,30 @@ export const useSpeechRecognition = ({
   }
 
   const stopListening = () => {
-    // Guard against stopping if not listening
     if (!isListening) {
-      console.warn('stopListening called while not listening.')
+      console.warn('⚠️ [useSpeechRecognition] stopListening called while not listening')
       return
     }
 
-    console.log('Stopping speech recognition...')
-    setIsListening(false) // Set state immediately
+    console.log('⏹️ [useSpeechRecognition] Stopping speech recognition...')
+    setIsListening(false)
 
     // Stop WebSocket connection and command
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      console.log('Sending stop command to backend')
+      console.log('🛑 [useSpeechRecognition] Sending stop command to backend')
       sendWsMessage(wsRef.current, {
         type: 'control',
         payload: { command: 'stop' }
       })
-
-      // Close WebSocket connection gracefully after sending stop command
-      // Let the onclose handler manage cleanup and prevent immediate reconnect attempts
-      // wsRef.current.close() // Consider delaying close or letting onclose handle state
     } else {
-      console.warn('WebSocket not open when trying to send stop command.')
+      console.warn('⚠️ [useSpeechRecognition] WebSocket not open when trying to send stop command')
     }
 
-    // Close WebSocket if it exists (will trigger onclose which stops reconnect logic because isListening is false)
+    // Close WebSocket if it exists
     if (wsRef.current) {
+      console.log('🔌 [useSpeechRecognition] Closing WebSocket connection')
       wsRef.current.close(1000, 'Client stopping listening')
-      wsRef.current = null // Clear ref immediately
+      wsRef.current = null
     }
 
     // Clear pending chunks
@@ -307,20 +290,19 @@ export const useSpeechRecognition = ({
 
     // Clear intervals
     if (recordingIntervalRef.current) {
+      console.log('⏱️ [useSpeechRecognition] Clearing recording interval')
       clearInterval(recordingIntervalRef.current)
       recordingIntervalRef.current = null
     }
 
     // Stop media stream tracks
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => {
-        console.log('Stopping audio track')
-        track.stop()
-      })
+      console.log('🎤 [useSpeechRecognition] Stopping audio tracks')
+      streamRef.current.getTracks().forEach((track) => track.stop())
       streamRef.current = null
     }
 
-    console.log('Speech recognition stopped')
+    console.log('✅ [useSpeechRecognition] Speech recognition stopped')
   }
 
   // Add audio processing and WebSocket audio transmission
