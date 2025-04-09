@@ -111,7 +111,7 @@ export const useWebRTC = ({
       dataChannelRef.current = dc
 
       const sessionInfo = currentSession
-        ? `Use the following job description and resume to help answer the questions. Job Description: ${currentSession.jobDescription}, Resume: ${currentSession.resumeName}`
+        ? `Use the following job description and resume to help answer the questions. Job Description: ${currentSession.jobDescription}, Resume: ${currentSession.resumeContent}`
         : ''
       console.log('----sessionInfo for OpenAI Prompt', sessionInfo)
 

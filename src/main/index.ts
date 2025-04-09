@@ -12,13 +12,12 @@ import {
   saveSessions,
   saveResumesMetadata,
   saveResumeFile,
-  readResumeFile,
   deleteResumeFile
 } from './storage'
 import { setupTranscriptionHandlers } from './transcription'
 import spawn from 'cross-spawn'
 import { ChildProcess } from 'child_process'
-
+import fs from 'fs'
 // Reference to the Python process
 let pythonProcess: ChildProcess | null = null
 
@@ -467,8 +466,10 @@ function setupIpcHandlers(): void {
   // Read resume file
   ipcMain.handle('read-resume-file', async (_, filePath) => {
     try {
-      const buffer = readResumeFile(filePath)
-      return buffer.toString('base64')
+      const pdfParse = require('pdf-parse')
+      const fileBuffer = fs.readFileSync(filePath)
+      const data = await pdfParse(fileBuffer)
+      return data.text
     } catch (error) {
       console.error('Error reading resume file:', error)
       throw error

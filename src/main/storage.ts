@@ -92,16 +92,6 @@ async function saveResumeFile(
   }
 }
 
-// Read resume file
-function readResumeFile(filePath: string): Buffer {
-  try {
-    return fs.readFileSync(filePath)
-  } catch (error) {
-    console.error('Failed to read resume file:', error)
-    throw error
-  }
-}
-
 // Delete resume file
 function deleteResumeFile(filePath: string): boolean {
   try {
@@ -128,6 +118,5 @@ export {
   saveResumesMetadata,
   loadResumesMetadata,
   saveResumeFile,
-  readResumeFile,
   deleteResumeFile
 }
