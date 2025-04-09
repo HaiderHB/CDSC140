@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Box, Button, CircularProgress, Typography } from '@mui/material'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
@@ -45,9 +45,7 @@ export const CapturePage: React.FC<CapturePageProps> = ({
   wsStatus,
   wsError,
   isListening,
-  currentSession,
   goBack,
-  responseText,
   desktopCanvasRef,
   micCanvasRef
 }) => {

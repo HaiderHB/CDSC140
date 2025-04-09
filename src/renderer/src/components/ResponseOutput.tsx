@@ -1,7 +1,5 @@
 import React from 'react'
-import { Box, Button, Collapse, List, ListItem, ListItemText, Typography } from '@mui/material'
-import VisibilityIcon from '@mui/icons-material/Visibility'
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
+import { Box, Button, Collapse, List, ListItem, ListItemText } from '@mui/material'
 import { motion, AnimatePresence } from 'framer-motion'
 import { EyeContactBox } from './EyeContactBox'
 import { Key } from './Key'

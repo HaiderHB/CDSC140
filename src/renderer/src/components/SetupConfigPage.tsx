@@ -5,13 +5,9 @@ import {
   Button,
   TextField,
   MenuItem,
-  Container,
   Card,
   CardContent,
-  FormControl,
   FormControlLabel,
-  Radio,
-  RadioGroup,
   Modal,
   Paper,
   Dialog,
@@ -22,7 +18,6 @@ import {
   Checkbox,
   Stack
 } from '@mui/material'
-import { motion } from 'framer-motion'
 import { Resume } from './ResumeManager'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 
@@ -52,7 +47,9 @@ function AddResumeForm({ onSave, onCancel }: AddResumeFormProps) {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h6" mb={2}>Add New Resume</Typography>
+      <Typography variant="h6" mb={2}>
+        Add New Resume
+      </Typography>
       <TextField
         label="Resume Name"
         value={resumeName}
@@ -60,27 +57,27 @@ function AddResumeForm({ onSave, onCancel }: AddResumeFormProps) {
         fullWidth
         sx={{ mb: 2 }}
       />
-      <Button 
-        variant="outlined" 
-        component="label" 
-        fullWidth 
-        sx={{ 
+      <Button
+        variant="outlined"
+        component="label"
+        fullWidth
+        sx={{
           mb: 2,
           borderColor: 'rgba(255, 255, 255, 0.2)',
-          color: 'text.primary' 
+          color: 'text.primary'
         }}
       >
         Upload Resume File
         <input type="file" hidden onChange={handleFileChange} accept=".pdf,.doc,.docx" />
       </Button>
-      {resumeFile && <Typography variant="body2" sx={{ mb: 2 }}>Selected: {resumeFile.name}</Typography>}
+      {resumeFile && (
+        <Typography variant="body2" sx={{ mb: 2 }}>
+          Selected: {resumeFile.name}
+        </Typography>
+      )}
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
         <Button onClick={onCancel}>Cancel</Button>
-        <Button 
-          onClick={handleSubmit} 
-          variant="contained" 
-          disabled={!resumeName || !resumeFile}
-        >
+        <Button onClick={handleSubmit} variant="contained" disabled={!resumeName || !resumeFile}>
           Save Resume
         </Button>
       </Box>
@@ -97,13 +94,13 @@ interface SetupConfigProps {
   onSetSkipEmptySessionWarning?: (skip: boolean) => void
 }
 
-function SetupConfigPage({ 
-  onSave, 
-  resumes, 
-  onAddResume, 
-  onBack, 
-  skipEmptySessionWarning, 
-  onSetSkipEmptySessionWarning 
+function SetupConfigPage({
+  onSave,
+  resumes,
+  onAddResume,
+  onBack,
+  skipEmptySessionWarning,
+  onSetSkipEmptySessionWarning
 }: SetupConfigProps) {
   const [sessionName, setSessionName] = useState('')
   const [jobDescription, setJobDescription] = useState('')
@@ -146,7 +143,7 @@ function SetupConfigPage({
       await onAddResume()
       setIsAddResumeModalOpen(false)
     } catch (error) {
-      console.error("Error saving resume from modal:", error)
+      console.error('Error saving resume from modal:', error)
     }
   }
 
@@ -160,16 +157,18 @@ function SetupConfigPage({
   }
 
   return (
-    <Box sx={{ 
-      position: 'absolute', 
-      top: 0, 
-      left: 0, 
-      right: 0, 
-      bottom: 0, 
-      display: 'flex', 
-      flexDirection: 'column',
-      zIndex: 1
-    }}>
+    <Box
+      sx={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        zIndex: 1
+      }}
+    >
       <Box
         onClick={onBack}
         sx={{
@@ -190,23 +189,28 @@ function SetupConfigPage({
       </Box>
 
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <Card sx={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          backgroundImage: 'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
-          backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: 'none',
-          borderRadius: 0
-        }}>
-          <CardContent sx={{ 
-            p: 3, 
-            flex: 1, 
-            display: 'flex', 
+        <Card
+          sx={{
+            flex: 1,
+            display: 'flex',
             flexDirection: 'column',
-            overflow: 'auto'
-          }}>
+            backgroundImage:
+              'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: 'none',
+            borderRadius: 0
+          }}
+        >
+          <CardContent
+            sx={{
+              p: 3,
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'auto'
+            }}
+          >
             <Typography
               variant="h5"
               component="h1"
@@ -220,7 +224,7 @@ function SetupConfigPage({
             >
               Setup New Interview Session
             </Typography>
-              <Typography
+            <Typography
               component="h3"
               sx={{
                 mb: 3,
@@ -254,7 +258,7 @@ function SetupConfigPage({
                   }}
                 />
               </Box>
-              
+
               <Box>
                 <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500 }}>
                   Job Description
@@ -312,9 +316,10 @@ function SetupConfigPage({
                     + Add New Resume
                   </MenuItem>
                 </TextField>
-                
+
                 <Typography variant="body2" color="text.secondary">
-                  Your resume will be used to tailor interview responses to your experience and qualifications.
+                  Your resume will be used to tailor interview responses to your experience and
+                  qualifications.
                 </Typography>
               </Box>
             </Stack>
@@ -323,8 +328,8 @@ function SetupConfigPage({
               <Button
                 variant="contained"
                 onClick={handleSave}
-                sx={{ 
-                  px: 3, 
+                sx={{
+                  px: 3,
                   py: 1,
                   backgroundImage: 'linear-gradient(to right, #C45400, #E9680C)',
                   boxShadow: '0 4px 14px rgba(233, 104, 12, 0.4)',
@@ -354,11 +359,12 @@ function SetupConfigPage({
             left: '50%',
             transform: 'translate(-50%, -50%)',
             width: 400,
-            backgroundImage: 'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
+            backgroundImage:
+              'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
             backdropFilter: 'blur(12px)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-            borderRadius: 2,
+            borderRadius: 2
           }}
         >
           <AddResumeForm onSave={handleSaveNewResume} onCancel={handleCloseAddResumeModal} />
@@ -372,27 +378,28 @@ function SetupConfigPage({
         aria-describedby="confirm-dialog-description"
         PaperProps={{
           sx: {
-            backgroundImage: 'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
+            backgroundImage:
+              'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
             backdropFilter: 'blur(12px)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)'
           }
         }}
       >
-        <DialogTitle id="confirm-dialog-title">
-          Create Session Without Full Details?
-        </DialogTitle>
+        <DialogTitle id="confirm-dialog-title">Create Session Without Full Details?</DialogTitle>
         <DialogContent>
           <DialogContentText id="confirm-dialog-description">
-            You haven't provided a job description or selected a resume. Adding these details will provide better assistance during your interview.
-            <br /><br />
+            You haven't provided a job description or selected a resume. Adding these details will
+            provide better assistance during your interview.
+            <br />
+            <br />
             Are you sure you want to proceed?
           </DialogContentText>
           <FormControlLabel
             control={
-              <Checkbox 
+              <Checkbox
                 checked={dontShowAgain}
-                onChange={(e) => setDontShowAgain(e.target.checked)} 
+                onChange={(e) => setDontShowAgain(e.target.checked)}
               />
             }
             label="Don't show this warning again"
@@ -401,11 +408,11 @@ function SetupConfigPage({
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button 
-            onClick={handleConfirmSave} 
-            autoFocus 
+          <Button
+            onClick={handleConfirmSave}
+            autoFocus
             variant="contained"
-            sx={{ 
+            sx={{
               backgroundImage: 'linear-gradient(to right, #C45400, #E9680C)'
             }}
           >

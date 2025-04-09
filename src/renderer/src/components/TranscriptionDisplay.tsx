@@ -1,9 +1,5 @@
 import React from 'react'
-import {
-  Box,
-  Typography,
-  Alert // Import Alert if needed for error display, or pass error message as prop
-} from '@mui/material'
+import { Box, Typography } from '@mui/material'
 
 interface TranscriptionDisplayProps {
   isCapturing: boolean
