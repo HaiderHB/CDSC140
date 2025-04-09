@@ -61,6 +61,7 @@ function App(): JSX.Element {
   const {
     responseText,
     bulletPoints,
+    currentBulletPoint,
     connectToOpenAI,
     handleManualDeleteEyeContact,
     handleRestoreLastDeleted,
@@ -353,6 +354,7 @@ function App(): JSX.Element {
             responseText={responseText}
             desktopCanvasRef={canvasRef}
             micCanvasRef={micCanvasRef}
+            currentBulletPoint={currentBulletPoint}
           />
         )}
 
