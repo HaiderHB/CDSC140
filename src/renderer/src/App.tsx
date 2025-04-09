@@ -1,112 +1,26 @@
-import { useEffect, useRef, useState } from 'react'
-import {
-  Box,
-  CircularProgress,
-  IconButton,
-  Snackbar,
-  Alert,
-  Tab,
-  Tabs,
-  Typography,
-  Button
-} from '@mui/material'
-import VisibilityIcon from '@mui/icons-material/Visibility'
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
+import { useEffect, useState } from 'react'
+import { Box, CircularProgress, IconButton, Snackbar, Alert, Typography } from '@mui/material'
 import './App.css'
 import SetupConfigPage from './components/SetupConfigPage'
-import SessionList from './components/SessionList'
-import ResumeManager from './components/ResumeManager'
-// import Transcription from './components/Transcription'
 import { useDataPersistence } from './hooks/useDataPersistence'
 import { useSpeechRecognition } from './hooks/useSpeechRecognition'
-import Fuse from 'fuse.js'
-// import { SpritzReader, RapidRead } from './components/SpeedReaders'
 import { Key } from './components/Key' // Import the Key component
-// import { EyeContactBox } from './components/EyeContactBox' // Import EyeContactBox
 import { ReadingModeModal } from './components/ReadingModeModal' // Import ReadingModeModal
-import { ResponseOutput } from './components/ResponseOutput' // Import ResponseOutput
-import { TranscriptionDisplay } from './components/TranscriptionDisplay' // Import TranscriptionDisplay
-import { AudioStatusDisplay } from './components/AudioStatusDisplay' // Import AudioStatusDisplay
-
-// Use Session type from useDataPersistence for all session-related data
-interface CurrentSession {
-  id: string
-  name: string
-  date?: string
-  resumeId?: string
-  resumeName?: string
-  jobDescription: string
-  resumeContent?: string
-}
-
-// Add these new interfaces near the top of the file
-interface AudioStatus {
-  connection: 'disconnected' | 'connected'
-  listening: boolean
-}
-
-type WsStatus = 'disconnected' | 'connecting' | 'connected' // Define specific type
+import { useAppNavigation } from './hooks/useAppNavigation'
+import { useAudioCapture } from './hooks/useAudioCapture'
+import { useTranscriptionService } from './hooks/useTranscriptionService'
+import { useWebRTC } from './hooks/useWebRTC'
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import MainPage from './components/MainPage'
+import CapturePage from './components/CapturePage'
 
 type ReadingMode = 'normal' | 'rapid' | 'spritz'
 
 const TEST_MODE = false
 
-const testBulletPoints = [
-  'Example Text. Keep your eyes on the red dot and read using your peripheral vision.',
-  'I have 5 years of experience in software development',
-  "I'm proficient in Python and JavaScript",
-  "I've worked on large-scale distributed systems",
-  'I have experience with cloud platforms like AWS',
-  "I'm familiar with agile development methodologies"
-]
-
 function App(): JSX.Element {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const micCanvasRef = useRef<HTMLCanvasElement>(null)
-  const [isCapturing, setIsCapturing] = useState(false)
-  const [isClickThrough, setIsClickThrough] = useState(false)
-  const streamRef = useRef<MediaStream | null>(null)
-  const micStreamRef = useRef<MediaStream | null>(null)
-  const audioContextRef = useRef<AudioContext | null>(null)
-  const micAudioContextRef = useRef<AudioContext | null>(null)
-  const analyserRef = useRef<AnalyserNode | null>(null)
-  const micAnalyserRef = useRef<AnalyserNode | null>(null)
-  const animationFrameRef = useRef<number | null>(null)
-  const micAnimationFrameRef = useRef<number | null>(null)
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
-  const dataChannelRef = useRef<RTCDataChannel | null>(null)
-  const [responseText, setResponseText] = useState('')
-  const [bulletPoints, setBulletPoints] = useState<string[]>([])
-  const [currentBulletPoint, setCurrentBulletPoint] = useState('')
-  const [deletedBulletPoints, setDeletedBulletPoints] = useState<string[]>([]) // Stack to track deleted points
-  const [currentPage, setCurrentPage] = useState('main')
-  const [homeTab, setHomeTab] = useState(0)
-  const [currentSession, setCurrentSession] = useState<CurrentSession | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [transcriptText, setTranscriptText] = useState<string>('')
-  const [wsStatus, setWsStatus] = useState<WsStatus>('disconnected') // Use specific type
-  const [wsError, setWsError] = useState<string | null>(null)
-  const wsRef = useRef<WebSocket | null>(null)
-  const connectionAttemptsRef = useRef(0)
-  const isConnectingRef = useRef(false)
-  const pendingUpdatesRef = useRef<string[]>([])
-  const processingUpdatesRef = useRef(false)
-  const bulletPointsRef = useRef<string[]>([])
-  const bulletPointsInitializedRef = useRef(false)
-
-  // Add new state for audio status
-  const [desktopAudioStatus, setDesktopAudioStatus] = useState<AudioStatus>({
-    connection: 'disconnected',
-    listening: false
-  })
-  const [micAudioStatus, setMicAudioStatus] = useState<AudioStatus>({
-    connection: 'disconnected',
-    listening: false
-  })
-
-  const [showCommands, setShowCommands] = useState(true)
-
+  const [isClickThrough, setIsClickThrough] = useState(false)
   const [readingMode, setReadingMode] = useState<ReadingMode>('normal')
   const [showReadingModeModal, setShowReadingModeModal] = useState(false)
 
@@ -123,129 +37,64 @@ function App(): JSX.Element {
     deleteResume
   } = useDataPersistence()
 
-  // Use the ref when bulletPoints change
-  useEffect(() => {
-    bulletPointsRef.current = bulletPoints
-    console.log('📋 Bullet points updated in App component:', bulletPoints)
-  }, [bulletPoints])
+  const {
+    currentPage,
+    homeTab,
+    currentSession,
+    setCurrentPage,
+    setHomeTab,
+    handleNewSession,
+    handleLoadSession: navHandleLoadSession,
+    handleSaveConfig
+  } = useAppNavigation({ addSession, resumes, sessions })
 
-  // Define the match found handler function
-  const handleMatchFound = (matchedPoint: string) => {
-    console.log('🎯 Matched bullet point:', matchedPoint)
+  const {
+    desktopAudioStatus,
+    micAudioStatus,
+    startCapture: hookStartCapture,
+    stopCapture: hookStopCapture,
+    isCapturing,
+    canvasRef,
+    micCanvasRef
+  } = useAudioCapture()
 
-    // Use the ref value to avoid stale closure
-    const currentBulletPoints = bulletPointsRef.current
-    console.log('🔍 Current bullet points in state:', currentBulletPoints)
-
-    // Check if this exact bullet point exists in our list
-    const exactMatch = currentBulletPoints.includes(matchedPoint)
-
-    if (exactMatch) {
-      console.log('✅ Exact match found in bullet points, removing:', matchedPoint)
-
-      // Remove the exact match
-      setBulletPoints((prev) => {
-        const newPoints = prev.filter((point) => point !== matchedPoint)
-        console.log(`✅ Removed bullet point. Remaining bullet points: ${newPoints.length}`)
-        return newPoints
-      })
-    } else {
-      console.log(
-        '⚠️ No exact match in bullet points, using Fuse.js for fuzzy matching:',
-        matchedPoint
-      )
-
-      // Configure Fuse.js with appropriate options
-      const fuseOptions = {
-        includeScore: true,
-        threshold: 0.4, // Lower threshold means more strict matching
-        keys: ['.'] // Search the whole string
-      }
-
-      // Initialize Fuse with current bullet points
-      const fuse = new Fuse(currentBulletPoints, fuseOptions)
-
-      // Perform the search
-      const searchResult = fuse.search(matchedPoint)
-
-      if (searchResult.length > 0) {
-        // Get the best match
-        const bestMatch = searchResult[0]
-        console.log(
-          `✅ Found fuzzy match with Fuse.js: "${bestMatch.item}" (Score: ${bestMatch.score?.toFixed(4)})`
-        )
-
-        // Remove the best match from bullet points
-        setBulletPoints((prev) => {
-          const newPoints = prev.filter((point) => point !== bestMatch.item)
-          console.log(
-            `✅ Removed fuzzy-matched bullet point. Remaining bullet points: ${newPoints.length}`
-          )
-          return newPoints
-        })
-      } else {
-        console.log('❌ No match found with Fuse.js among current bullet points')
-
-        // Last resort approach - force remove bullet point at index 0 if available
-        if (currentBulletPoints.length > 0) {
-          const pointToRemove = currentBulletPoints[0]
-          console.log('⚠️ Force removing first bullet point as fallback:', pointToRemove)
-          setBulletPoints((prev) => prev.filter((_, i) => i !== 0))
-        }
-      }
-    }
-  }
-
-  const { isListening, startListening, stopListening } = useSpeechRecognition({
-    onTranscript: (text) => {
-      console.log('User speech transcript:', text)
-      if (text) {
-        setTranscriptText(text)
-      }
-    },
+  const {
+    responseText,
     bulletPoints,
-    onMatchFound: handleMatchFound
+    connectToOpenAI,
+    handleManualDeleteEyeContact,
+    handleRestoreLastDeleted,
+    resetWebRTCState,
+    findAndRemoveMatchingBulletPoint
+  } = useWebRTC({ currentSession, isCapturing, initialBulletPoints: TEST_MODE ? [] : [] })
+
+  const {
+    transcriptText,
+    wsStatus,
+    wsError,
+    connectWebSocket,
+    startRecording: startTranscriptionRecording,
+    stopRecording: stopTranscriptionRecording
+  } = useTranscriptionService({
+    isCapturing,
+    bulletPoints,
+    onMatchFound: findAndRemoveMatchingBulletPoint
   })
 
-  // Test mode effect - set test bullet points only once
-  useEffect(() => {
-    if (TEST_MODE && bulletPoints.length === 0 && !bulletPointsInitializedRef.current) {
-      console.log('🔄 Test mode: Setting bullet points for semantic matching:', testBulletPoints)
-      setBulletPoints(testBulletPoints)
-      bulletPointsInitializedRef.current = true
-      console.log('✅ Initial bullet points set for semantic matching')
-    }
-  }, [bulletPoints.length]) // Only run when bulletPoints.length changes
+  const { isListening } = useSpeechRecognition({
+    onTranscript: (text) => {
+      console.log('Local speech recognition transcript:', text)
+    },
+    bulletPoints,
+    onMatchFound: findAndRemoveMatchingBulletPoint
+  })
 
-  // Effect to send bullet points to the backend when they change
-  useEffect(() => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && bulletPoints.length > 0) {
-      console.log('🔄 Sending updated bullet points to backend:', bulletPoints)
-      wsRef.current.send(
-        JSON.stringify({
-          type: 'set_bullet_points',
-          payload: { points: bulletPoints }
-        })
-      )
-    }
-  }, [bulletPoints]) // Run whenever bulletPoints change
+  useKeyboardShortcuts({
+    onManualDeleteEyeContact: handleManualDeleteEyeContact,
+    onRestoreLastDeleted: handleRestoreLastDeleted,
+    isActive: isCapturing
+  })
 
-  // Also send bullet points right after WebSocket connects
-  useEffect(() => {
-    if (wsStatus === 'connected' && bulletPoints.length > 0) {
-      console.log('🔄 Sending bullet points after WS connection:', bulletPoints)
-      if (wsRef.current) {
-        wsRef.current.send(
-          JSON.stringify({
-            type: 'set_bullet_points',
-            payload: { points: bulletPoints }
-          })
-        )
-      }
-    }
-  }, [wsStatus, bulletPoints]) // Run when WebSocket status changes to connected
-
-  // Display error messages from data loading
   useEffect(() => {
     if (loadSessionsError) {
       setError(`Failed to load sessions: ${loadSessionsError.message}`)
@@ -254,871 +103,94 @@ function App(): JSX.Element {
     }
   }, [loadSessionsError, loadResumesError])
 
-  // Effect to listen for click-through toggle events
   useEffect(() => {
     const handleClickThroughToggle = (event: CustomEvent) => {
       setIsClickThrough(event.detail.enabled)
     }
-
     window.addEventListener('clickThroughToggled', handleClickThroughToggle as EventListener)
-
     return () => {
       window.removeEventListener('clickThroughToggled', handleClickThroughToggle as EventListener)
     }
   }, [])
 
-  // Add Ctrl+M event listener
-  useEffect(() => {
-    // @ts-ignore
-    const cleanup = window.api.onCtrlM(() => {
-      handleManualDeleteEyeContact()
-    })
-    return cleanup
-  }, [bulletPoints, deletedBulletPoints])
-
-  // Add Ctrl+N event listener
-  useEffect(() => {
-    // @ts-ignore
-    const cleanup = window.api.onCtrlN(() => {
-      handleRestoreLastDeleted()
-    })
-    return cleanup
-  }, [bulletPoints, deletedBulletPoints])
-
-  const connectWebSocket = () => {
-    // Prevent multiple connection attempts at the same time
-    if (isConnectingRef.current) return
-
+  const startCombinedCapture = async () => {
+    setError(null)
     try {
-      isConnectingRef.current = true
-      setWsStatus('connecting')
-      setWsError(null)
-
-      wsRef.current = new WebSocket('ws://localhost:9876')
-
-      wsRef.current.onopen = () => {
-        console.log('WebSocket connection established')
-        setWsStatus('connected')
-        setWsError(null)
-        connectionAttemptsRef.current = 0
-        isConnectingRef.current = false
-      }
-
-      wsRef.current.onclose = (event) => {
-        console.log(`WebSocket closed with code: ${event.code}`)
-        setWsStatus('disconnected')
-        isConnectingRef.current = false
-
-        // Only show error if we've attempted to connect multiple times
-        if (connectionAttemptsRef.current >= 2) {
-          setWsError('Failed to connect to transcription service')
-        }
-
-        // Only attempt to reconnect if we're still capturing
-        if (isCapturing) {
-          // Exponential backoff for reconnection attempts
-          const delay = Math.min(3000 * Math.pow(1.5, connectionAttemptsRef.current), 10000)
-          connectionAttemptsRef.current++
-
-          // Try to reconnect after a delay
-          setTimeout(connectWebSocket, delay)
-        }
-      }
-
-      wsRef.current.onerror = (error) => {
-        console.error('WebSocket error:', error)
-        // Don't set error message immediately during initial connection
-        if (wsStatus !== 'connecting' || connectionAttemptsRef.current >= 2) {
-          setWsError('Failed to connect to transcription service')
-        }
-      }
-
-      wsRef.current.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-
-          switch (data.type) {
-            case 'transcription':
-              // Queue transcription update
-              queueTranscriptionUpdate(data.text)
-              break
-            case 'match_result':
-              // Handle match result from backend
-              if (data.match) {
-                console.log(
-                  `🎯 Match found from backend: '${data.match}' (Score: ${data.score.toFixed(2)})`
-                )
-                // Use the same handler we pass to useSpeechRecognition
-                console.log('Calling handleMatchFound with match:', data.match)
-                handleMatchFound(data.match)
-              } else {
-                console.log(
-                  `No match found from backend (Score: ${data.score?.toFixed(2) || 'unknown'})`
-                )
-              }
-              break
-            case 'status':
-              console.log(`Received status update: ${data.status}`, data)
-              if (data.status === 'connected') {
-                setWsStatus('connected')
-                setWsError(null)
-              } else if (data.status === 'bullets_updated') {
-                console.log(`Backend confirmed ${data.count} bullet points updated.`)
-              } else if (data.status === 'started') {
-                console.log('Backend confirmed recording started.')
-              } else if (data.status === 'stopped') {
-                console.log('Backend confirmed recording stopped.')
-              }
-              break
-            case 'control':
-              if (data.payload?.command === 'pong') {
-                console.log('Received pong from transcription server')
-              }
-              break
-            default:
-              console.warn('Received unknown message type from backend:', data.type)
-          }
-        } catch (err) {
-          console.error('Error handling WebSocket message:', err, event.data)
-        }
-      }
-
-      // Use binary message format for better performance
-      wsRef.current.binaryType = 'arraybuffer'
-    } catch (err) {
-      console.error('WebSocket connection error:', err)
-      isConnectingRef.current = false
-      setWsStatus('disconnected')
-
-      // Only show error if not in initial connection phase
-      if (wsStatus !== 'connecting' || connectionAttemptsRef.current >= 2) {
-        setWsError('Failed to connect to transcription service')
-      }
-    }
-  }
-
-  // Add these helper functions for processing transcription updates
-  const processTranscriptionQueue = () => {
-    if (pendingUpdatesRef.current.length === 0 || processingUpdatesRef.current) return
-
-    processingUpdatesRef.current = true
-    // Get latest update and clear queue
-    const latestUpdate = pendingUpdatesRef.current[pendingUpdatesRef.current.length - 1]
-    pendingUpdatesRef.current = []
-
-    // Update state and allow React to render before processing more
-    setTranscriptText(latestUpdate)
-
-    // Allow next update after a short delay (enough time for React to render)
-    setTimeout(() => {
-      processingUpdatesRef.current = false
-      // Process any new updates that came in while we were updating
-      if (pendingUpdatesRef.current.length > 0) {
-        processTranscriptionQueue()
-      }
-    }, 10) // Small delay for React to render
-  }
-
-  const queueTranscriptionUpdate = (text: string) => {
-    pendingUpdatesRef.current.push(text)
-    if (!processingUpdatesRef.current) {
-      processTranscriptionQueue()
-    }
-  }
-
-  const startCapture = async (): Promise<void> => {
-    try {
-      // Get desktop audio stream
-      const desktopStream = await navigator.mediaDevices.getDisplayMedia({
-        audio: true,
-        video: false
-      })
-
-      // Get microphone stream
-      console.log('Requesting microphone access...')
-      const micStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      })
-
-      // Update connection status when streams are obtained
-      setDesktopAudioStatus((prev) => ({ ...prev, connection: 'connected' }))
-      setMicAudioStatus((prev) => ({ ...prev, connection: 'connected' }))
-
-      // Set up audio analysis for desktop audio
-      audioContextRef.current = new AudioContext()
-      analyserRef.current = audioContextRef.current.createAnalyser()
-      const source = audioContextRef.current.createMediaStreamSource(desktopStream)
-      source.connect(analyserRef.current)
-
-      // Set up audio monitoring for desktop
-      const desktopProcessor = audioContextRef.current.createScriptProcessor(2048, 1, 1)
-      desktopProcessor.addEventListener('audioprocess', (e) => {
-        const input = e.inputBuffer.getChannelData(0)
-        const sum = input.reduce((acc, val) => acc + Math.abs(val), 0)
-        if (sum > 0.01) {
-          // Threshold for detecting audio
-          setDesktopAudioStatus((prev) => ({ ...prev, listening: true }))
-        }
-      })
-      source.connect(desktopProcessor)
-      desktopProcessor.connect(audioContextRef.current.destination)
-
-      // Set up audio analysis for microphone
-      micAudioContextRef.current = new AudioContext()
-      micAnalyserRef.current = micAudioContextRef.current.createAnalyser()
-      const micSource = micAudioContextRef.current.createMediaStreamSource(micStream)
-      micSource.connect(micAnalyserRef.current)
-
-      // Set up audio monitoring for microphone
-      const micProcessor = micAudioContextRef.current.createScriptProcessor(2048, 1, 1)
-      micProcessor.addEventListener('audioprocess', (e) => {
-        const input = e.inputBuffer.getChannelData(0)
-        const sum = input.reduce((acc, val) => acc + Math.abs(val), 0)
-        if (sum > 0.01) {
-          // Threshold for detecting audio
-          setMicAudioStatus((prev) => ({ ...prev, listening: true }))
-        }
-      })
-      micSource.connect(micProcessor)
-      micProcessor.connect(micAudioContextRef.current.destination)
-
-      streamRef.current = desktopStream
-      micStreamRef.current = micStream
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = desktopStream
-        videoRef.current.onloadedmetadata = () => videoRef.current?.play()
-      }
-
-      setIsCapturing(true)
-      startVisualization()
-      startMicVisualization()
-
-      const sessionInfo = currentSession
-        ? `Use the following job description and resume to help answer the questions. Job Description: ${currentSession.jobDescription}, Resume: ${currentSession.resumeContent}`
-        : ''
-      console.log('--------sessionInfo', sessionInfo)
-
-      // Start speech recognition
-      console.log('Starting speech recognition...')
-      startListening()
-
-      // Start WebSocket connection for transcription
-      console.log('Connecting to transcription WebSocket...')
-      connectWebSocket()
-
-      // Start recording transcription once connected
-      const startRecording = () => {
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-          console.log('Starting transcription recording')
-          setWsError(null)
-          setTranscriptText('')
-          pendingUpdatesRef.current = []
-
-          // Send current bullet points right before starting recording
-          if (bulletPointsRef.current.length > 0) {
-            console.log('Sending bullet points before starting recording:', bulletPointsRef.current)
-            wsRef.current.send(
-              JSON.stringify({
-                type: 'set_bullet_points',
-                payload: { points: bulletPointsRef.current }
-              })
-            )
-          }
-
-          // Wait a short moment for bullet points to be processed
-          setTimeout(() => {
-            // Then start recording
-            wsRef.current?.send(
-              JSON.stringify({
-                type: 'control',
-                payload: { command: 'start' }
-              })
-            )
-          }, 200) // Small delay to ensure bullet points are processed first
-        } else if (wsStatus === 'connecting') {
-          // If still connecting, try again shortly
-          setTimeout(startRecording, 500)
+      const streams = await hookStartCapture()
+      if (streams && streams.desktopStream) {
+        if (!TEST_MODE) {
+          await connectToOpenAI(streams.desktopStream)
         } else {
-          console.error('WebSocket is not connected, cannot start recording')
-          connectWebSocket() // Try to reconnect
-          setTimeout(startRecording, 1000) // Try again shortly
+          console.log('TEST_MODE: Skipping OpenAI WebRTC connection')
         }
-      }
 
-      // Start a timer to wait for connection before starting recording
-      setTimeout(startRecording, 1000)
+        connectWebSocket()
 
-      if (TEST_MODE) {
-        console.log('🔄 Test mode enabled: bullet points should be set by useEffect')
+        startTranscriptionRecording()
       } else {
-        // Connect to OpenAI WebRTC with only desktop audio
-        await connectToOpenAI(desktopStream)
+        throw new Error('Failed to get audio streams.')
       }
     } catch (error: any) {
-      console.error('Error starting capture:', error)
+      console.error('Error starting combined capture:', error)
       setError(`Failed to start capture: ${error?.message || 'Unknown error'}`)
-      // Reset status on error
-      setDesktopAudioStatus({ connection: 'disconnected', listening: false })
-      setMicAudioStatus({ connection: 'disconnected', listening: false })
+      stopCombinedCapture()
     }
   }
 
-  const connectToOpenAI = async (stream: MediaStream): Promise<void> => {
-    try {
-      // Get ephemeral token via IPC handler
-      const sessionData = await window.api.getOpenAISession()
-
-      if (!sessionData.client_secret?.value) {
-        console.error('Failed to get token:', sessionData)
-        return
-      }
-
-      console.log('Received OpenAI session token')
-
-      // Create RTC peer connection
-      const pc = new RTCPeerConnection()
-      peerConnectionRef.current = pc
-
-      // Add desktop audio track to the connection
-      stream.getAudioTracks().forEach((track) => {
-        pc.addTrack(track, stream)
-      })
-
-      // Setup data channel to send/receive events
-      const dc = pc.createDataChannel('oai-events')
-      dataChannelRef.current = dc
-
-      // Include session information in the automatic response
-      const sessionInfo = currentSession
-        ? `Use the following job description and resume to help answer the questions. Job Description: ${currentSession.jobDescription}, Resume: ${currentSession.resumeName}`
-        : ''
-
-      console.log('----sessionInfo', sessionInfo)
-
-      const prompt = `You are a meeting assistant to help during a meeting.
-        The user is being asked questions by an interviewer and you must help them answer the questions.
-
-        Start with a short core answer, then expand if needed
-        Seperate each new point with a "-".
-
-        ${sessionInfo}`
-
-      dc.addEventListener('open', () => {
-        console.log('Data channel open, sending session.update')
-
-        const update = {
-          type: 'session.update',
-          session: {
-            instructions: prompt
-            // output_audio: false
-          }
-        }
-        dataChannelRef.current?.send(JSON.stringify(update))
-      })
-
-      dc.addEventListener('message', (event) => {
-        try {
-          const msg = JSON.parse(event.data)
-
-          // Log the event type for all messages
-          // console.log('OpenAI WebRTC event:', msg.type, msg)
-
-          if (msg.type === 'response.audio_transcript.delta') {
-            // console.log('Delta text received:', msg.delta)
-            const delta = msg.delta || ''
-
-            setResponseText((prev) => {
-              if (prev.endsWith(delta)) {
-                return prev
-              }
-              return prev + delta
-            })
-
-            // Handle bullet point parsing
-            setCurrentBulletPoint((prev) => {
-              const newText = prev + delta
-
-              // If we encounter a bullet point separator
-              if (delta.includes('-')) {
-                const parts = newText.split('-')
-
-                // Add completed bullet points to the list
-                if (parts.length > 1) {
-                  setBulletPoints((prevPoints) => {
-                    const newPoints = [...prevPoints]
-                    // Add all complete points except the last one
-                    for (let i = 0; i < parts.length - 1; i++) {
-                      const point = parts[i].trim()
-                      if (point && !newPoints.includes(point)) {
-                        newPoints.push(point)
-                      }
-                    }
-                    return newPoints
-                  })
-                  // Keep the incomplete part
-                  return parts[parts.length - 1]
-                }
-              }
-              return newText
-            })
-          } else if (msg.type === 'response.text.done') {
-            // Add the final bullet point if there is one
-            if (currentBulletPoint.trim()) {
-              setBulletPoints((prev) => [...prev, currentBulletPoint.trim()])
-              setCurrentBulletPoint('')
-            }
-            const responseRequest = {
-              type: 'response.create',
-              response: {
-                modalities: ['text']
-              }
-            }
-
-            if (dataChannelRef.current) {
-              console.log('Sending automatic response request:', responseRequest)
-              dataChannelRef.current.send(JSON.stringify(responseRequest))
-            } else {
-              console.error(
-                'No WebRTC data channel available when sending automatic response request'
-              )
-            }
-          }
-        } catch (error) {
-          console.error('Error parsing WebRTC message:', error)
-        }
-      })
-
-      // Create WebRTC offer and send to OpenAI
-      const offer = await pc.createOffer()
-      await pc.setLocalDescription(offer)
-      console.log('Created WebRTC offer')
-
-      try {
-        // Use IPC handler for SDP exchange
-        const sdp = offer.sdp
-        if (!sdp) {
-          throw new Error('Failed to create SDP offer')
-        }
-
-        const sdpResponse = await window.api.openAIWebRtcSdp(sdp)
-
-        const answer = {
-          type: 'answer' as RTCSdpType,
-          sdp: sdpResponse
-        }
-        await pc.setRemoteDescription(answer)
-        console.log('Successfully connected to OpenAI WebRTC')
-      } catch (error) {
-        console.error('Error in WebRTC SDP exchange:', error)
-      }
-    } catch (error) {
-      console.error('Error setting up WebRTC:', error)
-    }
+  const stopCombinedCapture = () => {
+    console.log('Stopping capture...')
+    hookStopCapture()
+    stopTranscriptionRecording()
+    resetWebRTCState()
+    console.log('Capture stopped.')
   }
 
-  const stopCapture = (): void => {
-    // Stop transcription recording first
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      console.log('Stopping transcription recording')
-      wsRef.current.send(
-        JSON.stringify({
-          type: 'control',
-          payload: { command: 'stop' }
-        })
-      )
-    }
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop())
-      streamRef.current = null
-    }
-    if (micStreamRef.current) {
-      micStreamRef.current.getTracks().forEach((track) => track.stop())
-      micStreamRef.current = null
-    }
-    if (audioContextRef.current) {
-      audioContextRef.current.close()
-      audioContextRef.current = null
-    }
-    if (micAudioContextRef.current) {
-      micAudioContextRef.current.close()
-      micAudioContextRef.current = null
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null
-    }
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current)
-      animationFrameRef.current = null
-    }
-    if (micAnimationFrameRef.current) {
-      cancelAnimationFrame(micAnimationFrameRef.current)
-      micAnimationFrameRef.current = null
-    }
-
-    // Stop speech recognition
-    stopListening()
-
-    // Close WebRTC connection
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close()
-      peerConnectionRef.current = null
-    }
-    if (dataChannelRef.current) {
-      dataChannelRef.current.close()
-      dataChannelRef.current = null
-    }
-
-    setIsCapturing(false)
-    setResponseText('')
-    setBulletPoints([])
-    setCurrentBulletPoint('')
-
-    // Reset the initialization flag to allow bullet points to be set again in future sessions
-    bulletPointsInitializedRef.current = false
-
-    // Clear canvas
-    if (canvasRef.current) {
-      const canvasCtx = canvasRef.current.getContext('2d')
-      if (canvasCtx) {
-        canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
-      }
-    }
-    if (micCanvasRef.current) {
-      const micCanvasCtx = micCanvasRef.current.getContext('2d')
-      if (micCanvasCtx) {
-        micCanvasCtx.clearRect(0, 0, micCanvasRef.current.width, micCanvasRef.current.height)
-      }
-    }
-
-    // Don't clear transcript - keep it visible after stopping
-
-    // Reset audio status
-    setDesktopAudioStatus({ connection: 'disconnected', listening: false })
-    setMicAudioStatus({ connection: 'disconnected', listening: false })
-  }
-
-  const startVisualization = (): void => {
-    if (!analyserRef.current || !canvasRef.current) return
-
-    const canvasCtx = canvasRef.current.getContext('2d')
-    if (!canvasCtx) return
-
-    const bufferLength = analyserRef.current.frequencyBinCount
-    const dataArray = new Uint8Array(bufferLength)
-
-    const draw = () => {
-      animationFrameRef.current = requestAnimationFrame(draw)
-
-      if (!analyserRef.current || !canvasRef.current) return
-
-      analyserRef.current.getByteFrequencyData(dataArray)
-
-      canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
-
-      const barWidth = (canvasRef.current.width / bufferLength) * 1.5
-      let barHeight
-      let x = 0
-
-      for (let i = 0; i < bufferLength; i++) {
-        barHeight = dataArray[i] / 2
-
-        canvasCtx.fillStyle = `hsl(${(i / bufferLength) * 360}, 100%, 50%)`
-        canvasCtx.fillRect(x, canvasRef.current.height - barHeight, barWidth, barHeight)
-
-        x += barWidth + 1
-      }
-    }
-
-    draw()
-  }
-
-  const startMicVisualization = (): void => {
-    if (!micAnalyserRef.current || !micCanvasRef.current) return
-
-    const canvasCtx = micCanvasRef.current.getContext('2d')
-    if (!canvasCtx) return
-
-    const bufferLength = micAnalyserRef.current.frequencyBinCount
-    const dataArray = new Uint8Array(bufferLength)
-
-    const draw = () => {
-      micAnimationFrameRef.current = requestAnimationFrame(draw)
-
-      if (!micAnalyserRef.current || !micCanvasRef.current) return
-
-      micAnalyserRef.current.getByteFrequencyData(dataArray)
-
-      canvasCtx.clearRect(0, 0, micCanvasRef.current.width, micCanvasRef.current.height)
-
-      const barWidth = (micCanvasRef.current.width / bufferLength) * 1.5
-      let barHeight
-      let x = 0
-
-      for (let i = 0; i < bufferLength; i++) {
-        barHeight = dataArray[i] / 2
-
-        canvasCtx.fillStyle = `hsl(${(i / bufferLength) * 360}, 100%, 50%)`
-        canvasCtx.fillRect(x, micCanvasRef.current.height - barHeight, barWidth, barHeight)
-
-        x += barWidth + 1
-      }
-    }
-
-    draw()
-  }
-
-  // Set canvas dimensions when component mounts
-  useEffect(() => {
-    if (canvasRef.current) {
-      canvasRef.current.width = 320
-      canvasRef.current.height = 80
-    }
-    if (micCanvasRef.current) {
-      micCanvasRef.current.width = 320
-      micCanvasRef.current.height = 80
-    }
-  }, [])
-
-  const handleTabChange = (_, newValue) => {
-    setHomeTab(newValue)
-  }
-
-  const handleNewSession = () => {
-    setCurrentPage('setup')
-  }
-
-  const handleLoadSession = (sessionId: string) => {
-    const session = sessions.find((s) => s.id === sessionId)
-    if (session) {
-      setCurrentSession({
-        id: session.id,
-        name: session.name,
-        date: session.date,
-        jobDescription: session.jobDescription,
-        resumeId: session.resumeId,
-        resumeName: session.resumeName,
-        resumeContent: session.resumeContent
-      })
-      setCurrentPage('capture')
-    }
-  }
-
-  const handleSaveConfig = async (config: {
-    sessionName?: string
-    jobDescription: string
-    selectedResume: string
-  }) => {
-    try {
-      // Find the selected resume
-      const selectedResume = resumes.find((r) => r.id === config.selectedResume)
-
-      // Create a new session
-      const newSession = await addSession({
-        name: config.sessionName || `Interview Session - ${new Date().toLocaleDateString()}`,
-        jobDescription: config.jobDescription,
-        resumeId: selectedResume?.id,
-        resumeName: selectedResume?.name,
-        resumeContent: selectedResume?.resumeContent
-      })
-
-      // Set as current session
-      setCurrentSession({
-        id: newSession.id,
-        name: newSession.name,
-        date: newSession.date,
-        jobDescription: newSession.jobDescription,
-        resumeId: newSession.resumeId,
-        resumeName: newSession.resumeName,
-        resumeContent: newSession.resumeContent
-      })
-
-      // Navigate to capture page
-      setCurrentPage('capture')
-    } catch (error) {
-      console.error('Error saving session:', error)
-      setError('Failed to save session. Please try again.')
-    }
-  }
-
-  const handleAddResume = async (resume: { name: string; file: File }) => {
+  const handleAddResumeWrapper = async (resume: { name: string; file: File }) => {
+    setError(null)
     try {
       await addResume(resume.name, resume.file)
-      // If we're on the setup page, go back to main with resumes tab active
       if (currentPage === 'setup') {
         setCurrentPage('main')
-        setHomeTab(1) // Switch to resumes tab
+        setHomeTab(1)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding resume:', error)
-      setError('Failed to add resume. Please try again.')
+      setError(`Failed to add resume: ${error.message || 'Please try again.'}`)
     }
   }
 
-  const handleDeleteSession = async (sessionId: string) => {
+  const handleDeleteSessionWrapper = async (sessionId: string) => {
+    setError(null)
     try {
       await deleteSession(sessionId)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting session:', error)
-      setError('Failed to delete session. Please try again.')
+      setError(`Failed to delete session: ${error.message || 'Please try again.'}`)
     }
   }
 
-  const handleDeleteResume = async (resumeId: string) => {
+  const handleDeleteResumeWrapper = async (resumeId: string) => {
+    setError(null)
     try {
       await deleteResume(resumeId)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting resume:', error)
-      setError('Failed to delete resume. Please try again.')
+      setError(`Failed to delete resume: ${error.message || 'Please try again.'}`)
     }
   }
 
-  // Close the error snackbar
   const handleCloseError = () => {
     setError(null)
   }
 
-  // Add these new functions before the renderResponseOutput function
-  const handleManualDeleteEyeContact = () => {
-    if (bulletPoints.length > 0) {
-      const deletedPoint = bulletPoints[0]
-      setBulletPoints((prev) => prev.slice(1))
-      setDeletedBulletPoints((prev) => [...prev, deletedPoint])
-    }
-  }
-
-  const handleRestoreLastDeleted = () => {
-    if (deletedBulletPoints.length > 0) {
-      const pointToRestore = deletedBulletPoints[deletedBulletPoints.length - 1]
-      setBulletPoints((prev) => [pointToRestore, ...prev])
-      setDeletedBulletPoints((prev) => prev.slice(0, -1))
-    }
-  }
-
-  const renderMainPage = () => (
-    <>
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs value={homeTab} onChange={handleTabChange} aria-label="main navigation tabs">
-          <Tab label="Sessions" />
-          <Tab label="Resumes" />
-        </Tabs>
-      </Box>
-
-      {/* Sessions Tab */}
-      {homeTab === 0 && (
-        <SessionList
-          sessions={sessions}
-          onNewSession={handleNewSession}
-          onSelectSession={handleLoadSession}
-          onDeleteSession={handleDeleteSession}
-        />
-      )}
-
-      {/* Resumes Tab */}
-      {homeTab === 1 && (
-        <ResumeManager
-          resumes={resumes}
-          onAddResume={handleAddResume}
-          onDeleteResume={handleDeleteResume}
-        />
-      )}
-    </>
-  )
-
-  // Add a function to handle window close
   const handleCloseApp = () => {
-    // Stop any ongoing capture first
+    console.log('Attempting to close application...')
     if (isCapturing) {
-      stopCapture()
+      stopCombinedCapture()
     }
-
-    // Close WebSocket connection if it exists
-    if (wsRef.current) {
-      wsRef.current.close(1000, 'App closing')
-      wsRef.current = null
-    }
-
-    // Close WebRTC connection if it exists
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close()
-      peerConnectionRef.current = null
-    }
-
-    // Close data channel if it exists
-    if (dataChannelRef.current) {
-      dataChannelRef.current.close()
-      dataChannelRef.current = null
-    }
-
-    // Stop all media streams
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop())
-      streamRef.current = null
-    }
-    if (micStreamRef.current) {
-      micStreamRef.current.getTracks().forEach((track) => track.stop())
-      micStreamRef.current = null
-    }
-
-    // Close audio contexts
-    if (audioContextRef.current) {
-      audioContextRef.current.close()
-      audioContextRef.current = null
-    }
-    if (micAudioContextRef.current) {
-      micAudioContextRef.current.close()
-      micAudioContextRef.current = null
-    }
-
-    // Clear video element
-    if (videoRef.current) {
-      videoRef.current.srcObject = null
-    }
-
-    // Cancel any animation frames
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current)
-      animationFrameRef.current = null
-    }
-    if (micAnimationFrameRef.current) {
-      cancelAnimationFrame(micAnimationFrameRef.current)
-      micAnimationFrameRef.current = null
-    }
-
-    // Clear canvases
-    if (canvasRef.current) {
-      const canvasCtx = canvasRef.current.getContext('2d')
-      if (canvasCtx) {
-        canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
-      }
-    }
-    if (micCanvasRef.current) {
-      const micCanvasCtx = micCanvasRef.current.getContext('2d')
-      if (micCanvasCtx) {
-        micCanvasCtx.clearRect(0, 0, micCanvasRef.current.width, micCanvasRef.current.height)
-      }
-    }
-
-    // Stop speech recognition
-    stopListening()
-
-    // Reset all state
-    setIsCapturing(false)
-    setResponseText('')
-    setBulletPoints([])
-    setCurrentBulletPoint('')
-    setDesktopAudioStatus({ connection: 'disconnected', listening: false })
-    setMicAudioStatus({ connection: 'disconnected', listening: false })
-    setWsStatus('disconnected')
-    setWsError(null)
-
-    // Finally, close the app
-    window.api.closeApp?.()
+    setTimeout(() => {
+      window.api.closeApp?.()
+    }, 150)
   }
 
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
@@ -1129,15 +201,15 @@ function App(): JSX.Element {
       className="app-container"
       sx={{
         minHeight: '100vh',
-        width: '100%', // Remove max width constraint
+        width: '100%',
         background: isClickThrough
           ? 'transparent'
           : 'linear-gradient(to bottom right, rgba(21, 21, 21, 0.4), rgba(37, 37, 37, 0.4))',
         backdropFilter: 'blur(2px)',
-        p: 3
+        p: 3,
+        paddingTop: '62px'
       }}
     >
-      {/* Custom title bar */}
       <Box
         sx={{
           position: 'fixed',
@@ -1149,7 +221,7 @@ function App(): JSX.Element {
           alignItems: 'center',
           height: '28px',
           backgroundColor: isClickThrough ? 'transparent' : 'rgba(21, 21, 21, 0.9)',
-          WebkitAppRegion: 'drag', // Make draggable on macOS and Windows
+          WebkitAppRegion: 'drag',
           zIndex: 9998,
           paddingX: 2
         }}
@@ -1161,8 +233,6 @@ function App(): JSX.Element {
           Interview Speaker
         </Typography>
         <Box sx={{ display: 'flex', WebkitAppRegion: 'no-drag' }}>
-          {' '}
-          {/* Ensure buttons are clickable */}
           <IconButton
             onClick={handleCloseApp}
             size="small"
@@ -1179,7 +249,6 @@ function App(): JSX.Element {
         </Box>
       </Box>
 
-      {/* Instructions Bar */}
       <Box
         sx={{
           position: 'fixed',
@@ -1187,7 +256,7 @@ function App(): JSX.Element {
           left: 0,
           right: 0,
           display: 'flex',
-          justifyContent: 'space-around', // spreads items evenly
+          justifyContent: 'space-around',
           alignItems: 'center',
           height: '34px',
           backgroundColor: 'rgba(21, 21, 21, 0.9)',
@@ -1209,11 +278,7 @@ function App(): JSX.Element {
         </Box>
       </Box>
 
-      {/* Add top margin to account for title bar */}
-      <Box sx={{ pt: '32px' }}>
-        {' '}
-        {/* Increased padding to account for title (28px) + instructions (34px) */}
-        {/* Loading indicator */}
+      <Box>
         {(loadingSessions || loadingResumes) && (
           <Box
             sx={{
@@ -1226,13 +291,27 @@ function App(): JSX.Element {
               alignItems: 'center',
               justifyContent: 'center',
               bgcolor: 'rgba(21, 21, 21, 0.3)',
-              zIndex: 9999
+              zIndex: 10000
             }}
           >
             <CircularProgress color="primary" size={60} />
           </Box>
         )}
-        {currentPage === 'main' && renderMainPage()}
+
+        {currentPage === 'main' && (
+          <MainPage
+            homeTab={homeTab}
+            onTabChange={(event, newValue) => setHomeTab(newValue)}
+            sessions={sessions}
+            onNewSession={handleNewSession}
+            onSelectSession={navHandleLoadSession}
+            onDeleteSession={handleDeleteSessionWrapper}
+            resumes={resumes}
+            onAddResume={handleAddResumeWrapper}
+            onDeleteResume={handleDeleteResumeWrapper}
+          />
+        )}
+
         {currentPage === 'setup' && (
           <Box
             sx={{
@@ -1248,176 +327,35 @@ function App(): JSX.Element {
               resumes={resumes}
               onAddResume={() => {
                 setCurrentPage('main')
-                setHomeTab(1) // Switch to resumes tab
+                setHomeTab(1)
               }}
               onBack={() => setCurrentPage('main')}
             />
           </Box>
         )}
-        {currentPage === 'capture' && (
-          <Box
-            sx={{
-              // Use Flexbox for overall layout
-              display: 'flex',
-              flexDirection: 'column',
-              position: 'relative',
-              // Account for fixed header elements in height calculation
-              height: 'calc(100vh - 28px - 34px - 48px)',
-              flexGrow: 1,
-              overflowY: 'auto',
-              px: 3,
-              py: 2,
-              // Add more space at the top to clear the instruction bar
-              '&::-webkit-scrollbar': {
-                display: 'block'
-              },
-              '&::-webkit-scrollbar-track': {
-                marginTop: '34px'
-              }
-            }}
-          >
-            {/* Back Button - Top Left */}
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                p: 1,
-                flexShrink: 0,
-                justifyContent: 'space-between'
-              }}
-            >
-              <Box
-                onClick={() => setCurrentPage('main')}
-                sx={{
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  color: '#E9680C',
-                  marginTop: '10px',
-                  '&:hover': { color: '#FF8534' }
-                }}
-              >
-                ← Back to Home
-              </Box>
 
-              {/* Commands toggle - Top Right */}
-              <Box
-                onClick={() => setShowCommands(!showCommands)}
-                sx={{
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  color: 'text.secondary',
-                  marginTop: '10px',
-                  '&:hover': { color: 'white' }
-                }}
-              >
-                {showCommands ? (
-                  <VisibilityIcon fontSize="small" sx={{ fontSize: '0.85rem' }} />
-                ) : (
-                  <VisibilityOffIcon fontSize="small" sx={{ fontSize: '0.85rem' }} />
-                )}
-                <Typography variant="caption" sx={{ fontSize: '0.85rem' }}>
-                  Commands
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* Bullet Points - Top Middle */}
-            <Box sx={{ width: '100%', maxWidth: '700px', mx: 'auto', px: 2, flexShrink: 0 }}>
-              <ResponseOutput
-                isCapturing={isCapturing}
-                bulletPoints={bulletPoints}
-                currentBulletPoint={currentBulletPoint}
-                readingMode={readingMode}
-                showCommands={showCommands}
-                commandKey={commandKey}
-                onShowReadingModeModal={() => setShowReadingModeModal(true)}
-              />
-            </Box>
-
-            {/* Controls - Centered below bullet points */}
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                p: 2,
-                flexShrink: 0
-              }}
-            >
-              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 1 }}>
-                {!isCapturing ? (
-                  <Button
-                    onClick={startCapture}
-                    variant="contained"
-                    sx={{
-                      bgcolor: 'rgba(233, 104, 12, 0.9)',
-                      color: 'white',
-                      px: 3,
-                      py: 1,
-                      fontSize: '1rem',
-                      fontWeight: 500,
-                      boxShadow: '0 4px 14px rgba(233, 104, 12, 0.4)',
-                      '&:hover': {
-                        bgcolor: 'rgba(233, 104, 12, 1)',
-                        boxShadow: '0 6px 20px rgba(233, 104, 12, 0.6)'
-                      }
-                    }}
-                  >
-                    Start Capture
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={stopCapture}
-                    variant="contained"
-                    sx={{
-                      bgcolor: 'rgba(239, 68, 68, 0.9)',
-                      color: 'white',
-                      px: 3,
-                      py: 1,
-                      fontSize: '1rem',
-                      fontWeight: 500,
-                      boxShadow: '0 4px 14px rgba(239, 68, 68, 0.4)',
-                      '&:hover': {
-                        bgcolor: 'rgba(239, 68, 68, 1)',
-                        boxShadow: '0 6px 20px rgba(239, 68, 68, 0.6)'
-                      }
-                    }}
-                  >
-                    Stop Capture
-                  </Button>
-                )}
-              </Box>
-              {isListening && (
-                <Box
-                  sx={{ color: '#4ade80', mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}
-                >
-                  <CircularProgress size={16} sx={{ color: '#4ade80' }} />
-                  Listening for speech...
-                </Box>
-              )}
-            </Box>
-
-            {/* Transcription - Centered within scrollable area */}
-            <Box sx={{ width: '100%', maxWidth: '800px', mx: 'auto', mb: 3 }}>
-              <TranscriptionDisplay
-                isCapturing={isCapturing}
-                transcriptText={transcriptText}
-                wsStatus={wsStatus}
-                wsError={wsError}
-              />
-            </Box>
-
-            {/* Audio Visualizers - Centered within scrollable area */}
-            <AudioStatusDisplay
-              desktopAudioStatus={desktopAudioStatus}
-              micAudioStatus={micAudioStatus}
-            />
-          </Box>
+        {currentPage === 'capture' && currentSession && (
+          <CapturePage
+            isCapturing={isCapturing}
+            startCapture={startCombinedCapture}
+            stopCapture={stopCombinedCapture}
+            bulletPoints={bulletPoints}
+            readingMode={readingMode}
+            onShowReadingModeModal={() => setShowReadingModeModal(true)}
+            desktopAudioStatus={desktopAudioStatus}
+            micAudioStatus={micAudioStatus}
+            transcriptText={transcriptText}
+            wsStatus={wsStatus}
+            wsError={wsError}
+            isListening={isListening}
+            currentSession={currentSession}
+            goBack={() => setCurrentPage('main')}
+            responseText={responseText}
+            desktopCanvasRef={canvasRef}
+            micCanvasRef={micCanvasRef}
+          />
         )}
-        {/* Error Snackbar */}
+
         <Snackbar
           open={!!error}
           autoHideDuration={6000}
@@ -1430,7 +368,6 @@ function App(): JSX.Element {
         </Snackbar>
       </Box>
 
-      {/* Add the reading mode modal using the component */}
       <ReadingModeModal
         open={showReadingModeModal}
         onClose={() => setShowReadingModeModal(false)}

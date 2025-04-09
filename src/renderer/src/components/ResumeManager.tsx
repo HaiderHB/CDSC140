@@ -166,7 +166,8 @@ function ResumeManager({ onAddResume, resumes = [], onDeleteResume }: ResumeMana
               <Paper
                 sx={{
                   p: 2,
-                  backgroundImage: 'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
+                  backgroundImage:
+                    'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
                   backdropFilter: 'blur(12px)',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
                   boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
