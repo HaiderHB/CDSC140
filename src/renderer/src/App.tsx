@@ -232,7 +232,7 @@ function App(): JSX.Element {
           justifyContent: 'space-between',
           alignItems: 'center',
           height: '28px',
-          backgroundColor: isClickThrough ? 'transparent' : 'rgba(21, 21, 21, 0.9)',
+          backgroundColor: isClickThrough ? 'transparent' : 'rgba(21, 21, 21, 1)',
           WebkitAppRegion: 'drag',
           zIndex: 9998,
           paddingX: 2
@@ -240,7 +240,7 @@ function App(): JSX.Element {
       >
         <Typography
           variant="subtitle2"
-          sx={{ color: isClickThrough ? 'transparent' : 'white', opacity: 0.7 }}
+          sx={{ color: isClickThrough ? 'transparent' : 'white', opacity: 1 }}
         >
           Interview Speaker
         </Typography>
@@ -271,7 +271,7 @@ function App(): JSX.Element {
           justifyContent: 'space-around',
           alignItems: 'center',
           height: '34px',
-          backgroundColor: 'rgba(21, 21, 21, 0.9)',
+          backgroundColor: 'rgba(21, 21, 21, 1)',
           color: '#909090',
           zIndex: 9999,
           fontSize: '12px',

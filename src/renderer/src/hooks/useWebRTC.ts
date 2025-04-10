@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Fuse from 'fuse.js'
 import { CurrentSession } from './useAppNavigation'
+import { getPrompt } from '@renderer/utils/prompts'
 
 interface UseWebRTCProps {
   currentSession: CurrentSession | null
@@ -110,18 +111,7 @@ export const useWebRTC = ({
       const dc = pc.createDataChannel('oai-events')
       dataChannelRef.current = dc
 
-      const sessionInfo = currentSession
-        ? `Use the following job description and resume to help answer the questions. Job Description: ${currentSession.jobDescription}, Resume: ${currentSession.resumeContent}`
-        : ''
-      console.log('----sessionInfo for OpenAI Prompt', sessionInfo)
-
-      const prompt = `You are a meeting assistant to help during a meeting.
-        The user is being asked questions by an interviewer and you must help them answer the questions.
-
-        Start with a short core answer, then expand if needed.
-        Separate each new point with a "-".
-
-        ${sessionInfo}`
+      const prompt = getPrompt(currentSession)
 
       dc.addEventListener('open', () => {
         console.log('Data channel open, sending session.update')

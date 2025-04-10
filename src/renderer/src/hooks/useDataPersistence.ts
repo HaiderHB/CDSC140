@@ -19,6 +19,8 @@ export interface Session {
   resumeId?: string
   resumeName?: string
   resumeContent?: string
+  mode?: 'fast' | 'balanced' | 'max'
+  additionalInfo?: string
 }
 
 export interface DataPersistence {

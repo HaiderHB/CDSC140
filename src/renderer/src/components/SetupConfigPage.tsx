@@ -20,7 +20,8 @@ import {
 } from '@mui/material'
 import { Resume } from './ResumeManager'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-
+import { List, ListItem, ListItemText } from '@mui/material'
+import { AssistanceModePreviewModal } from './AssistanceModeModal'
 interface AddResumeFormProps {
   onSave: (name: string, file: File) => void
   onCancel: () => void
@@ -86,7 +87,13 @@ function AddResumeForm({ onSave, onCancel }: AddResumeFormProps) {
 }
 
 interface SetupConfigProps {
-  onSave: (config: { sessionName?: string; jobDescription: string; selectedResume: string }) => void
+  onSave: (config: {
+    sessionName?: string
+    jobDescription: string
+    selectedResume: string
+    additionalInfo: string
+    mode: 'fast' | 'balanced' | 'max'
+  }) => void
   resumes: Resume[]
   onAddResume: () => void
   onBack: () => void
@@ -108,13 +115,42 @@ function SetupConfigPage({
   const [isAddResumeModalOpen, setIsAddResumeModalOpen] = useState(false)
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
   const [dontShowAgain, setDontShowAgain] = useState(skipEmptySessionWarning)
+  const [additionalInfo, setAdditionalInfo] = useState('')
+  const [selectedMode, setSelectedMode] = useState<'fast' | 'balanced' | 'max'>('balanced')
+  const [isExampleModalOpen, setIsExampleModalOpen] = useState(false)
+  const modeOptions = [
+    {
+      key: 'fast',
+      title: 'Fast',
+      points: [
+        'Short and efficient bullet points for quick recall.',
+        'Best if you already know the material and just need light guidance to stay on track.'
+      ]
+    },
+    {
+      key: 'balanced',
+      title: 'Balanced',
+      points: [
+        'Moderately detailed responses with a balance of brevity and depth.',
+        'Ideal if you somewhat understand most concepts but want some clarification or structure.'
+      ]
+    },
+    {
+      key: 'max',
+      title: 'Max',
+      points: [
+        'Longer and detailed explanations that cover concepts in depth.',
+        'Great if you’re unsure of the material and want help crafting strong answers from scratch.'
+      ]
+    }
+  ]
 
   const handleSave = () => {
     const isEmpty = !jobDescription || !selectedResume
     if (isEmpty && !skipEmptySessionWarning) {
       setIsConfirmDialogOpen(true)
     } else {
-      onSave({ sessionName, jobDescription, selectedResume })
+      onSave({ sessionName, jobDescription, selectedResume, additionalInfo, mode: selectedMode })
     }
   }
 
@@ -123,7 +159,7 @@ function SetupConfigPage({
       onSetSkipEmptySessionWarning(true)
     }
     setIsConfirmDialogOpen(false)
-    onSave({ sessionName, jobDescription, selectedResume })
+    onSave({ sessionName, jobDescription, selectedResume, additionalInfo, mode: selectedMode })
   }
 
   const handleCloseDialog = () => {
@@ -138,7 +174,7 @@ function SetupConfigPage({
     setIsAddResumeModalOpen(false)
   }
 
-  const handleSaveNewResume = async (name: string, file: File) => {
+  const handleSaveNewResume = async () => {
     try {
       await onAddResume()
       setIsAddResumeModalOpen(false)
@@ -166,7 +202,8 @@ function SetupConfigPage({
         bottom: 0,
         display: 'flex',
         flexDirection: 'column',
-        zIndex: 1
+        zIndex: 1,
+        overflow: 'auto'
       }}
     >
       <Box
@@ -222,7 +259,7 @@ function SetupConfigPage({
                 WebkitTextFillColor: 'transparent'
               }}
             >
-              Setup New Interview Session
+              Setup New Session
             </Typography>
             <Typography
               component="h3"
@@ -258,6 +295,80 @@ function SetupConfigPage({
                   }}
                 />
               </Box>
+
+              <Box>
+                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500 }}>
+                  Assistance Mode
+                </Typography>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    gap: 2,
+                    flexWrap: 'wrap'
+                  }}
+                >
+                  {modeOptions.map((mode) => (
+                    <Card
+                      key={mode.key}
+                      onClick={() => setSelectedMode(mode.key as 'fast' | 'balanced' | 'max')}
+                      sx={{
+                        cursor: 'pointer',
+                        flex: 1,
+                        minWidth: 180,
+                        border:
+                          selectedMode === mode.key
+                            ? '2px solid #FF8534'
+                            : '1px solid rgba(255, 255, 255, 0.08)',
+                        background:
+                          selectedMode === mode.key
+                            ? 'linear-gradient(to bottom right, rgba(255, 133, 52, 0.1), rgba(255, 133, 52, 0.05))'
+                            : 'rgba(255, 255, 255, 0.02)',
+                        transition: 'border 0.3s ease, background 0.3s ease',
+                        borderRadius: 2,
+                        '&:hover': {
+                          border: '2px solid #FF8534',
+                          background: 'rgba(255, 133, 52, 0.05)'
+                        }
+                      }}
+                    >
+                      <CardContent sx={{ p: 2 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+                          {mode.title}
+                        </Typography>
+                        <List dense sx={{ pl: 2, pt: 0 }}>
+                          {mode.points.map((point, index) => (
+                            <ListItem key={index} disableGutters sx={{ py: 0.5 }}>
+                              <ListItemText
+                                primaryTypographyProps={{
+                                  variant: 'body2',
+                                  color: 'text.secondary'
+                                }}
+                                primary={`• ${point}`}
+                              />
+                            </ListItem>
+                          ))}
+                        </List>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </Box>
+
+                <Button
+                  variant="outlinedSecondary"
+                  sx={{ color: 'text.secondary', mt: 1 }}
+                  onClick={() => setIsExampleModalOpen(true)}
+                >
+                  See Example
+                </Button>
+              </Box>
+
+              {isExampleModalOpen && (
+                <AssistanceModePreviewModal
+                  open={isExampleModalOpen}
+                  onClose={() => setIsExampleModalOpen(false)}
+                />
+              )}
 
               <Box>
                 <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500 }}>
@@ -321,6 +432,27 @@ function SetupConfigPage({
                   Your resume will be used to tailor interview responses to your experience and
                   qualifications.
                 </Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500 }}>
+                  Additional Instructions
+                </Typography>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={3}
+                  placeholder="Enter any additional instructions for the AI here"
+                  value={additionalInfo}
+                  onChange={(e) => setAdditionalInfo(e.target.value)}
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 1.5
+                    }
+                  }}
+                />
               </Box>
             </Stack>
 

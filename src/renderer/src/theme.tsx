@@ -60,6 +60,14 @@ const theme = createTheme({
             backgroundImage: 'linear-gradient(to right, #222222, #333333)',
             boxShadow: '0 6px 20px rgba(68, 68, 68, 0.6)'
           }
+        },
+        outlinedSecondary: {
+          backgroundColor: 'transparent',
+          border: '1px solid #E9680C',
+          '&:hover': {
+            backgroundColor: 'rgba(233, 104, 12, 0.1)',
+            border: '1px solid #FF8534'
+          }
         }
       }
     },

@@ -21,6 +21,8 @@ export interface CurrentSession {
   resumeName?: string
   jobDescription: string
   resumeContent?: string
+  additionalInfo: string
+  mode: 'fast' | 'balanced' | 'max'
 }
 
 interface UseAppNavigationProps {
@@ -30,6 +32,8 @@ interface UseAppNavigationProps {
     resumeId?: string
     resumeName?: string
     resumeContent?: string
+    additionalInfo: string
+    mode: 'fast' | 'balanced' | 'max'
   }) => Promise<CurrentSession> // Assuming addSession returns the structure needed for CurrentSession
   resumes: Array<{
     id: string
@@ -51,6 +55,8 @@ interface UseAppNavigationResult {
     sessionName?: string
     jobDescription: string
     selectedResume: string
+    additionalInfo: string
+    mode: 'fast' | 'balanced' | 'max'
   }) => Promise<void>
 }
 
@@ -79,7 +85,9 @@ export const useAppNavigation = ({
         jobDescription: session.jobDescription, // Ensure jobDescription is included
         resumeId: session.resumeId,
         resumeName: session.resumeName,
-        resumeContent: session.resumeContent
+        resumeContent: session.resumeContent,
+        additionalInfo: '',
+        mode: 'balanced'
       })
       setCurrentPage('capture')
     } else {
@@ -92,6 +100,8 @@ export const useAppNavigation = ({
     sessionName?: string
     jobDescription: string
     selectedResume: string
+    additionalInfo: string
+    mode: 'fast' | 'balanced' | 'max'
   }) => {
     // Find the selected resume
     const selectedResume = resumes.find((r) => r.id === config.selectedResume)
@@ -102,7 +112,9 @@ export const useAppNavigation = ({
       jobDescription: config.jobDescription,
       resumeId: selectedResume?.id,
       resumeName: selectedResume?.name,
-      resumeContent: selectedResume?.resumeContent
+      resumeContent: selectedResume?.resumeContent,
+      additionalInfo: config.additionalInfo,
+      mode: config.mode
     })
 
     // Set the newly created session as the current session
@@ -114,7 +126,9 @@ export const useAppNavigation = ({
       jobDescription: newSession.jobDescription,
       resumeId: newSession.resumeId,
       resumeName: newSession.resumeName,
-      resumeContent: newSession.resumeContent
+      resumeContent: newSession.resumeContent,
+      additionalInfo: newSession.additionalInfo,
+      mode: newSession.mode
     })
 
     // Navigate to capture page
