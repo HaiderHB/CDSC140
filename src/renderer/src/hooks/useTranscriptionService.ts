@@ -30,6 +30,7 @@ export const useTranscriptionService = ({
   const [wsError, setWsError] = useState<string | null>(null)
 
   const wsRef = useRef<WebSocket | null>(null)
+  const isDisconnectedRef = useRef(false)
   const connectionAttemptsRef = useRef(0)
   const isConnectingRef = useRef(false)
   const pendingUpdatesRef = useRef<string[]>([])
@@ -75,12 +76,26 @@ export const useTranscriptionService = ({
     }
   }
 
+  const setStatusDisconnected = () => {
+    // Should start a timer for 2 secs, and if isDisconnectedRef is still true, then set status to disconnected
+    const timer = setTimeout(() => {
+      if (isDisconnectedRef.current) {
+        setWsStatus('disconnected')
+      }
+    }, 2000)
+
+    return () => clearTimeout(timer)
+  }
+
   const connectWebSocket = () => {
     if (isConnectingRef.current || wsRef.current) return
 
     try {
       console.log('🔄 [useTranscriptionService] Starting WebSocket connection...')
       isConnectingRef.current = true
+      isDisconnectedRef.current = false
+      setWsStatus('connecting')
+      setWsError(null)
 
       wsRef.current = new WebSocket('ws://localhost:9876')
 
@@ -88,29 +103,37 @@ export const useTranscriptionService = ({
         console.log('✅ [useTranscriptionService] WebSocket connection established')
         connectionAttemptsRef.current = 0
         isConnectingRef.current = false
+        isDisconnectedRef.current = false
         setWsStatus('connected')
         setWsError(null)
+
+        // If we're supposed to be capturing, start recording
+        if (isCapturing) {
+          startRecording()
+        }
       }
 
       wsRef.current.onclose = (event) => {
         console.log(`❌ [useTranscriptionService] WebSocket closed with code: ${event.code}`)
-        setWsStatus('disconnected')
+        isDisconnectedRef.current = true
+        setStatusDisconnected()
         isConnectingRef.current = false
+        wsRef.current = null
 
-        if (connectionAttemptsRef.current >= 2) {
-          setWsError('Failed to connect to transcription service')
+        // Only show error if we're supposed to be connected
+        if (isCapturing) {
+          setWsError('Connection lost. Reconnecting...')
+          const delay = Math.min(3000 * Math.pow(1.5, connectionAttemptsRef.current), 10000)
+          connectionAttemptsRef.current++
+          console.log(`🔄 [useTranscriptionService] Attempting reconnect in ${delay}ms...`)
+          setTimeout(connectWebSocket, delay)
         }
-
-        const delay = Math.min(3000 * Math.pow(1.5, connectionAttemptsRef.current), 10000)
-        connectionAttemptsRef.current++
-        console.log(`🔄 [useTranscriptionService] Attempting reconnect in ${delay}ms...`)
-        setTimeout(connectWebSocket, delay)
       }
 
       wsRef.current.onerror = (error) => {
         console.error('❌ [useTranscriptionService] WebSocket error:', error)
-        if (wsStatus !== 'connecting' || connectionAttemptsRef.current >= 2) {
-          setWsError('Failed to connect to transcription service')
+        if (isCapturing) {
+          setWsError('Connection error. Retrying...')
         }
       }
 
@@ -140,6 +163,7 @@ export const useTranscriptionService = ({
             case 'status':
               console.log(`Received status update: ${data.status}`, data)
               if (data.status === 'connected') {
+                isDisconnectedRef.current = false
                 setWsStatus('connected')
                 setWsError(null)
               } else if (data.status === 'bullets_updated') {
@@ -168,7 +192,8 @@ export const useTranscriptionService = ({
     } catch (err) {
       console.error('WebSocket connection error:', err)
       isConnectingRef.current = false
-      setWsStatus('disconnected')
+      isDisconnectedRef.current = true
+      setStatusDisconnected()
 
       // Only show error if not in initial connection phase
       if (wsStatus !== 'connecting' || connectionAttemptsRef.current >= 2) {
@@ -191,6 +216,15 @@ export const useTranscriptionService = ({
 
   const startRecording = () => {
     console.log('🎤 [useTranscriptionService] Starting transcription recording...')
+
+    if (wsStatus === 'connecting') {
+      console.log(
+        '⏳ [useTranscriptionService] WebSocket still connecting, will retry start in 500ms'
+      )
+      setTimeout(startRecording, 500)
+      return
+    }
+
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       setWsError(null)
       setTranscriptText('')
@@ -214,18 +248,11 @@ export const useTranscriptionService = ({
             payload: { command: 'start' }
           })
         )
-      }, 200) // Small delay to ensure bullet points are processed first
-    } else if (wsStatus === 'connecting') {
-      console.log(
-        '⏳ [useTranscriptionService] WebSocket still connecting, will retry start in 500ms'
-      )
-      setTimeout(startRecording, 500)
+      }, 200)
     } else {
-      console.error(
-        '❌ [useTranscriptionService] WebSocket is not connected, cannot start recording'
-      )
-      connectWebSocket() // Try to reconnect
-      setTimeout(startRecording, 1000) // Try again shortly
+      console.log('🔄 [useTranscriptionService] WebSocket not connected, attempting to connect...')
+      connectWebSocket()
+      setTimeout(startRecording, 1000)
     }
   }
 
