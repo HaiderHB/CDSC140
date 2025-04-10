@@ -292,6 +292,12 @@ def initialize_recorder():
             return False
     return True
 
+def handle_client_disconnect(websocket):
+    """Handle client disconnection without shutting down the recorder"""
+    global recording
+    recording = False  # Ensure recording stops on disconnect
+    print(f"Client connection handling completed for {websocket.remote_address}")
+
 async def handle_client(websocket):
     """Handle WebSocket connection with the Electron app"""
     global recording, recorder, recorder_initialized, bullet_points, bullet_embeddings
@@ -320,9 +326,6 @@ async def handle_client(websocket):
                             # Normalize to [-1, 1] float range
                             audio_float = audio_data.astype(np.float32) / 32767.0
                             recorder.feed_audio(audio_float.tobytes())
-                            # logging.debug(f"Fed {len(message)} bytes of audio data") # Debug logging
-                        # else:
-                            # logging.warning("Received empty audio data chunk")
 
                     except Exception as e:
                         logging.error(f"Error processing audio data: {e}")
@@ -331,7 +334,7 @@ async def handle_client(websocket):
             else:
                 try:
                     data = json.loads(message)
-                    message_type = data.get("type") # Use 'type' instead of 'command' for clarity
+                    message_type = data.get("type")
                     payload = data.get("payload", {})
 
                     if message_type == "control":
@@ -354,9 +357,9 @@ async def handle_client(websocket):
                                 print("Stop recording command received")
                                 recording = False
                                 # Optionally send final transcription fragments if any
-                                recorder.on_realtime_transcription_update = None # Detach callback
+                                recorder.on_realtime_transcription_update = None  # Detach callback
                                 await send_message(websocket, "status", {"status": "stopped"})
-                                
+
                         elif command == "shutdown":
                             print("Shutdown command received")
                             # Properly shut down the recorder
@@ -387,13 +390,9 @@ async def handle_client(websocket):
     except websockets.exceptions.ConnectionClosed as e:
         print(f"Client disconnected with code {e.code}: {e.reason}")
     except Exception as e:
-        logging.error(f"Error handling client: {e}", exc_info=True) # Log traceback
+        logging.error(f"Error handling client: {e}", exc_info=True)  # Log traceback
     finally:
-        recording = False # Ensure recording stops on disconnect/error
-        # Properly shut down the recorder when the client disconnects
-        if not shutdown_in_progress:
-            await asyncio.get_event_loop().run_in_executor(None, shutdown_recorder)
-        print(f"Client connection handling completed for {websocket.remote_address}")
+        handle_client_disconnect(websocket)
 
 def start_recording_loop():
     """Function to run in a separate thread for continuous recording"""
