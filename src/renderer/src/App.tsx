@@ -107,6 +107,10 @@ function App(): JSX.Element {
     isActive: isCapturing
   })
 
+  // useEffect(() => {
+  //   console.log('----currentSession', currentSession)
+  // }, [currentSession])
+
   useEffect(() => {
     if (loadSessionsError) {
       setError(`Failed to load sessions: ${loadSessionsError.message}`)

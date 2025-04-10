@@ -469,6 +469,7 @@ function setupIpcHandlers(): void {
       const pdfParse = require('pdf-parse')
       const fileBuffer = fs.readFileSync(filePath)
       const data = await pdfParse(fileBuffer)
+      console.log('PARSED RESUME DATA', data.text)
       return data.text
     } catch (error) {
       console.error('Error reading resume file:', error)

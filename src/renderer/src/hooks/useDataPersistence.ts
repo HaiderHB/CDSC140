@@ -146,8 +146,19 @@ export function useDataPersistence(): DataPersistence {
         // Save file to disk
         const filePath = await window.api.saveResumeFile(id, arrayBuffer, fileExtension)
 
-        // Read the file content
-        const fileContent = await window.api.readResumeFile(filePath)
+        // Check if the file is a PDF
+        let fileContent = ''
+        if (fileExtension === '.pdf') {
+          fileContent = await window.api.readResumeFile(filePath)
+          console.log('FILE CONTENT', fileContent)
+        }
+        // TODO: Add support for DOCX and TXT files
+        // // Check if the file is a DOCX
+        // if (fileExtension === '.docx') {
+        // }
+        // // Check if txt
+        // if (fileExtension === '.txt') {
+        // }
 
         // Create resume metadata
         const newResume: Resume = {

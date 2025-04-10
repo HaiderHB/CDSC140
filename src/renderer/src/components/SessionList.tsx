@@ -40,18 +40,18 @@ function SessionList({
 }: SessionListProps) {
   // Sort sessions by date - newest first
   const sortedSessions = [...sessions].sort((a, b) => {
-    const dateA = a.date ? new Date(a.date).getTime() : 0;
-    const dateB = b.date ? new Date(b.date).getTime() : 0;
-    return dateB - dateA; // Descending order (newest first)
-  });
+    const dateA = a.date ? new Date(a.date).getTime() : 0
+    const dateB = b.date ? new Date(b.date).getTime() : 0
+    return dateB - dateA // Descending order (newest first)
+  })
 
   return (
     <Box sx={{ p: 2, width: '100%' }}>
-      <Box 
-        sx={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          mb: 4 
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          mb: 4
         }}
       >
         <Button
@@ -95,10 +95,11 @@ function SessionList({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <TableContainer 
+          <TableContainer
             component={Paper}
             sx={{
-              backgroundImage: 'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
+              backgroundImage:
+                'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
               backdropFilter: 'blur(12px)',
               border: '1px solid rgba(255, 255, 255, 0.1)',
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
@@ -109,9 +110,9 @@ function SessionList({
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell 
-                    sx={{ 
-                      fontWeight: 600, 
+                  <TableCell
+                    sx={{
+                      fontWeight: 600,
                       color: 'text.primary',
                       borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
                       pl: 3
@@ -119,40 +120,49 @@ function SessionList({
                   >
                     Session Name
                   </TableCell>
-                  <TableCell 
-                    sx={{ 
-                      fontWeight: 600, 
+                  <TableCell
+                    sx={{
+                      fontWeight: 600,
                       color: 'text.primary',
                       borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
                     }}
                   >
                     Date
                   </TableCell>
-                  <TableCell 
-                    sx={{ 
-                      fontWeight: 600, 
+                  <TableCell
+                    sx={{
+                      fontWeight: 600,
                       color: 'text.primary',
                       borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
                     }}
                   >
-                    Resume
+                    Mode
                   </TableCell>
-                  <TableCell 
-                    sx={{ 
-                      fontWeight: 600, 
+                  <TableCell
+                    sx={{
+                      fontWeight: 600,
                       color: 'text.primary',
                       borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
                     }}
                   >
                     Job Description
                   </TableCell>
-                  <TableCell 
-                    align="right"
-                    sx={{ 
+                  <TableCell
+                    sx={{
+                      fontWeight: 600,
+                      color: 'text.primary',
                       borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
                     }}
                   >
-                    Actions
+                    Resume
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+                    }}
+                  >
+                    Delete
                   </TableCell>
                 </TableRow>
               </TableHead>
@@ -169,8 +179,8 @@ function SessionList({
                       }
                     }}
                   >
-                    <TableCell 
-                      sx={{ 
+                    <TableCell
+                      sx={{
                         fontWeight: 500,
                         borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
                         pl: 3
@@ -179,16 +189,44 @@ function SessionList({
                       {/* Display a default name if name is missing */}
                       {session.name || `Session ${index + 1}`}
                     </TableCell>
-                    <TableCell 
-                      sx={{ 
+                    <TableCell
+                      sx={{
                         color: 'text.secondary',
                         borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
                       }}
                     >
                       {session.date ? new Date(session.date).toLocaleDateString() : '-'}
                     </TableCell>
-                    <TableCell 
-                      sx={{ 
+                    <TableCell
+                      sx={{
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
+                      }}
+                    >
+                      <Chip
+                        label={session.mode?.toUpperCase() || '-'}
+                        size="small"
+                        sx={{
+                          bgcolor: 'rgba(233, 104, 12, 0.2)',
+                          color: 'primary.light',
+                          fontSize: '0.75rem'
+                        }}
+                      />
+                    </TableCell>
+
+                    <TableCell
+                      sx={{
+                        color: 'text.secondary',
+                        maxWidth: '300px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
+                      }}
+                    >
+                      {session.jobDescription || '-'}
+                    </TableCell>
+                    <TableCell
+                      sx={{
                         borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
                       }}
                     >
@@ -206,29 +244,17 @@ function SessionList({
                         '-'
                       )}
                     </TableCell>
-                    <TableCell 
-                      sx={{ 
-                        color: 'text.secondary',
-                        maxWidth: '300px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
-                      }}
-                    >
-                      {session.jobDescription || '-'}
-                    </TableCell>
-                    <TableCell 
+                    <TableCell
                       align="right"
-                      sx={{ 
+                      sx={{
                         borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
                       <IconButton
                         onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteSession(session.id);
+                          e.stopPropagation()
+                          onDeleteSession(session.id)
                         }}
                         size="small"
                         sx={{
