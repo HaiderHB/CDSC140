@@ -69,7 +69,7 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
                 }
                 mode={readingMode}
                 draggable={true}
-                leftOffset={0}
+                leftOffset={30}
               />
               <Box display="flex" flexDirection="column" alignItems="flex-start">
                 <button

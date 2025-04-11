@@ -115,10 +115,10 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
           <div
             style={{
               position: 'absolute',
-              left: '-7px',
+              left: '-5px',
               top: '50%',
               transform: 'translateY(-50%)',
-              height: '30px',
+              height: '25px',
               width: '1px',
               backgroundColor: '#10b981',
               pointerEvents: 'none'
@@ -127,10 +127,10 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
           <div
             style={{
               position: 'absolute',
-              left: '-12px',
+              left: '-8px',
               top: '50%',
               transform: 'translateY(-50%)',
-              height: '15px',
+              height: '12px',
               width: '1px',
               backgroundColor: '#10b981',
               pointerEvents: 'none'
@@ -156,10 +156,10 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
           <div
             style={{
               position: 'absolute',
-              right: '-7px',
+              right: '-5px',
               top: '50%',
               transform: 'translateY(-50%)',
-              height: '30px',
+              height: '25px',
               width: '1px',
               backgroundColor: '#10b981',
               pointerEvents: 'none'
@@ -168,10 +168,10 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
           <div
             style={{
               position: 'absolute',
-              right: '-12px',
+              right: '-8px',
               top: '50%',
               transform: 'translateY(-50%)',
-              height: '15px',
+              height: '12px',
               width: '1px',
               backgroundColor: '#10b981',
               pointerEvents: 'none'
