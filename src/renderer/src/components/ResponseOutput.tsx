@@ -12,7 +12,6 @@ interface ResponseOutputProps {
   bulletPoints: string[]
   currentBulletPoint: string
   readingMode: ReadingMode
-  showCommands: boolean
   commandKey: string
   onShowReadingModeModal: () => void
   handleManualDeleteEyeContact: () => void
@@ -24,7 +23,6 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
   bulletPoints,
   currentBulletPoint,
   readingMode,
-  showCommands,
   commandKey,
   onShowReadingModeModal,
   handleManualDeleteEyeContact,

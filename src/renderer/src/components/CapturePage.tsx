@@ -53,8 +53,6 @@ export const CapturePage: React.FC<CapturePageProps> = ({
   handleManualDeleteEyeContact,
   handleRestoreLastDeleted
 }) => {
-  const [showCommands, setShowCommands] = useState(true)
-
   // Determine command key based on platform
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const commandKey = isMac ? '⌘' : 'Ctrl'
@@ -104,29 +102,6 @@ export const CapturePage: React.FC<CapturePageProps> = ({
         >
           ← Back to Home
         </Box>
-
-        {/* Commands toggle - Top Right */}
-        <Box
-          onClick={() => setShowCommands(!showCommands)}
-          sx={{
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.5,
-            color: 'text.secondary',
-            marginTop: '10px',
-            '&:hover': { color: 'white' }
-          }}
-        >
-          {showCommands ? (
-            <VisibilityIcon fontSize="small" sx={{ fontSize: '0.85rem' }} />
-          ) : (
-            <VisibilityOffIcon fontSize="small" sx={{ fontSize: '0.85rem' }} />
-          )}
-          <Typography variant="caption" sx={{ fontSize: '0.85rem' }}>
-            Commands
-          </Typography>
-        </Box>
       </Box>
 
       {/* Bullet Points - Top Middle */}
@@ -136,7 +111,6 @@ export const CapturePage: React.FC<CapturePageProps> = ({
           bulletPoints={bulletPoints}
           currentBulletPoint={currentBulletPoint}
           readingMode={readingMode}
-          showCommands={showCommands}
           commandKey={commandKey}
           onShowReadingModeModal={onShowReadingModeModal}
           handleManualDeleteEyeContact={handleManualDeleteEyeContact}

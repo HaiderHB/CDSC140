@@ -330,7 +330,6 @@ async def handle_client(websocket):
                     except Exception as e:
                         logging.error(f"Error processing audio data: {e}")
 
-            # Handle text messages (commands or data)
             else:
                 try:
                     data = json.loads(message)

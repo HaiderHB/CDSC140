@@ -31,7 +31,7 @@ const formatText = (text: string, mode: ReadingMode): React.ReactNode => {
 export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
   text,
   mode = 'normal',
-  width = '250px',
+  width = '450px',
   mx = 'auto',
   draggable = false,
   leftOffset = 0
@@ -46,7 +46,15 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaX = moveEvent.clientX - startX
       const newWidth = isRightSide ? parseInt(boxWidth) + deltaX : parseInt(boxWidth) - deltaX
-      setBoxWidth(`${newWidth}px`)
+      // should not be less than 390 and more than 1000
+      if (newWidth < 390) {
+        setBoxWidth(`390px`)
+      } else if (newWidth > 1000) {
+        setBoxWidth(`1000px`)
+      } else {
+        setBoxWidth(`${newWidth}px`)
+      }
+      console.log(newWidth)
     }
 
     const handleMouseUp = () => {
