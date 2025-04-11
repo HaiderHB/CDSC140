@@ -13,7 +13,6 @@ interface ResponseOutputProps {
   currentBulletPoint: string
   readingMode: ReadingMode
   commandKey: string
-  onShowReadingModeModal: () => void
   handleManualDeleteEyeContact: () => void
   handleRestoreLastDeleted: () => void
 }
@@ -24,28 +23,11 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
   currentBulletPoint,
   readingMode,
   commandKey,
-  onShowReadingModeModal,
   handleManualDeleteEyeContact,
   handleRestoreLastDeleted
 }) => {
   return (
     <Box className="response-output" sx={{ mt: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-        <Button
-          onClick={onShowReadingModeModal}
-          variant="outlined"
-          size="small"
-          sx={{
-            color: 'white',
-            '&:hover': {
-              bgcolor: 'rgba(16, 185, 129, 0.1)'
-            }
-          }}
-        >
-          Speed Reading
-        </Button>
-      </Box>
-
       {isCapturing ? (
         <EyeContactBox
           text={bulletPoints[0] || 'Waiting for next question...'}
@@ -120,7 +102,7 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
                       alignItems: 'center',
                       gap: 1,
                       whiteSpace: 'nowrap',
-                      overflow: 'hidden',
+                      overflow: 'visible',
                       textOverflow: 'ellipsis'
                     }}
                   >
@@ -158,7 +140,7 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
                       alignItems: 'center',
                       gap: 1,
                       whiteSpace: 'nowrap',
-                      overflow: 'hidden',
+                      overflow: 'visible',
                       textOverflow: 'ellipsis'
                     }}
                   >

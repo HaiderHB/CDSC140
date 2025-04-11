@@ -46,8 +46,14 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
     }
   }, [width])
 
+  useEffect(() => {
+    if (mode === 'spritz') {
+      setBoxWidth('570px')
+    }
+  }, [mode])
+
   const handleMouseDown = (e: React.MouseEvent, isRightSide: boolean) => {
-    if (!draggable) return
+    if (!draggable || mode === 'spritz') return
 
     const startX = e.clientX
 
@@ -115,7 +121,7 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
       <div
         onMouseDown={(e) => handleMouseDown(e, false)}
         style={{
-          cursor: draggable ? 'ew-resize' : 'default',
+          cursor: draggable && mode !== 'spritz' ? 'ew-resize' : 'default',
           position: 'absolute',
           left: '-15px',
           top: '50%',
@@ -125,7 +131,7 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
           backgroundColor: 'transparent'
         }}
       />
-      {draggable && (
+      {draggable && mode !== 'spritz' && (
         <>
           <div
             style={{
@@ -156,7 +162,7 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
       <div
         onMouseDown={(e) => handleMouseDown(e, true)}
         style={{
-          cursor: draggable ? 'ew-resize' : 'default',
+          cursor: draggable && mode !== 'spritz' ? 'ew-resize' : 'default',
           position: 'absolute',
           right: '-15px',
           top: '50%',
@@ -166,7 +172,7 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
           backgroundColor: 'transparent'
         }}
       />
-      {draggable && (
+      {draggable && mode !== 'spritz' && (
         <>
           <div
             style={{

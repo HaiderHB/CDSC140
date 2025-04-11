@@ -102,6 +102,23 @@ export const CapturePage: React.FC<CapturePageProps> = ({
         >
           ← Back to Home
         </Box>
+
+        <Box
+          onClick={onShowReadingModeModal}
+          sx={{
+            outline: '1px solid #E9680C',
+            borderRadius: '4px',
+            padding: '4px 8px',
+            cursor: 'pointer',
+            color: '#E9680C',
+            '&:hover': {
+              outline: '2px solid #E9680C',
+              backgroundColor: 'rgba(233, 104, 12, 0.1)'
+            }
+          }}
+        >
+          Reading Mode
+        </Box>
       </Box>
 
       {/* Bullet Points - Top Middle */}
@@ -112,7 +129,6 @@ export const CapturePage: React.FC<CapturePageProps> = ({
           currentBulletPoint={currentBulletPoint}
           readingMode={readingMode}
           commandKey={commandKey}
-          onShowReadingModeModal={onShowReadingModeModal}
           handleManualDeleteEyeContact={handleManualDeleteEyeContact}
           handleRestoreLastDeleted={handleRestoreLastDeleted}
         />

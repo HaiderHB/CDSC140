@@ -4,7 +4,6 @@ import {
   Box,
   Typography,
   FormControl,
-  FormLabel,
   RadioGroup,
   Grid,
   FormControlLabel,
@@ -15,6 +14,23 @@ import { EyeContactBox } from './EyeContactBox' // Assuming EyeContactBox is in 
 
 // Define ReadingMode type here or import from a shared location
 type ReadingMode = 'normal' | 'rapid' | 'spritz'
+
+// Define the constant object for texts
+const readingModeTexts = {
+  normal: {
+    description: 'Regular reading with no enhancements.',
+    example: 'This is how normal text will appear in the eye contact box.'
+  },
+  rapid: {
+    description:
+      'Bolds the start of each word to guide your eyes. Increases reading speed by 200%.',
+    example: 'This is how rapid reading text will appear with bold red first halves.'
+  },
+  spritz: {
+    description: 'Displays one word at a time with a fixed focus. Increases reading speed by 400%.',
+    example: 'This is how spritz reading will appear with centered focus point.'
+  }
+}
 
 interface ReadingModeModalProps {
   open: boolean
@@ -99,13 +115,7 @@ export const ReadingModeModal: React.FC<ReadingModeModalProps> = ({
                     }}
                   >
                     <EyeContactBox
-                      text={
-                        mode === 'normal'
-                          ? 'This is how normal text will appear in the eye contact box.'
-                          : mode === 'rapid'
-                            ? 'This is how rapid reading text will appear with bold red first halves.'
-                            : 'This is how spritz reading will appear with centered focus point.'
-                      }
+                      text={readingModeTexts[mode].example}
                       mode={mode as ReadingMode}
                       width="100%"
                     />
@@ -118,11 +128,7 @@ export const ReadingModeModal: React.FC<ReadingModeModalProps> = ({
                         width: '100%' // Ensure full width
                       }}
                     >
-                      {mode === 'normal'
-                        ? 'Regular reading with no enhancements.'
-                        : mode === 'rapid'
-                          ? 'Bolds the start of each word to guide your eyes. Increases reading speed by 200%.'
-                          : 'Displays one word at a time with a fixed focus. Increases reading speed by 400%.'}
+                      {readingModeTexts[mode].description}
                     </Typography>
                   </Box>
                 </Grid>
