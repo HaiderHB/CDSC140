@@ -10,6 +10,7 @@ interface EyeContactBoxProps {
   text: string
   mode?: ReadingMode
   width?: string
+  mx?: string
 }
 
 const formatText = (text: string, mode: ReadingMode): React.ReactNode => {
@@ -27,7 +28,8 @@ const formatText = (text: string, mode: ReadingMode): React.ReactNode => {
 export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
   text,
   mode = 'normal',
-  width = '30%'
+  width = '30%',
+  mx = 'auto'
 }) => {
   return (
     <Box
@@ -36,7 +38,8 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
         border: '2px solid #10b981',
         borderRadius: 2,
         width: width,
-        mx: 'auto',
+        mx: mx,
+        ml: mx === '0' ? '32%' : 'auto',
         textAlign: 'center',
         px: 2,
         pt: 1.5,

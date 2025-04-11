@@ -53,6 +53,7 @@ function App(): JSX.Element {
     handleNewSession,
     handleLoadSession: navHandleLoadSession,
     handleSaveConfig
+    // @ts-ignore
   } = useAppNavigation({ addSession, resumes, sessions })
 
   const {
@@ -80,6 +81,12 @@ function App(): JSX.Element {
     initialBulletPoints: TEST_MODE ? test_bullet_points : []
   })
 
+  useKeyboardShortcuts({
+    onManualDeleteEyeContact: handleManualDeleteEyeContact,
+    onRestoreLastDeleted: handleRestoreLastDeleted,
+    isActive: isCapturing
+  })
+
   const {
     transcriptText,
     wsStatus,
@@ -99,12 +106,6 @@ function App(): JSX.Element {
     },
     bulletPoints,
     onMatchFound: findAndRemoveMatchingBulletPoint
-  })
-
-  useKeyboardShortcuts({
-    onManualDeleteEyeContact: handleManualDeleteEyeContact,
-    onRestoreLastDeleted: handleRestoreLastDeleted,
-    isActive: isCapturing
   })
 
   // useEffect(() => {
@@ -370,6 +371,8 @@ function App(): JSX.Element {
             desktopCanvasRef={canvasRef}
             micCanvasRef={micCanvasRef}
             currentBulletPoint={currentBulletPoint}
+            handleManualDeleteEyeContact={handleManualDeleteEyeContact}
+            handleRestoreLastDeleted={handleRestoreLastDeleted}
           />
         )}
 

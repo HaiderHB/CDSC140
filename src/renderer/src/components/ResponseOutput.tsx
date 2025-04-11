@@ -15,6 +15,8 @@ interface ResponseOutputProps {
   showCommands: boolean
   commandKey: string
   onShowReadingModeModal: () => void
+  handleManualDeleteEyeContact: () => void
+  handleRestoreLastDeleted: () => void
 }
 
 export const ResponseOutput: React.FC<ResponseOutputProps> = ({
@@ -24,7 +26,9 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
   readingMode,
   showCommands,
   commandKey,
-  onShowReadingModeModal
+  onShowReadingModeModal,
+  handleManualDeleteEyeContact,
+  handleRestoreLastDeleted
 }) => {
   return (
     <Box className="response-output" sx={{ mt: 3 }}>
@@ -50,13 +54,55 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
           mode={readingMode}
         />
       ) : (
-        <EyeContactBox
-          text={
-            bulletPoints[0] ||
-            "Example text to minimise eye tracking. Click 'Start Capture' to begin session."
-          }
-          mode={readingMode}
-        />
+        <div>
+          <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            sx={{ width: '100%', height: '100%' }}
+          >
+            <Box display="flex" alignItems="center" gap={2}>
+              <EyeContactBox
+                text={
+                  bulletPoints[0] ||
+                  "Example text to minimise eye tracking. Click 'Start Capture' to begin session."
+                }
+                mode={readingMode}
+                mx="0"
+              />
+              <Box display="flex" flexDirection="column" alignItems="flex-start">
+                <button
+                  onClick={handleManualDeleteEyeContact}
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: 'white',
+                    border: 'none',
+                    textDecoration: 'none',
+                    cursor: 'pointer'
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                  onMouseOut={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                >
+                  ↑ Skip Current
+                </button>
+                <button
+                  onClick={handleRestoreLastDeleted}
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: 'white',
+                    border: 'none',
+                    textDecoration: 'none',
+                    cursor: 'pointer'
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                  onMouseOut={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                >
+                  ↓ Restore Previous
+                </button>
+              </Box>
+            </Box>
+          </Box>
+        </div>
       )}
 
       {/* Commands */}

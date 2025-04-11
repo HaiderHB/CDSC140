@@ -29,6 +29,8 @@ interface CapturePageProps {
   responseText: string
   desktopCanvasRef: React.RefObject<HTMLCanvasElement>
   micCanvasRef: React.RefObject<HTMLCanvasElement>
+  handleManualDeleteEyeContact: () => void
+  handleRestoreLastDeleted: () => void
 }
 
 export const CapturePage: React.FC<CapturePageProps> = ({
@@ -47,7 +49,9 @@ export const CapturePage: React.FC<CapturePageProps> = ({
   isListening,
   goBack,
   desktopCanvasRef,
-  micCanvasRef
+  micCanvasRef,
+  handleManualDeleteEyeContact,
+  handleRestoreLastDeleted
 }) => {
   const [showCommands, setShowCommands] = useState(true)
 
@@ -135,6 +139,8 @@ export const CapturePage: React.FC<CapturePageProps> = ({
           showCommands={showCommands}
           commandKey={commandKey}
           onShowReadingModeModal={onShowReadingModeModal}
+          handleManualDeleteEyeContact={handleManualDeleteEyeContact}
+          handleRestoreLastDeleted={handleRestoreLastDeleted}
         />
       </Box>
 
