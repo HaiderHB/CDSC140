@@ -47,7 +47,7 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
   }, [width])
 
   useEffect(() => {
-    if (mode === 'spritz') {
+    if (mode === 'spritz' && width !== '100%') {
       setBoxWidth('570px')
     }
   }, [mode])
@@ -222,18 +222,7 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
                 <Typography
                   variant="body1"
                   sx={{
-                    position: 'relative',
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      left: '50%',
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      width: '2px',
-                      height: '1.2em',
-                      backgroundColor: '#10b981',
-                      opacity: 0.7
-                    }
+                    position: 'relative'
                   }}
                 >
                   <SpritzReader text={text} wpm={400} />
