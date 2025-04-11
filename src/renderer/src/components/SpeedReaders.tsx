@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react'
 interface SpritzReaderProps {
   text: string
   wpm?: number
+  size?: number
 }
 interface RapidReadProps {
   text: string
@@ -27,7 +28,7 @@ const RapidRead: React.FC<RapidReadProps> = ({ text }) => {
   return <div>{words.map((word, index) => renderBionicWord(word, index))}</div>
 }
 
-const SpritzReader: React.FC<SpritzReaderProps> = ({ text, wpm = 300 }) => {
+const SpritzReader: React.FC<SpritzReaderProps> = ({ text, wpm = 300, size = 2 }) => {
   const words = text.split(' ')
   const [currentIndex, setCurrentIndex] = useState(0)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -75,15 +76,24 @@ const SpritzReader: React.FC<SpritzReaderProps> = ({ text, wpm = 300 }) => {
       <div
         style={{
           fontFamily: 'monospace',
-          fontSize: '2rem',
+          fontSize: `${size}rem`,
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          width: '100%'
+          width: '100%',
+          height: '100%',
+          maxWidth: '300px',
+          maxHeight: '100px',
+          userSelect: 'none',
+          pointerEvents: 'none',
+          backgroundColor: 'transparent',
+          border: 'none',
+          caretColor: 'transparent',
+          outline: 'none'
         }}
       >
-        <div style={{ display: 'flex', minWidth: '12ch', justifyContent: 'center' }}>
-          <span style={{ textAlign: 'right', minWidth: '6ch' }}>{pre}</span>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <span style={{ textAlign: 'right', minWidth: `${size * 3}ch` }}>{pre}</span>
           <span
             style={{
               color: 'red',
@@ -96,7 +106,7 @@ const SpritzReader: React.FC<SpritzReaderProps> = ({ text, wpm = 300 }) => {
             {focus}
           </span>
 
-          <span style={{ textAlign: 'left', minWidth: '6ch' }}>{post}</span>
+          <span style={{ textAlign: 'left', minWidth: `${size * 3}ch` }}>{post}</span>
         </div>
       </div>
     )
@@ -105,7 +115,7 @@ const SpritzReader: React.FC<SpritzReaderProps> = ({ text, wpm = 300 }) => {
   return (
     <div
       style={{
-        height: '4rem',
+        height: `${size * 2}rem`,
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',

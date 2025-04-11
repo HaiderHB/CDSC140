@@ -14,18 +14,7 @@ interface EyeContactBoxProps {
   mx?: string
   draggable?: boolean
   leftOffset?: number
-}
-
-const formatText = (text: string, mode: ReadingMode): React.ReactNode => {
-  if (!text) return ''
-  switch (mode) {
-    case 'rapid':
-      return <RapidRead text={text} />
-    case 'spritz':
-      return <SpritzReader text={text} wpm={400} />
-    default:
-      return text
-  }
+  spritzSize?: number
 }
 
 export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
@@ -34,10 +23,23 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
   width = '450px',
   mx = 'auto',
   draggable = false,
-  leftOffset = 0
+  leftOffset = 0,
+  spritzSize = 2
 }) => {
   const [boxWidth, setBoxWidth] = useState<string>(width)
   const [boxId] = useState(() => `eye-contact-box-${Math.random().toString(36).substr(2, 9)}`)
+
+  const formatText = (text: string, mode: ReadingMode): React.ReactNode => {
+    if (!text) return ''
+    switch (mode) {
+      case 'rapid':
+        return <RapidRead text={text} />
+      case 'spritz':
+        return <SpritzReader text={text} wpm={400} size={spritzSize} />
+      default:
+        return text
+    }
+  }
 
   // Update boxWidth when width prop changes
   useEffect(() => {
@@ -47,8 +49,10 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
   }, [width])
 
   useEffect(() => {
-    if (mode === 'spritz' && width !== '100%') {
+    if (mode === 'spritz' && width !== '80%') {
       setBoxWidth('570px')
+    } else if (mode === 'spritz' && width === '80%') {
+      setBoxWidth('220px')
     }
   }, [mode])
 
@@ -225,7 +229,7 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
                     position: 'relative'
                   }}
                 >
-                  <SpritzReader text={text} wpm={400} />
+                  <SpritzReader text={text} wpm={400} size={spritzSize} />
                 </Typography>
               </Box>
             ) : (

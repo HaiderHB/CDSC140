@@ -18,17 +18,21 @@ type ReadingMode = 'normal' | 'rapid' | 'spritz'
 // Define the constant object for texts
 const readingModeTexts = {
   normal: {
-    description: 'Regular reading with no enhancements.',
-    example: 'This is how normal text will appear in the eye contact box.'
+    description: 'Plain text with no enhancements.',
+    example:
+      'One of my biggest strengths is my ability to read quick and understand information quickly.'
   },
   rapid: {
     description:
       'Bolds the start of each word to guide your eyes. Increases reading speed by 200%.',
-    example: 'This is how rapid reading text will appear with bold red first halves.'
+    example:
+      'One of my biggest strengths is my ability to read quick and understand information quickly.'
   },
   spritz: {
-    description: 'Displays one word at a time with a fixed focus. Increases reading speed by 400%.',
-    example: 'This is how spritz reading will appear with centered focus point.'
+    description:
+      'Focus on the red letter. Displays one word at a time with a fixed focus. Increases reading speed by 400%.',
+    example:
+      'One of my biggest strengths is my ability to read quick and understand information quickly.'
   }
 }
 
@@ -76,7 +80,7 @@ export const ReadingModeModal: React.FC<ReadingModeModalProps> = ({
           <RadioGroup row value={value} onChange={onChange} sx={{ width: '100%', mt: 2 }}>
             <Grid
               container
-              spacing={3}
+              spacing={1}
               direction="row"
               justifyContent="space-between"
               wrap="nowrap"
@@ -85,10 +89,10 @@ export const ReadingModeModal: React.FC<ReadingModeModalProps> = ({
                 // @ts-ignore
                 <Grid
                   key={mode}
-                  item // Apply the item prop directly
-                  xs // Add responsive sizing if needed, or adjust width below
+                  item
+                  xs={4}
+                  ml={mode === 'rapid' ? 0 : 0}
                   sx={{
-                    // width: '33.33%', // Let Grid handle spacing
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center'
@@ -111,13 +115,14 @@ export const ReadingModeModal: React.FC<ReadingModeModalProps> = ({
                       flexDirection: 'column',
                       alignItems: 'center',
                       minHeight: '170px', // Add fixed minimum height to change eye contact box height
-                      justifyContent: 'space-between' // Distribute space evenly
+                      justifyContent: 'flex-start' // Align items to the start
                     }}
                   >
                     <EyeContactBox
                       text={readingModeTexts[mode].example}
                       mode={mode as ReadingMode}
-                      width="100%"
+                      width="80%"
+                      spritzSize={1.4}
                     />
                     <Typography
                       variant="body2"

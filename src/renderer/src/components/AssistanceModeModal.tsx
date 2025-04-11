@@ -30,7 +30,7 @@ export const AssistanceModePreviewModal = ({
           overflow: 'auto'
         }}
       >
-        <Typography variant="h7" sx={{ mb: 3 }}>
+        <Typography variant="h6" sx={{ mb: 3 }}>
           Preview Assistance Modes
         </Typography>
 
@@ -56,6 +56,7 @@ export const AssistanceModePreviewModal = ({
               desc: 'In-depth explanation for full guidance and clarity.'
             }
           ].map(({ key, text, desc }) => (
+            // @ts-ignore
             <Grid
               key={key}
               item
