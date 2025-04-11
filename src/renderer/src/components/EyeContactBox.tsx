@@ -102,10 +102,10 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
         style={{
           cursor: draggable ? 'ew-resize' : 'default',
           position: 'absolute',
-          left: 0,
+          left: '-15px',
           top: '50%',
           transform: 'translateY(-50%)',
-          width: '10px',
+          width: '30px',
           height: '100%',
           backgroundColor: 'transparent'
         }}
@@ -120,7 +120,8 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
               transform: 'translateY(-50%)',
               height: '30px',
               width: '1px',
-              backgroundColor: '#10b981'
+              backgroundColor: '#10b981',
+              pointerEvents: 'none'
             }}
           />
           <div
@@ -131,7 +132,8 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
               transform: 'translateY(-50%)',
               height: '15px',
               width: '1px',
-              backgroundColor: '#10b981'
+              backgroundColor: '#10b981',
+              pointerEvents: 'none'
             }}
           />
         </>
@@ -141,10 +143,10 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
         style={{
           cursor: draggable ? 'ew-resize' : 'default',
           position: 'absolute',
-          right: 0,
+          right: '-15px',
           top: '50%',
           transform: 'translateY(-50%)',
-          width: '10px',
+          width: '30px',
           height: '100%',
           backgroundColor: 'transparent'
         }}
@@ -159,7 +161,8 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
               transform: 'translateY(-50%)',
               height: '30px',
               width: '1px',
-              backgroundColor: '#10b981'
+              backgroundColor: '#10b981',
+              pointerEvents: 'none'
             }}
           />
           <div
@@ -170,7 +173,8 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
               transform: 'translateY(-50%)',
               height: '15px',
               width: '1px',
-              backgroundColor: '#10b981'
+              backgroundColor: '#10b981',
+              pointerEvents: 'none'
             }}
           />
         </>
