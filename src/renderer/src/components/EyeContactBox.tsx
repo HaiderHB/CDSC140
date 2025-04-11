@@ -37,6 +37,14 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
   leftOffset = 0
 }) => {
   const [boxWidth, setBoxWidth] = useState<string>(width)
+  const [boxId] = useState(() => `eye-contact-box-${Math.random().toString(36).substr(2, 9)}`)
+
+  // Update boxWidth when width prop changes
+  useEffect(() => {
+    if (width !== '100%') {
+      setBoxWidth(width)
+    }
+  }, [width])
 
   const handleMouseDown = (e: React.MouseEvent, isRightSide: boolean) => {
     if (!draggable) return
@@ -46,9 +54,8 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaX = moveEvent.clientX - startX
       const newWidth = isRightSide ? parseInt(boxWidth) + deltaX : parseInt(boxWidth) - deltaX
-      // should not be less than 390 and more than 1000
-      if (newWidth < 390) {
-        setBoxWidth(`390px`)
+      if (newWidth < 410) {
+        setBoxWidth(`410px`)
       } else if (newWidth > 1000) {
         setBoxWidth(`1000px`)
       } else {
@@ -69,16 +76,16 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
   useEffect(() => {
     // Ensure the box is centered with leftOffset
     if (mx === 'auto') {
-      const boxElement = document.getElementById('eye-contact-box')
+      const boxElement = document.getElementById(boxId)
       if (boxElement) {
         boxElement.style.marginLeft = `calc((100% - ${boxWidth}) / 2 + ${leftOffset}px)`
       }
     }
-  }, [boxWidth, mx, leftOffset])
+  }, [boxWidth, mx, leftOffset, boxId])
 
   return (
     <Box
-      id="eye-contact-box"
+      id={boxId}
       component="fieldset"
       sx={{
         border: '2px solid #10b981',

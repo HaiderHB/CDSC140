@@ -56,10 +56,8 @@ export const ReadingModeModal: React.FC<ReadingModeModalProps> = ({
         </Typography>
 
         <FormControl component="fieldset" sx={{ width: '100%' }}>
-          <FormLabel component="legend" sx={{ mb: 2 }}>
-            Select Reading Mode
-          </FormLabel>
-          <RadioGroup row value={value} onChange={onChange} sx={{ width: '100%' }}>
+          Different modes to help you read faster.
+          <RadioGroup row value={value} onChange={onChange} sx={{ width: '100%', mt: 2 }}>
             <Grid
               container
               spacing={3}
@@ -91,27 +89,42 @@ export const ReadingModeModal: React.FC<ReadingModeModalProps> = ({
                           : 'Spritz Reading'
                     }
                   />
-                  <EyeContactBox
-                    text={
-                      mode === 'normal'
-                        ? 'This is how normal text will appear in the eye contact box.'
-                        : mode === 'rapid'
-                          ? 'This is how rapid reading text will appear with bold red first halves.'
-                          : 'This is how spritz reading will appear with centered focus point.'
-                    }
-                    mode={mode as ReadingMode}
-                    width="100%"
-                  />
-                  <Typography
-                    variant="body2"
-                    sx={{ mt: 1, textAlign: 'center', color: 'text.secondary' }}
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      minHeight: '170px', // Add fixed minimum height to change eye contact box height
+                      justifyContent: 'space-between' // Distribute space evenly
+                    }}
                   >
-                    {mode === 'normal'
-                      ? 'Regular reading with no enhancements.'
-                      : mode === 'rapid'
-                        ? 'Bolds the start of each word to guide your eyes. Increases reading speed by 200%.'
-                        : 'Displays one word at a time with a fixed focus. Increases reading speed by 400%.'}
-                  </Typography>
+                    <EyeContactBox
+                      text={
+                        mode === 'normal'
+                          ? 'This is how normal text will appear in the eye contact box.'
+                          : mode === 'rapid'
+                            ? 'This is how rapid reading text will appear with bold red first halves.'
+                            : 'This is how spritz reading will appear with centered focus point.'
+                      }
+                      mode={mode as ReadingMode}
+                      width="100%"
+                    />
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        mt: 1,
+                        textAlign: 'center',
+                        color: 'text.secondary',
+                        width: '100%' // Ensure full width
+                      }}
+                    >
+                      {mode === 'normal'
+                        ? 'Regular reading with no enhancements.'
+                        : mode === 'rapid'
+                          ? 'Bolds the start of each word to guide your eyes. Increases reading speed by 200%.'
+                          : 'Displays one word at a time with a fixed focus. Increases reading speed by 400%.'}
+                    </Typography>
+                  </Box>
                 </Grid>
               ))}
             </Grid>

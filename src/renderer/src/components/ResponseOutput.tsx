@@ -50,6 +50,7 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
         <EyeContactBox
           text={bulletPoints[0] || 'Waiting for next question...'}
           mode={readingMode}
+          width="450px"
         />
       ) : (
         <div>
@@ -67,7 +68,8 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
                 }
                 mode={readingMode}
                 draggable={true}
-                leftOffset={140}
+                leftOffset={155}
+                width="450px"
               />
               <Box
                 display="flex"
