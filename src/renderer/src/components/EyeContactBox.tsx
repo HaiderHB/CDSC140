@@ -2,6 +2,7 @@ import React from 'react'
 import { Box, ListItemText, Typography } from '@mui/material'
 import { motion, AnimatePresence } from 'framer-motion'
 import { SpritzReader, RapidRead } from './SpeedReaders'
+import { useState, useEffect } from 'react'
 
 // Define ReadingMode type locally or import from a shared types file
 type ReadingMode = 'normal' | 'rapid' | 'spritz'
@@ -11,6 +12,8 @@ interface EyeContactBoxProps {
   mode?: ReadingMode
   width?: string
   mx?: string
+  draggable?: boolean
+  leftOffset?: number
 }
 
 const formatText = (text: string, mode: ReadingMode): React.ReactNode => {
@@ -28,23 +31,57 @@ const formatText = (text: string, mode: ReadingMode): React.ReactNode => {
 export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
   text,
   mode = 'normal',
-  width = '30%',
-  mx = 'auto'
+  width = '250px',
+  mx = 'auto',
+  draggable = false,
+  leftOffset = 0
 }) => {
+  const [boxWidth, setBoxWidth] = useState<string>(width)
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!draggable) return
+
+    const startX = e.clientX
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const newWidth = parseInt(boxWidth) + (moveEvent.clientX - startX)
+      setBoxWidth(`${newWidth}px`)
+    }
+
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+  }
+
+  useEffect(() => {
+    // Ensure the box is centered with leftOffset
+    if (mx === 'auto') {
+      const boxElement = document.getElementById('eye-contact-box')
+      if (boxElement) {
+        boxElement.style.marginLeft = `calc((100% - ${boxWidth}) / 2 + ${leftOffset}px)`
+      }
+    }
+  }, [boxWidth, mx, leftOffset])
+
   return (
     <Box
+      id="eye-contact-box"
       component="fieldset"
       sx={{
         border: '2px solid #10b981',
         borderRadius: 2,
-        width: width,
+        width: boxWidth,
         mx: mx,
-        ml: mx === '0' ? '32%' : 'auto',
         textAlign: 'center',
         px: 2,
         pt: 1.5,
         pb: 1.5,
-        bgcolor: 'rgba(16, 185, 129, 0.1)'
+        bgcolor: 'rgba(16, 185, 129, 0.1)',
+        position: 'relative'
       }}
     >
       <legend
@@ -59,10 +96,23 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
       >
         Eye Contact
       </legend>
+      <div
+        onMouseDown={handleMouseDown}
+        style={{
+          cursor: draggable ? 'ew-resize' : 'default',
+          position: 'absolute',
+          right: 0,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: '10px',
+          height: '100%',
+          backgroundColor: 'transparent'
+        }}
+      />
       <AnimatePresence mode="wait">
         {text && (
           <motion.div
-            key={text} // Use text as key for animation trigger
+            key={text}
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
@@ -72,7 +122,7 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
               <Box
                 sx={{
                   position: 'relative',
-                  height: '60px', // Fixed height for Spritz
+                  height: '60px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
@@ -92,8 +142,6 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
                       height: '1.2em',
                       backgroundColor: '#10b981',
                       opacity: 0.7
-                      // Optional: Add animation if desired
-                      // animation: 'focusPoint 2s ease-in-out infinite',
                     }
                   }}
                 >

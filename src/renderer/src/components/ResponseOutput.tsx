@@ -68,7 +68,8 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
                   "Example text to minimise eye tracking. Click 'Start Capture' to begin session."
                 }
                 mode={readingMode}
-                mx="0"
+                draggable={true}
+                leftOffset={0}
               />
               <Box display="flex" flexDirection="column" alignItems="flex-start">
                 <button
