@@ -1,5 +1,5 @@
 import React from 'react'
-import { Box, Button, Collapse, List, ListItem, ListItemText } from '@mui/material'
+import { Box, Button, Collapse, List, ListItem, ListItemText, Paper } from '@mui/material'
 import { motion, AnimatePresence } from 'framer-motion'
 import { EyeContactBox } from './EyeContactBox'
 import { Key } from './Key'
@@ -59,7 +59,7 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
             display="flex"
             justifyContent="center"
             alignItems="center"
-            sx={{ width: '100%', height: '100%' }}
+            sx={{ width: '100%', height: '100%', marginBottom: '20px' }}
           >
             <Box display="flex" alignItems="center" gap={2}>
               <EyeContactBox
@@ -69,83 +69,110 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
                 }
                 mode={readingMode}
                 draggable={true}
-                leftOffset={30}
+                leftOffset={140}
               />
-              <Box display="flex" flexDirection="column" alignItems="flex-start">
-                <button
+              <Box
+                display="flex"
+                flexDirection="column"
+                alignItems="flex-start"
+                justifyContent="space-between"
+              >
+                <Box
+                  sx={{
+                    fontSize: '8px',
+                    marginTop: '-10px',
+                    marginBottom: '10px',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}
+                >
+                  * Manual option — AI does this by automatically as you speak.
+                </Box>
+                <Paper
+                  elevation={0}
                   onClick={handleManualDeleteEyeContact}
-                  style={{
-                    backgroundColor: 'transparent',
-                    color: 'white',
-                    border: 'none',
-                    textDecoration: 'none',
-                    cursor: 'pointer'
+                  sx={{
+                    cursor: 'pointer',
+                    flexGrow: 1,
+                    fontSize: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    p: 0.5,
+                    borderRadius: 1,
+                    mb: 2,
+                    backgroundImage:
+                      'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
+                    backdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                    transition: 'background-image 0.3s ease',
+                    '&:hover': {
+                      backgroundImage:
+                        'linear-gradient(to bottom right, rgba(21, 21, 21, 0.9), rgba(37, 37, 37, 0.8))'
+                    }
                   }}
-                  onMouseOver={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                  onMouseOut={(e) => (e.currentTarget.style.textDecoration = 'none')}
                 >
-                  ↑ Skip Current
-                </button>
-                <button
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
+                  >
+                    ↑ Skip Current - <Key>{commandKey}</Key> + <Key>M</Key>
+                  </Box>
+                </Paper>
+                <Paper
+                  elevation={0}
                   onClick={handleRestoreLastDeleted}
-                  style={{
-                    backgroundColor: 'transparent',
-                    color: 'white',
-                    border: 'none',
-                    textDecoration: 'none',
-                    cursor: 'pointer'
+                  sx={{
+                    cursor: 'pointer',
+                    flexGrow: 1,
+                    fontSize: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    mt: 2,
+                    p: 0.5,
+                    borderRadius: 1,
+                    backgroundImage:
+                      'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
+                    backdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                    transition: 'background-image 0.3s ease',
+                    '&:hover': {
+                      backgroundImage:
+                        'linear-gradient(to bottom right, rgba(21, 21, 21, 0.9), rgba(37, 37, 37, 0.8))'
+                    }
                   }}
-                  onMouseOver={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                  onMouseOut={(e) => (e.currentTarget.style.textDecoration = 'none')}
                 >
-                  ↓ Restore Previous
-                </button>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
+                  >
+                    ↓ Restore Previous - <Key>{commandKey}</Key> + <Key>N</Key>
+                  </Box>
+                </Paper>
               </Box>
             </Box>
           </Box>
         </div>
       )}
 
-      {/* Commands */}
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          width: '100%',
-          borderRadius: 1,
-          color: 'text.secondary',
-          bgcolor: 'rgba(255, 255, 255, 0.05)',
-          mt: 2
-        }}
-      >
-        <Collapse in={showCommands}>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'row',
-              gap: 1,
-              p: 2,
-              borderRadius: 1,
-              justifyContent: 'space-around',
-              fontSize: '14px'
-            }}
-          >
-            <Box>
-              <Box sx={{ display: 'flex', alignItems: 'start', gap: 1 }}>
-                Skip Current - <Key>{commandKey}</Key> + <Key>M</Key>
-              </Box>
-              <Box sx={{ fontSize: '9px', marginTop: '8px' }}>
-                * Manual option — AI does this by automatically as you speak.
-              </Box>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'start', gap: 1 }}>
-              Restore Previous - <Key>{commandKey}</Key> + <Key>N</Key>
-            </Box>
-          </Box>
-        </Collapse>
-      </Box>
-
       <List sx={{ py: 0 }}>
+        {/* <Box sx={{ fontSize: '14px', marginBottom: '10px', fontWeight: 'bold' }}>Upcoming</Box> */}
         <AnimatePresence initial={false}>
           {bulletPoints.slice(1).map((point) => (
             <motion.div
