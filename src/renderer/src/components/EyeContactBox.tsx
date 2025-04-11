@@ -38,13 +38,14 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
 }) => {
   const [boxWidth, setBoxWidth] = useState<string>(width)
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = (e: React.MouseEvent, isRightSide: boolean) => {
     if (!draggable) return
 
     const startX = e.clientX
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
-      const newWidth = parseInt(boxWidth) + (moveEvent.clientX - startX)
+      const deltaX = moveEvent.clientX - startX
+      const newWidth = isRightSide ? parseInt(boxWidth) + deltaX : parseInt(boxWidth) - deltaX
       setBoxWidth(`${newWidth}px`)
     }
 
@@ -97,7 +98,46 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
         Eye Contact
       </legend>
       <div
-        onMouseDown={handleMouseDown}
+        onMouseDown={(e) => handleMouseDown(e, false)}
+        style={{
+          cursor: draggable ? 'ew-resize' : 'default',
+          position: 'absolute',
+          left: 0,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: '10px',
+          height: '100%',
+          backgroundColor: 'transparent'
+        }}
+      />
+      {draggable && (
+        <>
+          <div
+            style={{
+              position: 'absolute',
+              left: '-7px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              height: '30px',
+              width: '1px',
+              backgroundColor: '#10b981'
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              left: '-12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              height: '15px',
+              width: '1px',
+              backgroundColor: '#10b981'
+            }}
+          />
+        </>
+      )}
+      <div
+        onMouseDown={(e) => handleMouseDown(e, true)}
         style={{
           cursor: draggable ? 'ew-resize' : 'default',
           position: 'absolute',
@@ -109,6 +149,32 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
           backgroundColor: 'transparent'
         }}
       />
+      {draggable && (
+        <>
+          <div
+            style={{
+              position: 'absolute',
+              right: '-7px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              height: '30px',
+              width: '1px',
+              backgroundColor: '#10b981'
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              right: '-12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              height: '15px',
+              width: '1px',
+              backgroundColor: '#10b981'
+            }}
+          />
+        </>
+      )}
       <AnimatePresence mode="wait">
         {text && (
           <motion.div
