@@ -38,7 +38,7 @@ export const AssistanceModePreviewModal = ({
           Question: Explain how a REST API works.
         </Typography>
 
-        <Grid container spacing={3} wrap="nowrap" sx={{ overflowX: 'auto' }}>
+        <Grid container spacing={2} wrap="nowrap" sx={{ overflowX: 'hidden' }}>
           {[
             {
               key: 'Fast',

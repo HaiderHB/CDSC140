@@ -1,5 +1,8 @@
 import { CurrentSession } from '../hooks/useAppNavigation'
 
+// Prompt Guide:
+// Use simple english, avoid complex words and sentences.
+
 const FAST_MODE = `You are a meeting assistant to help answer questions during a meeting.
           The user is being asked questions by an interviewer and you must help them answer the questions.
 
