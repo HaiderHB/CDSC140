@@ -68,6 +68,7 @@ export const useWebRTC = ({
 
     if (exactMatch) {
       console.log('✅ Exact match found in bullet points, removing:', matchedPoint)
+      setDeletedBulletPoints((prev) => [...prev, matchedPoint])
       setBulletPoints((prev) => prev.filter((point) => point !== matchedPoint))
     } else {
       console.log('⚠️ No exact match, using Fuse.js for fuzzy matching:', matchedPoint)
@@ -85,6 +86,7 @@ export const useWebRTC = ({
         console.log(
           `✅ Found fuzzy match with Fuse.js: "${bestMatch.item}" (Score: ${bestMatch.score?.toFixed(4)})`
         )
+        setDeletedBulletPoints((prev) => [...prev, bestMatch.item])
         setBulletPoints((prev) => prev.filter((point) => point !== bestMatch.item))
       } else {
         console.log('❌ No match found with Fuse.js.')

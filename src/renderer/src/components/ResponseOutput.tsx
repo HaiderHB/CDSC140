@@ -28,130 +28,124 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
 }) => {
   return (
     <Box className="response-output" sx={{ mt: 3 }}>
-      {isCapturing ? (
-        <EyeContactBox
-          text={bulletPoints[0] || 'Waiting for next question...'}
-          mode={readingMode}
-          width="450px"
-        />
-      ) : (
-        <div>
-          <Box
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-            sx={{ width: '100%', height: '100%', marginBottom: '20px' }}
-          >
-            <Box display="flex" alignItems="center" gap={2}>
-              <EyeContactBox
-                text={
-                  bulletPoints[0] ||
-                  "Example text to minimise eye tracking. Click 'Start Capture' to begin session."
-                }
-                mode={readingMode}
-                draggable={true}
-                leftOffset={155}
-                width="450px"
-              />
+      <div>
+        <Box
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          sx={{ width: '100%', height: '100%', marginBottom: '20px' }}
+        >
+          <Box display="flex" alignItems="center" gap={2}>
+            <EyeContactBox
+              text={
+                isCapturing
+                  ? bulletPoints[0] || 'Waiting for next question...'
+                  : bulletPoints[0] ||
+                    "Example text to minimise eye tracking. Click 'Start Capture' to begin session."
+              }
+              mode={readingMode}
+              draggable={true}
+              leftOffset={155}
+              width="450px"
+            />
+            <Box
+              display="flex"
+              flexDirection="column"
+              alignItems="flex-start"
+              justifyContent="space-between"
+            >
               <Box
-                display="flex"
-                flexDirection="column"
-                alignItems="flex-start"
-                justifyContent="space-between"
+                sx={{
+                  fontSize: '8px',
+                  marginTop: '-10px',
+                  marginBottom: '10px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+              >
+                * Manual option — AI does this by automatically as you speak.
+              </Box>
+              <Paper
+                elevation={0}
+                onClick={handleManualDeleteEyeContact}
+                sx={{
+                  cursor: 'pointer',
+                  flexGrow: 1,
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  p: 0.5,
+                  borderRadius: 1,
+                  mb: 2,
+                  backgroundImage:
+                    'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
+                  backdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                  transition: 'background-image 0.3s ease',
+                  '&:hover': {
+                    backgroundImage:
+                      'linear-gradient(to bottom right, rgba(21, 21, 21, 0.9), rgba(37, 37, 37, 0.8))'
+                  }
+                }}
               >
                 <Box
                   sx={{
-                    fontSize: '8px',
-                    marginTop: '-10px',
-                    marginBottom: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
                     whiteSpace: 'nowrap',
-                    overflow: 'hidden',
+                    overflow: 'visible',
                     textOverflow: 'ellipsis'
                   }}
                 >
-                  * Manual option — AI does this by automatically as you speak.
+                  ↑ Skip Current - <Key>{commandKey}</Key> + <Key>M</Key>
                 </Box>
-                <Paper
-                  elevation={0}
-                  onClick={handleManualDeleteEyeContact}
+              </Paper>
+              <Paper
+                elevation={0}
+                onClick={handleRestoreLastDeleted}
+                sx={{
+                  cursor: 'pointer',
+                  flexGrow: 1,
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  mt: 2,
+                  p: 0.5,
+                  borderRadius: 1,
+                  backgroundImage:
+                    'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
+                  backdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                  transition: 'background-image 0.3s ease',
+                  '&:hover': {
+                    backgroundImage:
+                      'linear-gradient(to bottom right, rgba(21, 21, 21, 0.9), rgba(37, 37, 37, 0.8))'
+                  }
+                }}
+              >
+                <Box
                   sx={{
-                    cursor: 'pointer',
-                    flexGrow: 1,
-                    fontSize: '12px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 1,
-                    p: 0.5,
-                    borderRadius: 1,
-                    mb: 2,
-                    backgroundImage:
-                      'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
-                    backdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                    transition: 'background-image 0.3s ease',
-                    '&:hover': {
-                      backgroundImage:
-                        'linear-gradient(to bottom right, rgba(21, 21, 21, 0.9), rgba(37, 37, 37, 0.8))'
-                    }
+                    whiteSpace: 'nowrap',
+                    overflow: 'visible',
+                    textOverflow: 'ellipsis'
                   }}
                 >
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      whiteSpace: 'nowrap',
-                      overflow: 'visible',
-                      textOverflow: 'ellipsis'
-                    }}
-                  >
-                    ↑ Skip Current - <Key>{commandKey}</Key> + <Key>M</Key>
-                  </Box>
-                </Paper>
-                <Paper
-                  elevation={0}
-                  onClick={handleRestoreLastDeleted}
-                  sx={{
-                    cursor: 'pointer',
-                    flexGrow: 1,
-                    fontSize: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    mt: 2,
-                    p: 0.5,
-                    borderRadius: 1,
-                    backgroundImage:
-                      'linear-gradient(to bottom right, rgba(37, 37, 37, 0.8), rgba(21, 21, 21, 0.9))',
-                    backdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                    transition: 'background-image 0.3s ease',
-                    '&:hover': {
-                      backgroundImage:
-                        'linear-gradient(to bottom right, rgba(21, 21, 21, 0.9), rgba(37, 37, 37, 0.8))'
-                    }
-                  }}
-                >
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      whiteSpace: 'nowrap',
-                      overflow: 'visible',
-                      textOverflow: 'ellipsis'
-                    }}
-                  >
-                    ↓ Restore Previous - <Key>{commandKey}</Key> + <Key>N</Key>
-                  </Box>
-                </Paper>
-              </Box>
+                  ↓ Restore Previous - <Key>{commandKey}</Key> + <Key>N</Key>
+                </Box>
+              </Paper>
             </Box>
           </Box>
-        </div>
-      )}
+        </Box>
+      </div>
 
       <List sx={{ py: 0 }}>
         {/* <Box sx={{ fontSize: '14px', marginBottom: '10px', fontWeight: 'bold' }}>Upcoming</Box> */}
