@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Box, Button, CircularProgress, Typography } from '@mui/material'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
@@ -56,6 +56,18 @@ export const CapturePage: React.FC<CapturePageProps> = ({
   // Determine command key based on platform
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const commandKey = isMac ? '⌘' : 'Ctrl'
+
+  const [selectedMic, setSelectedMic] = useState<string>('')
+  const [micOptions, setMicOptions] = useState<MediaDeviceInfo[]>([])
+
+  useEffect(() => {
+    const getMicrophones = async () => {
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const mics = devices.filter((device) => device.kind === 'audioinput')
+      setMicOptions(mics)
+    }
+    getMicrophones()
+  }, [])
 
   return (
     <Box
@@ -144,44 +156,76 @@ export const CapturePage: React.FC<CapturePageProps> = ({
           flexShrink: 0
         }}
       >
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 1 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 1 }}>
           {!isCapturing ? (
-            <Button
-              onClick={startCapture}
-              variant="contained"
-              sx={{
-                bgcolor: 'rgba(233, 104, 12, 0.9)',
-                color: 'white',
-                px: 3,
-                py: 1,
-                fontSize: '1rem',
-                fontWeight: 500,
-                boxShadow: '0 4px 14px rgba(233, 104, 12, 0.4)',
-                '&:hover': {
-                  bgcolor: 'rgba(233, 104, 12, 1)',
-                  boxShadow: '0 6px 20px rgba(233, 104, 12, 0.6)'
+            <>
+              <Button
+                onClick={startCapture}
+                variant="contained"
+                sx={
+                  {
+                    bgcolor: 'rgba(233, 104, 12, 0.9)',
+                    color: 'white',
+                    px: 3,
+                    py: 1,
+                    fontSize: '1rem',
+                    fontWeight: 500,
+                    boxShadow: '0 4px 14px rgba(233, 104, 12, 0.4)',
+                    '&:hover': {
+                      bgcolor: 'rgba(233, 104, 12, 1)',
+                      boxShadow: '0 6px 20px rgba(233, 104, 12, 0.6)'
+                    }
+                  } as const
                 }
-              }}
-            >
-              Start Capture
-            </Button>
+              >
+                Start Capture
+              </Button>
+              <select
+                value={selectedMic}
+                onChange={(e) => setSelectedMic(e.target.value)}
+                style={{
+                  marginTop: '10px', // Add margin to separate from the button
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  border: '1px solid rgba(233, 104, 12, 0.6)', // Darker border
+                  backgroundColor: 'rgba(21, 21, 21, 0.9)', // Dark background
+                  color: '#E9680C', // Orange text color
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                  fontSize: '1rem',
+                  fontWeight: 500,
+                  outline: 'none',
+                  transition: 'border-color 0.3s ease'
+                }}
+              >
+                <option value="" style={{ color: '#E9680C' }}>
+                  Select Microphone
+                </option>
+                {micOptions.map((mic) => (
+                  <option key={mic.deviceId} value={mic.deviceId} style={{ color: '#E9680C' }}>
+                    {mic.label || `Microphone ${mic.deviceId}`}
+                  </option>
+                ))}
+              </select>
+            </>
           ) : (
             <Button
               onClick={stopCapture}
               variant="contained"
-              sx={{
-                bgcolor: 'rgba(239, 68, 68, 0.9)',
-                color: 'white',
-                px: 3,
-                py: 1,
-                fontSize: '1rem',
-                fontWeight: 500,
-                boxShadow: '0 4px 14px rgba(239, 68, 68, 0.4)',
-                '&:hover': {
-                  bgcolor: 'rgba(239, 68, 68, 1)',
-                  boxShadow: '0 6px 20px rgba(239, 68, 68, 0.6)'
-                }
-              }}
+              sx={
+                {
+                  bgcolor: 'rgba(239, 68, 68, 0.9)',
+                  color: 'white',
+                  px: 3,
+                  py: 1,
+                  fontSize: '1rem',
+                  fontWeight: 500,
+                  boxShadow: '0 4px 14px rgba(239, 68, 68, 0.4)',
+                  '&:hover': {
+                    bgcolor: 'rgba(239, 68, 68, 1)',
+                    boxShadow: '0 6px 20px rgba(239, 68, 68, 0.6)'
+                  }
+                } as const
+              }
             >
               Stop Capture
             </Button>
