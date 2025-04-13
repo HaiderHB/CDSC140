@@ -126,19 +126,16 @@ def find_best_match(transcript_text):
         # Encode the transcript text
         transcript_embedding = model.encode(transcript_text, convert_to_tensor=True)
         
-        # Compute dot scores between transcript and all bullet points
-        scores = util.dot_score(transcript_embedding, bullet_embeddings)[0].cpu().tolist()
+        # Only compute score for the first bullet point
+        first_bullet_embedding = bullet_embeddings[0].unsqueeze(0)  # Add batch dimension
+        score = util.dot_score(transcript_embedding, first_bullet_embedding)[0].cpu().item()
         
-        # Find the best match
-        best_match_index = np.argmax(scores)
-        best_score = scores[best_match_index]
+        logging.debug(f"Match score with first bullet: {score:.4f} (threshold: {SIMILARITY_THRESHOLD})")
         
-        logging.debug(f"Best match score: {best_score:.4f} (threshold: {SIMILARITY_THRESHOLD})")
-        
-        if best_score >= SIMILARITY_THRESHOLD:
-            return bullet_points[best_match_index], best_score
+        if score >= SIMILARITY_THRESHOLD:
+            return bullet_points[0], score
         else:
-            return None, best_score  # No match above threshold
+            return None, score  # No match above threshold
     except Exception as e:
         logging.error(f"Error finding best match: {e}")
         return None, 0.0
