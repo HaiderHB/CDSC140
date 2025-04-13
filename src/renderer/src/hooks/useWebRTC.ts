@@ -129,11 +129,16 @@ export const useWebRTC = ({
           if (msg.type === 'response.audio_transcript.delta') {
             const delta = msg.delta || ''
             setResponseText((prev) => prev + delta)
+            // If the response text includes "PASSED", clear the response text and return
+            if (responseText.includes('PASSED')) {
+              setResponseText('')
+              return
+            }
 
             setCurrentBulletPoint((prev) => {
               const newText = prev + delta
-              if (delta.includes('-')) {
-                const parts = newText.split('-')
+              if (delta.includes('•')) {
+                const parts = newText.split('•')
                 if (parts.length > 1) {
                   setBulletPoints((prevPoints) => {
                     const newPoints = [...prevPoints]
