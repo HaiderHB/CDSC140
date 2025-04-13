@@ -16,7 +16,7 @@ import CapturePage from './components/CapturePage'
 
 type ReadingMode = 'normal' | 'rapid' | 'spritz'
 
-const TEST_MODE = true
+const TEST_MODE = false
 
 const test_bullet_points = [
   'javascript is a langauge to make web pages alive',
@@ -30,6 +30,7 @@ function App(): JSX.Element {
   const [isClickThrough, setIsClickThrough] = useState(false)
   const [readingMode, setReadingMode] = useState<ReadingMode>('normal')
   const [showReadingModeModal, setShowReadingModeModal] = useState(false)
+  const [selectedMic, setSelectedMic] = useState<string>('')
 
   const {
     sessions,
@@ -59,12 +60,23 @@ function App(): JSX.Element {
   const {
     desktopAudioStatus,
     micAudioStatus,
+    streamRef,
+    micStreamRef,
+    audioContextRef,
+    micAudioContextRef,
+    analyserRef,
+    micAnalyserRef,
+    canvasRef,
+    micCanvasRef,
+    animationFrameRef,
+    micAnimationFrameRef,
+    videoRef,
     startCapture: hookStartCapture,
     stopCapture: hookStopCapture,
-    isCapturing,
-    canvasRef,
-    micCanvasRef
-  } = useAudioCapture()
+    startVisualization,
+    startMicVisualization,
+    isCapturing
+  } = useAudioCapture(selectedMic)
 
   const {
     responseText,
@@ -373,6 +385,8 @@ function App(): JSX.Element {
             currentBulletPoint={currentBulletPoint}
             handleManualDeleteEyeContact={handleManualDeleteEyeContact}
             handleRestoreLastDeleted={handleRestoreLastDeleted}
+            onMicSelected={setSelectedMic}
+            selectedMic={selectedMic}
           />
         )}
 

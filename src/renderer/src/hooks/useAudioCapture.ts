@@ -27,7 +27,7 @@ interface UseAudioCaptureResult {
   isCapturing: boolean
 }
 
-export const useAudioCapture = (): UseAudioCaptureResult => {
+export const useAudioCapture = (selectedMicId?: string): UseAudioCaptureResult => {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const micCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -74,10 +74,11 @@ export const useAudioCapture = (): UseAudioCaptureResult => {
         video: false
       })
 
-      // Get microphone stream
+      // Get microphone stream with selected device if specified
       console.log('Requesting microphone access...')
       const micStream = await navigator.mediaDevices.getUserMedia({
         audio: {
+          deviceId: selectedMicId ? { exact: selectedMicId } : undefined,
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true

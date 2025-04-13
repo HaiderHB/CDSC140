@@ -31,6 +31,8 @@ interface CapturePageProps {
   micCanvasRef: React.RefObject<HTMLCanvasElement>
   handleManualDeleteEyeContact: () => void
   handleRestoreLastDeleted: () => void
+  onMicSelected: (micId: string) => void
+  selectedMic: string
 }
 
 export const CapturePage: React.FC<CapturePageProps> = ({
@@ -51,13 +53,14 @@ export const CapturePage: React.FC<CapturePageProps> = ({
   desktopCanvasRef,
   micCanvasRef,
   handleManualDeleteEyeContact,
-  handleRestoreLastDeleted
+  handleRestoreLastDeleted,
+  onMicSelected,
+  selectedMic
 }) => {
   // Determine command key based on platform
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const commandKey = isMac ? '⌘' : 'Ctrl'
 
-  const [selectedMic, setSelectedMic] = useState<string>('')
   const [micOptions, setMicOptions] = useState<MediaDeviceInfo[]>([])
 
   useEffect(() => {
@@ -182,14 +185,14 @@ export const CapturePage: React.FC<CapturePageProps> = ({
               </Button>
               <select
                 value={selectedMic}
-                onChange={(e) => setSelectedMic(e.target.value)}
+                onChange={(e) => onMicSelected(e.target.value)}
                 style={{
-                  marginTop: '10px', // Add margin to separate from the button
+                  marginTop: '10px',
                   padding: '8px 12px',
                   borderRadius: '4px',
-                  border: '1px solid rgba(233, 104, 12, 0.6)', // Darker border
-                  backgroundColor: 'rgba(21, 21, 21, 0.9)', // Dark background
-                  color: '#E9680C', // Orange text color
+                  border: '1px solid rgba(233, 104, 12, 0.6)',
+                  backgroundColor: 'rgba(21, 21, 21, 0.9)',
+                  color: '#E9680C',
                   boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
                   fontSize: '1rem',
                   fontWeight: 500,
