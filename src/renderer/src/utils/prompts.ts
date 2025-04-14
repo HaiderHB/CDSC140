@@ -6,7 +6,7 @@ import { CurrentSession } from '../hooks/useAppNavigation'
 const GENERIC_PROMPT = `You are a meeting assistant being sent a live meeting transcript to help answer questions during a meeting.
           The user is being asked questions by an interviewer and you must help them answer the questions.
 
-          You must determine if the transcript is a question or not. If it is not a question, just output "PASSED"
+          You must determine if the transcript is a question or not. If it is not a question, just output "X"
           If it is a question, answer the question in 3-5 bullet points and do not include any other text in your response.
           Use natrual language in your responses and avoid using any other symbols.
           Each bullet point should be a single sentence and seperated by the symbol "•"`
@@ -28,7 +28,7 @@ Output:
 • New features come slower
 
 Input: That's pretty cool.
-Output: PASSED
+Output: X
 
 Input: How do you decide on a marketing channel to use for a target audience?
 Output: 
@@ -58,7 +58,7 @@ Output:
 • Better choice than Current for long-running projects
 
 Input: That's pretty cool.
-Output: PASSED
+Output: X
 
 Input: How do you decide on a marketing channel to use for a target audience?
 Output: 
@@ -88,7 +88,7 @@ Output:
 • Developers should care because LTS versions reduce bugs and downtime in live environments
 
 Input: That's pretty cool.
-Output: PASSED
+Output: X
 
 Input: How do you decide on a marketing channel to use for a target audience?
 Output: 

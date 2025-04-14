@@ -60,21 +60,10 @@ function App(): JSX.Element {
   const {
     desktopAudioStatus,
     micAudioStatus,
-    streamRef,
-    micStreamRef,
-    audioContextRef,
-    micAudioContextRef,
-    analyserRef,
-    micAnalyserRef,
     canvasRef,
     micCanvasRef,
-    animationFrameRef,
-    micAnimationFrameRef,
-    videoRef,
     startCapture: hookStartCapture,
     stopCapture: hookStopCapture,
-    startVisualization,
-    startMicVisualization,
     isCapturing
   } = useAudioCapture(selectedMic)
 

@@ -30,6 +30,7 @@ export const useWebRTC = ({
   const [bulletPoints, setBulletPoints] = useState<string[]>(initialBulletPoints)
   const [currentBulletPoint, setCurrentBulletPoint] = useState('')
   const [deletedBulletPoints, setDeletedBulletPoints] = useState<string[]>([])
+  const isPrevDone = useRef(false)
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
   const dataChannelRef = useRef<RTCDataChannel | null>(null)
@@ -96,47 +97,70 @@ export const useWebRTC = ({
 
   const connectToOpenAI = async (stream: MediaStream): Promise<void> => {
     try {
+      // Fetch the OpenAI session data, which includes the client secret for authentication
       const sessionData = await window.api.getOpenAISession()
       if (!sessionData.client_secret?.value) {
+        // If the client secret is not available, log an error and exit the function
         console.error('Failed to get OpenAI token:', sessionData)
         return
       }
       console.log('Received OpenAI session token')
 
+      // Create a new RTCPeerConnection instance for WebRTC
       const pc = new RTCPeerConnection()
       peerConnectionRef.current = pc
 
+      // Add audio tracks from the MediaStream to the peer connection
       stream.getAudioTracks().forEach((track) => {
         pc.addTrack(track, stream)
       })
 
+      // Create a data channel for sending messages to OpenAI
       const dc = pc.createDataChannel('oai-events')
       dataChannelRef.current = dc
 
+      // Prepare the prompt for the current session
       const prompt = getPrompt(currentSession)
 
+      // Event listener for when the data channel is open
       dc.addEventListener('open', () => {
         console.log('Data channel open, sending session.update')
         const update = {
           type: 'session.update',
           session: { instructions: prompt }
         }
+        // Send the session update to OpenAI
         dataChannelRef.current?.send(JSON.stringify(update))
       })
 
+      // Event listener for incoming messages on the data channel
       dc.addEventListener('message', (event) => {
         try {
           const msg = JSON.parse(event.data)
 
           if (msg.type === 'response.audio_transcript.delta') {
             const delta = msg.delta || ''
-            setResponseText((prev) => prev + delta)
-            // If the response text includes "PASSED", clear the response text and return
-            if (responseText.includes('PASSED')) {
-              setResponseText('')
+            const trimmed = delta.trim()
+
+            console.log('🔍 Delta:', trimmed)
+
+            // ✅ Skip PASSED entirely — do not append, do not reset
+            if (trimmed === 'X') {
+              console.log('⛔ Ignored X response from AI')
               return
             }
 
+            // ✅ Reset state if previous response is done
+            if (isPrevDone.current) {
+              console.log('🔍 Resetting state because previous response is done')
+              setBulletPoints([])
+              setCurrentBulletPoint('')
+              setResponseText('')
+              isPrevDone.current = false
+            }
+
+            setResponseText((prev) => prev + delta)
+            console.log('🔍 Response text:', responseText)
             setCurrentBulletPoint((prev) => {
               const newText = prev + delta
               if (delta.includes('•')) {
@@ -158,10 +182,16 @@ export const useWebRTC = ({
               return newText
             })
           } else if (msg.type === 'response.text.done') {
-            if (currentBulletPoint.trim()) {
+            console.log('RESPONSE TEXT IS DONE')
+            isPrevDone.current = true
+
+            // Don’t finalize if PASSED was the only message
+            if (currentBulletPoint.trim() && currentBulletPoint.trim().toLowerCase() !== 'x') {
               setBulletPoints((prev) => [...prev, currentBulletPoint.trim()])
-              setCurrentBulletPoint('')
             }
+
+            setCurrentBulletPoint('')
+
             const responseRequest = {
               type: 'response.create',
               response: { modalities: ['text'] }
@@ -169,13 +199,13 @@ export const useWebRTC = ({
             if (dataChannelRef.current) {
               dataChannelRef.current.send(JSON.stringify(responseRequest))
             }
-          } else {
           }
         } catch (error) {
           console.error('Error parsing WebRTC message:', error)
         }
       })
 
+      // Create an SDP offer for the WebRTC connection
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
       console.log('Created WebRTC offer')
@@ -183,14 +213,17 @@ export const useWebRTC = ({
       try {
         const sdp = offer.sdp
         if (!sdp) throw new Error('Failed to create SDP offer')
+        // Send the SDP offer to OpenAI and get the response
         const sdpResponse = await window.api.openAIWebRtcSdp(sdp)
         const answer = { type: 'answer' as RTCSdpType, sdp: sdpResponse }
-        await pc.setRemoteDescription(answer)
+        await pc.setRemoteDescription(answer) // Set the remote description with the response
         console.log('Successfully connected to OpenAI WebRTC')
       } catch (error) {
+        // Log any errors that occur during the SDP exchange
         console.error('Error in WebRTC SDP exchange:', error)
       }
     } catch (error) {
+      // Log any errors that occur during the WebRTC setup process
       console.error('Error setting up WebRTC:', error)
     }
   }
