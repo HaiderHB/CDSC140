@@ -30,6 +30,11 @@ SIMILARITY_THRESHOLD = 0.5  # Threshold for matching
 model = None
 bullet_points = []
 bullet_embeddings = None
+# Track recent words and last matched text
+recent_words = []
+last_matched_text = ""
+MIN_NEW_WORDS = 5  # Minimum number of new words required before matching again
+ROLLING_WINDOW_SIZE = 10  # Number of words to keep in recent words
 # --- End Sentence Similarity Setup ---
 
 # Global flag to control the recording state
@@ -93,8 +98,10 @@ def load_similarity_model(model_name=MODEL_NAME):
 
 def precompute_bullet_embeddings(points):
     """Precomputes embeddings for the list of bullet points."""
-    global bullet_points, bullet_embeddings
+    global bullet_points, bullet_embeddings, recent_words, last_matched_text
     bullet_points = points
+    recent_words = []  # Reset recent words when bullet points change
+    last_matched_text = ""  # Reset last matched text
     if not points:
         bullet_embeddings = None
         print("Bullet points list is empty. Cleared embeddings.")
@@ -113,6 +120,8 @@ def precompute_bullet_embeddings(points):
 
 def find_best_match(transcript_text):
     """Finds the best matching bullet point for the given transcript."""
+    global recent_words, last_matched_text
+    
     if bullet_embeddings is None or len(bullet_points) == 0 or not transcript_text:
         if bullet_embeddings is None:
             logging.debug("No bullet embeddings available for matching.")
@@ -123,6 +132,19 @@ def find_best_match(transcript_text):
         return None, 0.0  # No match if no bullets or empty transcript
 
     try:
+        # Update recent words
+        words = transcript_text.split()
+        recent_words.extend(words)
+        if len(recent_words) > ROLLING_WINDOW_SIZE:  # Keep only last ROLLING_WINDOW_SIZE words
+            recent_words = recent_words[-ROLLING_WINDOW_SIZE:]
+        
+        # Check if we have enough new words since last match
+        if last_matched_text:
+            new_words = transcript_text.replace(last_matched_text, "").strip().split()
+            if len(new_words) < MIN_NEW_WORDS:
+                logging.debug(f"Not enough new words ({len(new_words)}) since last match, skipping")
+                return None, 0.0
+
         # Encode the transcript text
         transcript_embedding = model.encode(transcript_text, convert_to_tensor=True)
         
@@ -133,8 +155,20 @@ def find_best_match(transcript_text):
         logging.debug(f"Match score with first bullet: {score:.4f} (threshold: {SIMILARITY_THRESHOLD})")
         
         if score >= SIMILARITY_THRESHOLD:
+            last_matched_text = transcript_text
             return bullet_points[0], score
         else:
+            # Try matching with recent words as fallback
+            if recent_words:
+                recent_text = " ".join(recent_words)
+                recent_embedding = model.encode(recent_text, convert_to_tensor=True)
+                recent_score = util.dot_score(recent_embedding, first_bullet_embedding)[0].cpu().item()
+                logging.debug(f"Fallback match score with recent words: {recent_score:.4f}")
+                
+                if recent_score >= SIMILARITY_THRESHOLD:
+                    last_matched_text = transcript_text
+                    return bullet_points[0], recent_score
+            
             return None, score  # No match above threshold
     except Exception as e:
         logging.error(f"Error finding best match: {e}")

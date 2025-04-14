@@ -143,6 +143,27 @@ export const useWebRTC = ({
         console.log('🔍 Sending session update:', update2)
         // Send the session update to OpenAI
         dataChannelRef.current?.send(JSON.stringify(update2))
+
+        // const update3 = {
+        //   type: 'session.update',
+        //   response: {
+        //     input: [
+        //       {
+        //         type: 'message',
+        //         role: 'user',
+        //         content: [
+        //           {
+        //             type: 'input_text',
+        //             text: 'So I made a next.js project with supabase as the backend hosted on vercel.'
+        //           }
+        //         ]
+        //       }
+        //     ]
+        //   }
+        // }
+        // console.log('🔍 Sending session update:', update3)
+        // // Send the session update to OpenAI
+        // dataChannelRef.current?.send(JSON.stringify(update3))
       })
 
       // Event listener for incoming messages on the data channel
