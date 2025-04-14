@@ -99,6 +99,7 @@ export const useWebRTC = ({
     try {
       // Fetch the OpenAI session data, which includes the client secret for authentication
       const sessionData = await window.api.getOpenAISession()
+      console.log('🔍 Session data:', sessionData)
       if (!sessionData.client_secret?.value) {
         // If the client secret is not available, log an error and exit the function
         console.error('Failed to get OpenAI token:', sessionData)
@@ -124,13 +125,24 @@ export const useWebRTC = ({
 
       // Event listener for when the data channel is open
       dc.addEventListener('open', () => {
-        console.log('Data channel open, sending session.update')
+        console.log('✅✅✅ Data channel open, sending session.update')
         const update = {
           type: 'session.update',
-          session: { instructions: prompt, modalities: ['text'] }
+          session: { instructions: prompt } //, modalities: ['text'] }
         }
+        console.log('🔍 Sending session update:', update)
         // Send the session update to OpenAI
         dataChannelRef.current?.send(JSON.stringify(update))
+
+        console.log('✅✅✅ Data channel open, sending session.update 2222')
+
+        const update2 = {
+          type: 'session.update',
+          session: { modalities: ['text'] }
+        }
+        console.log('🔍 Sending session update:', update2)
+        // Send the session update to OpenAI
+        dataChannelRef.current?.send(JSON.stringify(update2))
       })
 
       // Event listener for incoming messages on the data channel
@@ -138,7 +150,10 @@ export const useWebRTC = ({
         try {
           const msg = JSON.parse(event.data)
 
-          if (msg.type === 'response.audio_transcript.delta') {
+          if (
+            msg.type === 'response.audio_transcript.delta' ||
+            msg.type === 'response.text.delta'
+          ) {
             const delta = msg.delta || ''
             const trimmed = delta.trim()
 
@@ -181,25 +196,16 @@ export const useWebRTC = ({
               }
               return newText
             })
-          } else if (msg.type === 'response.text.done') {
-            isPrevDone.current = true
-
-            const responseRequest = {
-              type: 'response.create',
-              response: { modalities: ['text'] }
-            }
-            if (dataChannelRef.current) {
-              dataChannelRef.current.send(JSON.stringify(responseRequest))
-            }
           } else {
             console.log('🔍 Unknown message type:', msg.type)
+            console.log('🔍 Full message:', msg)
 
             if (msg.type === 'response.done') {
               console.log('✅ RESPONSE TEXT IS DONE')
 
-              console.log('---MODALITIES USED', msg?.modalities)
-              console.log('---VOICE USED', msg?.voice)
-              console.log('---OUTPUT', msg?.output)
+              console.log('---MODALITIES USED', msg.response.modalities)
+              console.log('---VOICE USED', msg.response?.voice)
+              console.log('---OUTPUT', msg.response?.output)
             }
           }
         } catch (error) {
