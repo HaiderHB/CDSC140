@@ -1,5 +1,5 @@
 import React from 'react'
-import { Box, Button, Collapse, List, ListItem, ListItemText, Paper, Slider } from '@mui/material'
+import { Box, List, ListItem, ListItemText, Paper, Slider } from '@mui/material'
 import { motion, AnimatePresence } from 'framer-motion'
 import { EyeContactBox } from './EyeContactBox'
 import { Key } from './Key'

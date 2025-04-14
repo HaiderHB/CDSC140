@@ -22,7 +22,9 @@ const test_bullet_points = [
   'javascript is a langauge to make web pages alive',
   'Lamda functions are used in AWS',
   'React is a library to make web pages alive',
-  'Node.js is a runtime to run javascript outside the browser'
+  'Node.js is a runtime to run javascript outside the browser',
+  'AWS is a cloud service provider',
+  'AI is the future of the world'
 ]
 
 function App(): JSX.Element {

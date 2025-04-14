@@ -9,7 +9,7 @@ const GENERIC_PROMPT = `You are a meeting assistant being sent a live meeting tr
           You must determine if the transcript is a question or not. If it is not a question, just output "X"
           If it is a question, answer the question in 3-5 bullet points and do not include any other text in your response.
           Use natrual language in your responses and avoid using any other symbols.
-          Each bullet point should be a single sentence and seperated by the symbol "•"`
+          Each bullet point should be a single sentence and seperated by the symbol "•". The final bullet point should also end with "•"`
 
 const FAST_MODE = `${GENERIC_PROMPT}
 Use ultra-concise, clipped note form. Assume user already knows the concept. Bullet points should jog memory, not teach. 
@@ -25,7 +25,7 @@ Output:
 • More stable than Current version
 • Recommended for production apps
 • Security patches and bug fixes guaranteed
-• New features come slower
+• New features come slower •
 
 Input: That's pretty cool.
 Output: X
@@ -36,7 +36,7 @@ Output:
 • Use past campaign data
 • Match channel with type of content
 • Consider cost vs return
-• Test small, scale what works
+• Test small, scale what works •
 `
 
 const BALANCED_MODE = `${GENERIC_PROMPT}
@@ -55,7 +55,7 @@ Output:
 • Chosen for stability, bug fixes, and security patches
 • Used for most production environments
 • Updated less often but with guaranteed support
-• Better choice than Current for long-running projects
+• Better choice than Current for long-running projects •
 
 Input: That's pretty cool.
 Output: X
@@ -66,7 +66,7 @@ Output:
 • Match each channel to your message format and budget
 • Check what worked for similar brands or past campaigns
 • Consider the scale, cost per result, and time investment
-• Run small experiments before committing fully
+• Run small experiments before committing fully •
 `
 
 const MAX_MODE = `${GENERIC_PROMPT}
@@ -85,7 +85,7 @@ Output:
 • These versions get security updates and bug fixes while skipping risky new features
 • Used in production apps because they’re less likely to break with updates
 • Ideal for companies who value reliability over having the latest features
-• Developers should care because LTS versions reduce bugs and downtime in live environments
+• Developers should care because LTS versions reduce bugs and downtime in live environments •
 
 Input: That's pretty cool.
 Output: X
@@ -96,7 +96,7 @@ Output:
 • Choose a channel that matches both your budget and how your audience prefers to receive messages
 • Consider how well the content format (video, image, text) fits the platform’s strengths
 • Review performance data from past efforts or competitors to spot patterns
-• Test different channels with small budgets to learn what performs best before scaling up
+• Test different channels with small budgets to learn what performs best before scaling up •
 `
 
 export function getPrompt(currentSession: CurrentSession | null) {
