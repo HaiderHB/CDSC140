@@ -127,7 +127,7 @@ export const useWebRTC = ({
         console.log('Data channel open, sending session.update')
         const update = {
           type: 'session.update',
-          session: { instructions: prompt }
+          session: { instructions: prompt, modalities: ['text'] }
         }
         // Send the session update to OpenAI
         dataChannelRef.current?.send(JSON.stringify(update))
@@ -182,15 +182,7 @@ export const useWebRTC = ({
               return newText
             })
           } else if (msg.type === 'response.text.done') {
-            console.log('RESPONSE TEXT IS DONE')
             isPrevDone.current = true
-
-            // Don’t finalize if PASSED was the only message
-            if (currentBulletPoint.trim() && currentBulletPoint.trim().toLowerCase() !== 'x') {
-              setBulletPoints((prev) => [...prev, currentBulletPoint.trim()])
-            }
-
-            setCurrentBulletPoint('')
 
             const responseRequest = {
               type: 'response.create',
@@ -198,6 +190,16 @@ export const useWebRTC = ({
             }
             if (dataChannelRef.current) {
               dataChannelRef.current.send(JSON.stringify(responseRequest))
+            }
+          } else {
+            console.log('🔍 Unknown message type:', msg.type)
+
+            if (msg.type === 'response.done') {
+              console.log('✅ RESPONSE TEXT IS DONE')
+
+              console.log('---MODALITIES USED', msg?.modalities)
+              console.log('---VOICE USED', msg?.voice)
+              console.log('---OUTPUT', msg?.output)
             }
           }
         } catch (error) {
