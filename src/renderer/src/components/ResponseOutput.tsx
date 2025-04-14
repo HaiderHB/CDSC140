@@ -26,15 +26,20 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
   handleManualDeleteEyeContact,
   handleRestoreLastDeleted
 }) => {
-  const [fontSize, setFontSize] = React.useState(16)
+  const [fontSize, setFontSize] = React.useState(() => {
+    const savedFontSize = localStorage.getItem('fontSize')
+    return savedFontSize ? parseInt(savedFontSize) : 16
+  })
 
   const handleFontSizeChange = (event: Event, newValue: number | number[]) => {
-    setFontSize(newValue as number)
+    const value = newValue as number
+    setFontSize(value)
+    localStorage.setItem('fontSize', value.toString())
   }
 
   return (
     <Box className="response-output" sx={{ mt: 3 }}>
-      <Box sx={{ width: '200px', mx: 'auto', mt: 2 }}>
+      <Box sx={{ width: '150px', mx: 'auto', mt: 2 }}>
         <Slider
           value={fontSize}
           min={6}
@@ -43,6 +48,16 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
           onChange={handleFontSizeChange}
           valueLabelDisplay="auto"
           aria-labelledby="font-size-slider"
+          sx={{
+            height: 3, // 🔹 Thickness of the track
+            '& .MuiSlider-thumb': {
+              height: 12, // 🔹 Height of the dot
+              width: 12, // 🔹 Width of the dot
+              '&:hover, &.Mui-focusVisible, &.Mui-active': {
+                boxShadow: '0px 0px 0px 8px rgba(16, 185, 129, 0.16)'
+              }
+            }
+          }}
         />
       </Box>
       <div>
