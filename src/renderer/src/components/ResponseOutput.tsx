@@ -1,5 +1,5 @@
 import React from 'react'
-import { Box, Button, Collapse, List, ListItem, ListItemText, Paper } from '@mui/material'
+import { Box, Button, Collapse, List, ListItem, ListItemText, Paper, Slider } from '@mui/material'
 import { motion, AnimatePresence } from 'framer-motion'
 import { EyeContactBox } from './EyeContactBox'
 import { Key } from './Key'
@@ -26,8 +26,25 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
   handleManualDeleteEyeContact,
   handleRestoreLastDeleted
 }) => {
+  const [fontSize, setFontSize] = React.useState(16)
+
+  const handleFontSizeChange = (event: Event, newValue: number | number[]) => {
+    setFontSize(newValue as number)
+  }
+
   return (
     <Box className="response-output" sx={{ mt: 3 }}>
+      <Box sx={{ width: '200px', mx: 'auto', mt: 2 }}>
+        <Slider
+          value={fontSize}
+          min={6}
+          max={30}
+          step={1}
+          onChange={handleFontSizeChange}
+          valueLabelDisplay="auto"
+          aria-labelledby="font-size-slider"
+        />
+      </Box>
       <div>
         <Box
           display="flex"
@@ -41,12 +58,13 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
                 isCapturing
                   ? bulletPoints[0] || 'Waiting for next question...'
                   : bulletPoints[0] ||
-                    "Example text to minimise eye tracking. Click 'Start Capture' to begin session."
+                    'Adjust text size using the slider. The smaller the text the less your eyes have to move to read it.'
               }
               mode={readingMode}
               draggable={true}
-              leftOffset={155}
+              leftOffset={167}
               width="450px"
+              fontSize={`${fontSize}px`}
             />
             <Box
               display="flex"

@@ -15,6 +15,7 @@ interface EyeContactBoxProps {
   draggable?: boolean
   leftOffset?: number
   spritzSize?: number
+  fontSize?: string
 }
 
 export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
@@ -24,7 +25,8 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
   mx = 'auto',
   draggable = false,
   leftOffset = 0,
-  spritzSize = 2
+  spritzSize = 2,
+  fontSize = '16px'
 }) => {
   const [boxWidth, setBoxWidth] = useState<string>(width)
   const [boxId] = useState(() => `eye-contact-box-${Math.random().toString(36).substr(2, 9)}`)
@@ -64,14 +66,13 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaX = moveEvent.clientX - startX
       const newWidth = isRightSide ? parseInt(boxWidth) + deltaX : parseInt(boxWidth) - deltaX
-      if (newWidth < 410) {
-        setBoxWidth(`410px`)
+      if (newWidth < 437) {
+        setBoxWidth(`437px`)
       } else if (newWidth > 1000) {
         setBoxWidth(`1000px`)
       } else {
         setBoxWidth(`${newWidth}px`)
       }
-      console.log(newWidth)
     }
 
     const handleMouseUp = () => {
@@ -233,7 +234,9 @@ export const EyeContactBox: React.FC<EyeContactBoxProps> = ({
                 </Typography>
               </Box>
             ) : (
-              <ListItemText primary={<div>{formatText(text, mode)}</div>} />
+              <ListItemText
+                primary={<div style={{ fontSize: fontSize }}>{formatText(text, mode)}</div>}
+              />
             )}
           </motion.div>
         )}

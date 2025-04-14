@@ -4,6 +4,7 @@ interface SpritzReaderProps {
   text: string
   wpm?: number
   size?: number
+  stopDuration?: number
 }
 interface RapidReadProps {
   text: string
@@ -28,7 +29,12 @@ const RapidRead: React.FC<RapidReadProps> = ({ text }) => {
   return <div>{words.map((word, index) => renderBionicWord(word, index))}</div>
 }
 
-const SpritzReader: React.FC<SpritzReaderProps> = ({ text, wpm = 300, size = 2 }) => {
+const SpritzReader: React.FC<SpritzReaderProps> = ({
+  text,
+  wpm = 400,
+  size = 2,
+  stopDuration = 1500
+}) => {
   const words = text.split(' ')
   const [currentIndex, setCurrentIndex] = useState(0)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -53,7 +59,7 @@ const SpritzReader: React.FC<SpritzReaderProps> = ({ text, wpm = 300, size = 2 }
           loopTimeoutRef.current = setTimeout(() => {
             setCurrentIndex(0)
             startLoop()
-          }, 1500)
+          }, stopDuration)
           return prev
         }
         return prev + 1
