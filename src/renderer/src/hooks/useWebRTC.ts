@@ -150,10 +150,7 @@ export const useWebRTC = ({
         try {
           const msg = JSON.parse(event.data)
 
-          if (
-            msg.type === 'response.audio_transcript.delta' ||
-            msg.type === 'response.text.delta'
-          ) {
+          if (msg.type === 'response.text.delta') {
             const delta = msg.delta || ''
             const trimmed = delta.trim()
 
@@ -196,17 +193,8 @@ export const useWebRTC = ({
               }
               return newText
             })
-          } else {
-            console.log('🔍 Unknown message type:', msg.type)
-            console.log('🔍 Full message:', msg)
-
-            if (msg.type === 'response.done') {
-              console.log('✅ RESPONSE TEXT IS DONE')
-
-              console.log('---MODALITIES USED', msg.response.modalities)
-              console.log('---VOICE USED', msg.response?.voice)
-              console.log('---OUTPUT', msg.response?.output)
-            }
+          } else if (msg.type === 'response.done') {
+            isPrevDone.current = true
           }
         } catch (error) {
           console.error('Error parsing WebRTC message:', error)
