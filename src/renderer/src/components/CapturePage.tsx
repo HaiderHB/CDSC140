@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { Box, Button, CircularProgress, Typography } from '@mui/material'
-import VisibilityIcon from '@mui/icons-material/Visibility'
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
-
 import { AudioStatus } from '../hooks/useAudioCapture'
 import { ResponseOutput } from './ResponseOutput'
 import { TranscriptionDisplay } from './TranscriptionDisplay'
@@ -62,6 +59,8 @@ export const CapturePage: React.FC<CapturePageProps> = ({
   const commandKey = isMac ? '⌘' : 'Ctrl'
 
   const [micOptions, setMicOptions] = useState<MediaDeviceInfo[]>([])
+  const [isStarting, setIsStarting] = useState(false)
+  const [statusMessage, setStatusMessage] = useState('Initializing')
 
   useEffect(() => {
     const getMicrophones = async () => {
@@ -71,6 +70,41 @@ export const CapturePage: React.FC<CapturePageProps> = ({
     }
     getMicrophones()
   }, [])
+
+  useEffect(() => {
+    if (wsStatus != 'connected' && isStarting) {
+      setIsStarting(true)
+      const messages = [
+        'Preparing transcription service',
+        'Preparing audio capture',
+        'Loading AI models',
+        'Finalizing'
+      ]
+      let index = 0
+      const interval = setInterval(() => {
+        setStatusMessage(messages[index])
+        index = (index + 1) % messages.length
+        if (index === 0) {
+          clearInterval(interval)
+        }
+      }, 3000)
+      return () => {
+        clearInterval(interval)
+        setIsStarting(false)
+      }
+    }
+    if (wsStatus === 'connected') {
+      setIsStarting(false)
+      setStatusMessage('')
+    }
+  }, [wsStatus, isStarting])
+
+  const handleStartCapture = () => {
+    setIsStarting(true)
+    if (wsStatus !== 'connecting') {
+      startCapture()
+    }
+  }
 
   return (
     <Box
@@ -163,11 +197,11 @@ export const CapturePage: React.FC<CapturePageProps> = ({
           {!isCapturing ? (
             <>
               <Button
-                onClick={startCapture}
+                onClick={handleStartCapture}
                 variant="contained"
                 sx={
                   {
-                    bgcolor: 'rgba(233, 104, 12, 0.9)',
+                    bgcolor: isStarting ? 'rgba(233, 104, 12, 0.5)' : 'rgba(233, 104, 12, 0.9)',
                     color: 'white',
                     px: 3,
                     py: 1,
@@ -175,13 +209,20 @@ export const CapturePage: React.FC<CapturePageProps> = ({
                     fontWeight: 500,
                     boxShadow: '0 4px 14px rgba(233, 104, 12, 0.4)',
                     '&:hover': {
-                      bgcolor: 'rgba(233, 104, 12, 1)',
+                      bgcolor: isStarting ? 'rgba(233, 104, 12, 0.5)' : 'rgba(233, 104, 12, 1)',
                       boxShadow: '0 6px 20px rgba(233, 104, 12, 0.6)'
                     }
                   } as const
                 }
               >
-                Start Capture
+                {isStarting ? (
+                  <>
+                    <CircularProgress size={16} sx={{ color: 'white', mr: 1 }} />
+                    Starting Capture
+                  </>
+                ) : (
+                  'Start Capture'
+                )}
               </Button>
               <select
                 value={selectedMic}
@@ -214,6 +255,7 @@ export const CapturePage: React.FC<CapturePageProps> = ({
             <Button
               onClick={stopCapture}
               variant="contained"
+              disabled={wsStatus === 'connecting'}
               sx={
                 {
                   bgcolor: 'rgba(239, 68, 68, 0.9)',
@@ -230,9 +272,19 @@ export const CapturePage: React.FC<CapturePageProps> = ({
                 } as const
               }
             >
-              Stop Capture
+              {wsStatus === 'connecting' ? (
+                <>
+                  <CircularProgress size={16} sx={{ color: 'white', mr: 1 }} />
+                  Starting Capture
+                </>
+              ) : (
+                <>Stop Capture</>
+              )}
             </Button>
           )}
+          {isStarting || wsStatus === 'connecting' ? (
+            <Typography sx={{ mt: 1, color: '#E9680C' }}>{statusMessage}</Typography>
+          ) : null}
         </Box>
         {isListening && (
           <Box sx={{ color: '#4ade80', mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
