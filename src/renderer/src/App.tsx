@@ -16,10 +16,11 @@ import CapturePage from './components/CapturePage'
 
 type ReadingMode = 'normal' | 'rapid' | 'spritz'
 
-const TEST_MODE = false
+const TEST_MODE = true
 
 const test_bullet_points = [
   'javascript is a langauge to make web pages alive',
+  'javascript is a langauge to modern looking pages on the web',
   'Lamda functions are used in AWS',
   'React is a library to make web pages alive',
   'Node.js is a runtime to run javascript outside the browser',

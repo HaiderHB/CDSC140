@@ -52,6 +52,10 @@ shutdown_in_progress = False
 # Flag to track if we're handling a signal
 handling_signal = False
 
+# Add this to your globals:
+last_match_word_count = 0
+spoken_since_last_match = []  # Buffer to track words since last match
+
 # Signal handler for graceful shutdown
 def signal_handler(sig, frame):
     """Handle signals for graceful shutdown"""
@@ -120,7 +124,7 @@ def precompute_bullet_embeddings(points):
 
 def find_best_match(transcript_text):
     """Finds the best matching bullet point for the given transcript."""
-    global recent_words, last_matched_text
+    global recent_words, last_matched_text, last_match_word_count, spoken_since_last_match
     
     if bullet_embeddings is None or len(bullet_points) == 0 or not transcript_text:
         if bullet_embeddings is None:
@@ -132,18 +136,16 @@ def find_best_match(transcript_text):
         return None, 0.0  # No match if no bullets or empty transcript
 
     try:
-        # Update recent words
-        words = transcript_text.split()
-        recent_words.extend(words)
-        if len(recent_words) > ROLLING_WINDOW_SIZE:  # Keep only last ROLLING_WINDOW_SIZE words
-            recent_words = recent_words[-ROLLING_WINDOW_SIZE:]
-        
-        # Check if we have enough new words since last match
-        if last_matched_text:
-            new_words = transcript_text.replace(last_matched_text, "").strip().split()
-            if len(new_words) < MIN_NEW_WORDS:
-                logging.debug(f"Not enough new words ({len(new_words)}) since last match, skipping")
-                return None, 0.0
+        # Update spoken words
+        words = transcript_text.strip().split()
+        spoken_since_last_match.extend(words)
+        if len(spoken_since_last_match) > 50:  # Cap to avoid infinite growth
+            spoken_since_last_match = spoken_since_last_match[-50:]
+
+        # Enforce buffer: Require at least MIN_NEW_WORDS more than last match
+        if len(spoken_since_last_match) < MIN_NEW_WORDS:
+            logging.debug(f"⛔ Not enough new words since last match ({len(spoken_since_last_match)})")
+            return None, 0.0
 
         # Encode the transcript text
         transcript_embedding = model.encode(transcript_text, convert_to_tensor=True)
@@ -155,7 +157,7 @@ def find_best_match(transcript_text):
         logging.debug(f"Match score with first bullet: {score:.4f} (threshold: {SIMILARITY_THRESHOLD})")
         
         if score >= SIMILARITY_THRESHOLD:
-            last_matched_text = transcript_text
+            spoken_since_last_match = []  # Reset word buffer
             return bullet_points[0], score
         else:
             # Try matching with recent words as fallback
@@ -166,7 +168,7 @@ def find_best_match(transcript_text):
                 logging.debug(f"Fallback match score with recent words: {recent_score:.4f}")
                 
                 if recent_score >= SIMILARITY_THRESHOLD:
-                    last_matched_text = transcript_text
+                    spoken_since_last_match = []  # Reset word buffer
                     return bullet_points[0], recent_score
             
             return None, score  # No match above threshold

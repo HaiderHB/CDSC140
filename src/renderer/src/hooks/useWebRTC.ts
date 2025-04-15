@@ -65,34 +65,11 @@ export const useWebRTC = ({
     }
     console.log('🔍 Current bullet points in state:', currentBulletPoints)
 
-    const exactMatch = currentBulletPoints.includes(matchedPoint)
-
-    if (exactMatch) {
-      console.log('✅ Exact match found in bullet points, removing:', matchedPoint)
-      setDeletedBulletPoints((prev) => [...prev, matchedPoint])
-      setBulletPoints((prev) => prev.filter((point) => point !== matchedPoint))
-    } else {
-      console.log('⚠️ No exact match, using Fuse.js for fuzzy matching:', matchedPoint)
-
-      const fuseOptions = {
-        includeScore: true,
-        threshold: 0.4,
-        keys: ['.']
-      }
-      const fuse = new Fuse(currentBulletPoints, fuseOptions)
-      const searchResult = fuse.search(matchedPoint)
-
-      if (searchResult.length > 0) {
-        const bestMatch = searchResult[0]
-        console.log(
-          `✅ Found fuzzy match with Fuse.js: "${bestMatch.item}" (Score: ${bestMatch.score?.toFixed(4)})`
-        )
-        setDeletedBulletPoints((prev) => [...prev, bestMatch.item])
-        setBulletPoints((prev) => prev.filter((point) => point !== bestMatch.item))
-      } else {
-        console.log('❌ No match found with Fuse.js.')
-      }
-    }
+    // Directly remove the bullet point at index 0
+    const removedPoint = currentBulletPoints[0]
+    setDeletedBulletPoints((prev) => [...prev, removedPoint])
+    setBulletPoints((prev) => prev.slice(1))
+    console.log('✅ Removed bullet point at index 0:', removedPoint)
   }
 
   const connectToOpenAI = async (stream: MediaStream): Promise<void> => {
