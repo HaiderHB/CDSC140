@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react'
-import Fuse from 'fuse.js'
 import { CurrentSession } from './useAppNavigation'
 import { getPrompt } from '@renderer/utils/prompts'
 
@@ -20,6 +19,7 @@ interface UseWebRTCResult {
   resetWebRTCState: () => void
   findAndRemoveMatchingBulletPoint: (transcript: string) => void
 }
+// const MANUAL_DELAY = 1000
 
 export const useWebRTC = ({
   currentSession,
@@ -65,6 +65,8 @@ export const useWebRTC = ({
     }
     console.log('🔍 Current bullet points in state:', currentBulletPoints)
 
+    // Add manual delay
+    // await new Promise((resolve) => setTimeout(resolve, MANUAL_DELAY))
     // Directly remove the bullet point at index 0
     const removedPoint = currentBulletPoints[0]
     setDeletedBulletPoints((prev) => [...prev, removedPoint])

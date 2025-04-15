@@ -12,6 +12,7 @@ import time
 import queue
 import numpy as np
 from sentence_transformers import SentenceTransformer, util
+import re
 
 # Configure logging
 logging.basicConfig(
@@ -32,7 +33,6 @@ bullet_points = []
 bullet_embeddings = None
 # Track recent words and last matched text
 recent_words = []
-last_matched_text = ""
 MIN_NEW_WORDS = 5  # Minimum number of new words required before matching again
 ROLLING_WINDOW_SIZE = 10  # Number of words to keep in recent words
 # --- End Sentence Similarity Setup ---
@@ -51,10 +51,11 @@ similarity_queue = queue.SimpleQueue()
 shutdown_in_progress = False
 # Flag to track if we're handling a signal
 handling_signal = False
-
-# Add this to your globals:
-last_match_word_count = 0
-spoken_since_last_match = []  # Buffer to track words since last match
+# Global variable to track total word count
+total_word_count = 0
+last_deleted_word_count = 0
+# Track the last transcript seen
+last_transcribed_text = ""
 
 # Signal handler for graceful shutdown
 def signal_handler(sig, frame):
@@ -102,10 +103,9 @@ def load_similarity_model(model_name=MODEL_NAME):
 
 def precompute_bullet_embeddings(points):
     """Precomputes embeddings for the list of bullet points."""
-    global bullet_points, bullet_embeddings, recent_words, last_matched_text
+    global bullet_points, bullet_embeddings, recent_words
     bullet_points = points
     recent_words = []  # Reset recent words when bullet points change
-    last_matched_text = ""  # Reset last matched text
     if not points:
         bullet_embeddings = None
         print("Bullet points list is empty. Cleared embeddings.")
@@ -124,7 +124,7 @@ def precompute_bullet_embeddings(points):
 
 def find_best_match(transcript_text):
     """Finds the best matching bullet point for the given transcript."""
-    global recent_words, last_matched_text, last_match_word_count, spoken_since_last_match
+    global recent_words, last_deleted_word_count, total_word_count
     
     if bullet_embeddings is None or len(bullet_points) == 0 or not transcript_text:
         if bullet_embeddings is None:
@@ -136,15 +136,14 @@ def find_best_match(transcript_text):
         return None, 0.0  # No match if no bullets or empty transcript
 
     try:
-        # Update spoken words
-        words = transcript_text.strip().split()
-        spoken_since_last_match.extend(words)
-        if len(spoken_since_last_match) > 50:  # Cap to avoid infinite growth
-            spoken_since_last_match = spoken_since_last_match[-50:]
-
-        # Enforce buffer: Require at least MIN_NEW_WORDS more than last match
-        if len(spoken_since_last_match) < MIN_NEW_WORDS:
-            logging.debug(f"⛔ Not enough new words since last match ({len(spoken_since_last_match)})")
+        # Update recent words
+        words = transcript_text.split()
+        recent_words.extend(words)
+        if len(recent_words) > ROLLING_WINDOW_SIZE:  # Keep only last ROLLING_WINDOW_SIZE words
+            recent_words = recent_words[-ROLLING_WINDOW_SIZE:]
+        
+        if total_word_count - last_deleted_word_count < MIN_NEW_WORDS:
+            last_deleted_word_count = total_word_count
             return None, 0.0
 
         # Encode the transcript text
@@ -157,7 +156,6 @@ def find_best_match(transcript_text):
         logging.debug(f"Match score with first bullet: {score:.4f} (threshold: {SIMILARITY_THRESHOLD})")
         
         if score >= SIMILARITY_THRESHOLD:
-            spoken_since_last_match = []  # Reset word buffer
             return bullet_points[0], score
         else:
             # Try matching with recent words as fallback
@@ -168,7 +166,6 @@ def find_best_match(transcript_text):
                 logging.debug(f"Fallback match score with recent words: {recent_score:.4f}")
                 
                 if recent_score >= SIMILARITY_THRESHOLD:
-                    spoken_since_last_match = []  # Reset word buffer
                     return bullet_points[0], recent_score
             
             return None, score  # No match above threshold
@@ -188,11 +185,45 @@ async def send_message(websocket, message_type, data):
     except Exception as e:
         logging.error(f"Error sending {message_type}: {e}")
 
+def strip_dots_and_spaces(text: str) -> str:
+    """Removes dots and extra spaces from the text."""
+    return re.sub(r'[.\s]+', ' ', text).strip()
+
+def get_difference(prev: str, new: str) -> str:
+    """Removes the common starting portion from new relative to prev."""
+    prev_words = prev.split()
+    new_words = new.split()
+    i = 0
+    while i < min(len(prev_words), len(new_words)) and prev_words[i] == new_words[i]:
+        i += 1
+    return ' '.join(new_words[i:])
+
 def process_text(text, websocket):
-    """Callback function for processing transcribed text"""
+    global total_word_count, last_transcribed_text
+
     if recording and text:
-        # Put the update in a queue to be processed by the main event loop
+        # Step 1: Normalize by removing dots
+        cleaned = strip_dots_and_spaces(text)
+        last_cleaned = strip_dots_and_spaces(last_transcribed_text)
+
+        # Step 4: If it's exactly the same, skip
+        if cleaned == last_cleaned:
+            print(f"Ignored duplicate transcript: '{cleaned}'")
+            return
+
+        # Step 2: Extract the difference
+        difference = get_difference(last_cleaned, cleaned)
+
+        # Step 3: Count and update
+        added_words = len(difference.split())
+        total_word_count += added_words
+
+        # Replace Unicode characters with plain text
+        # print(f"New words added: '{difference}'")
+        # print(f"Total word count: {total_word_count}")
+
         transcription_queue.put((websocket, text))
+        last_transcribed_text = text  # Store original, not cleaned
 
 async def process_transcription_queue():
     """Process transcription updates from the queue and perform matching"""
@@ -211,16 +242,17 @@ async def process_transcription_queue():
 
                 # Perform similarity matching
                 match, score = find_best_match(text)
+                print(f"User just said: '{text[:50]}...'")
                 if match:
                     print(f"Match found: '{match}' (Score: {score:.2f}) for transcript: '{text[:50]}...'")
                     # Put result in another queue to be sent by the main loop
                     similarity_queue.put((websocket, match, score))
-                else:
-                    # Add debug logging for when no match is found but we have bullets
-                    if bullet_points and len(bullet_points) > 0:
-                        print(f"No match found (Score: {score:.2f}) for transcript: '{text[:50]}...'")
-                        print(f"Current bullet points ({len(bullet_points)}): {', '.join(bullet_points[:3])}{'...' if len(bullet_points) > 3 else ''}")
-                    # logging.debug(f"No match found (Score: {score:.2f}) for transcript: '{text[:50]}...'")
+                # else:
+                #     # Add debug logging for when no match is found but we have bullets
+                #     if bullet_points and len(bullet_points) > 0:
+                #         print(f"No match found (Score: {score:.2f}) for transcript: '{text[:50]}...'")
+                #         print(f"Current bullet points ({len(bullet_points)}): {', '.join(bullet_points[:3])}{'...' if len(bullet_points) > 3 else ''}")
+                #     # logging.debug(f"No match found (Score: {score:.2f}) for transcript: '{text[:50]}...'")
 
         except Exception as e:
             logging.error(f"Error processing transcription queue: {e}")
@@ -483,6 +515,11 @@ def shutdown_recorder():
     finally:
         shutdown_in_progress = False
         print("Recorder shutdown completed")
+
+# You can also add a function to retrieve the total word count if needed
+def get_total_word_count():
+    """Returns the total word count for the session"""
+    return total_word_count
 
 has_started = False
 
