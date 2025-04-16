@@ -73,11 +73,11 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
                 isCapturing
                   ? bulletPoints[0] || 'Waiting for next question...'
                   : bulletPoints[0] ||
-                    'Adjust text size using the slider. The smaller the text the less your eyes have to move to read it.'
+                    'Adjust text size using the slider and box size using the edges. The smaller the reading area the less your eyes have to move to read it.'
               }
               mode={readingMode}
               draggable={true}
-              leftOffset={167}
+              leftOffset={155}
               width="450px"
               fontSize={`${fontSize}px`}
             />

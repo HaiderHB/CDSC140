@@ -228,7 +228,7 @@ export const CapturePage: React.FC<CapturePageProps> = ({
                 value={selectedMic}
                 onChange={(e) => onMicSelected(e.target.value)}
                 style={{
-                  marginTop: '10px',
+                  marginTop: '30px',
                   padding: '8px 12px',
                   borderRadius: '4px',
                   border: '1px solid rgba(233, 104, 12, 0.6)',
@@ -305,12 +305,14 @@ export const CapturePage: React.FC<CapturePageProps> = ({
       </Box>
 
       {/* Audio Visualizers - Centered within scrollable area */}
-      <AudioStatusDisplay
-        desktopAudioStatus={desktopAudioStatus}
-        micAudioStatus={micAudioStatus}
-        desktopCanvasRef={desktopCanvasRef}
-        micCanvasRef={micCanvasRef}
-      />
+      {isCapturing ? (
+        <AudioStatusDisplay
+          desktopAudioStatus={desktopAudioStatus}
+          micAudioStatus={micAudioStatus}
+          desktopCanvasRef={desktopCanvasRef}
+          micCanvasRef={micCanvasRef}
+        />
+      ) : null}
     </Box>
   )
 }

@@ -16,7 +16,7 @@ import CapturePage from './components/CapturePage'
 
 type ReadingMode = 'normal' | 'rapid' | 'spritz'
 
-const TEST_MODE = true
+const TEST_MODE = false
 
 const test_bullet_points = [
   'javascript is a langauge to make web pages alive',
