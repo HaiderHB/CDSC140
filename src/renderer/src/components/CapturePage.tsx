@@ -295,14 +295,14 @@ export const CapturePage: React.FC<CapturePageProps> = ({
       </Box>
 
       {/* Transcription - Centered within scrollable area */}
-      <Box sx={{ width: '100%', maxWidth: '800px', mx: 'auto', mb: 3 }}>
+      {/* <Box sx={{ width: '100%', maxWidth: '800px', mx: 'auto', mb: 3 }}>
         <TranscriptionDisplay
           isCapturing={isCapturing}
           transcriptText={transcriptText}
           wsStatus={wsStatus}
           wsError={wsError}
         />
-      </Box>
+      </Box> */}
 
       {/* Audio Visualizers - Centered within scrollable area */}
       {isCapturing ? (
