@@ -249,11 +249,11 @@ function App(): JSX.Element {
       >
         <Typography
           variant="subtitle2"
-          sx={{ color: isClickThrough ? 'transparent' : 'white', opacity: 1 }}
+          sx={{ color: isClickThrough ? 'transparent' : 'white', opacity: 0.8, marginTop: '8px' }}
         >
           Interview Speaker
         </Typography>
-        <Box sx={{ display: 'flex', WebkitAppRegion: 'no-drag' }}>
+        <Box sx={{ display: 'flex', WebkitAppRegion: 'no-drag', marginTop: '4px' }}>
           <IconButton
             onClick={handleCloseApp}
             size="small"
@@ -265,7 +265,7 @@ function App(): JSX.Element {
               }
             }}
           >
-            ✕
+            {isMac ? '🔴' : '✕'}
           </IconButton>
         </Box>
       </Box>

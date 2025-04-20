@@ -4,6 +4,24 @@
   margin: 0;
 }
 
+html,
+body {
+  margin: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 20px;
+  background:
+    linear-gradient(#151515, #151515) padding-box,
+    /* inner content */ linear-gradient(135deg, #e9680c9f, #c12300) border-box; /* border */
+  border: 2px solid transparent; /* required for the trick */
+  box-sizing: border-box;
+}
+
 .spritz-text::before {
   animation: focusPoint 2s ease-in-out infinite;
 }
