@@ -17,7 +17,7 @@ body {
   border-radius: 20px;
   background:
     linear-gradient(#151515, #151515) padding-box,
-    /* inner content */ linear-gradient(135deg, #e9680c9f, #c12300) border-box; /* border */
+    /* inner content */ linear-gradient(135deg, #e9680c, #c12300) border-box; /* border */
   border: 2px solid transparent; /* required for the trick */
   box-sizing: border-box;
 }
