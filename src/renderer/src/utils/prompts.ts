@@ -9,7 +9,12 @@ const GENERIC_PROMPT = `You are a meeting assistant being sent a live meeting tr
           You must determine if the transcript is a question or not. If it is not a question, just output "X"
           If it is a question, answer the question in 3-5 bullet points and do not include any other text in your response.
           Use natrual language in your responses and avoid using any other symbols.
-          Each bullet point should be a single sentence and seperated by the symbol "•". The final bullet point should also end with "•"`
+          Each bullet point should be a single sentence and seperated by the symbol "•". The final bullet point should also end with "•"
+
+          If an answer has already been given for a question, and additional transcript comes in that might be providing 
+          clarification, or some additional context or examples to help the user solve the question, if that additional information does not change
+          the answer in any way, then also respond with "X". Though if the additional information does change the answer, then respond with the new answer.
+          `
 
 const FAST_MODE = `${GENERIC_PROMPT}
 Use ultra-concise, clipped note form. Assume user already knows the concept. Bullet points should jog memory, not teach. 
@@ -37,6 +42,9 @@ Output:
 • Match channel with type of content
 • Consider cost vs return
 • Test small, scale what works •
+
+Input: For example, given a specific target audience, what marketing channel would you recommend?
+Output: X
 `
 
 const BALANCED_MODE = `${GENERIC_PROMPT}
@@ -67,6 +75,9 @@ Output:
 • Check what worked for similar brands or past campaigns
 • Consider the scale, cost per result, and time investment
 • Run small experiments before committing fully •
+
+Input: For example, given a specific target audience, what marketing channel would you recommend?
+Output: X
 `
 
 const MAX_MODE = `${GENERIC_PROMPT}
@@ -97,6 +108,9 @@ Output:
 • Consider how well the content format (video, image, text) fits the platform’s strengths
 • Review performance data from past efforts or competitors to spot patterns
 • Test different channels with small budgets to learn what performs best before scaling up •
+
+Input: For example, given a specific target audience, what marketing channel would you recommend?
+Output: X
 `
 
 export function getPrompt(currentSession: CurrentSession | null) {
