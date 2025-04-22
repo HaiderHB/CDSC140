@@ -163,7 +163,7 @@ export const useWebRTC = ({
             if (trimmed === 'X') {
               console.log('⛔ Ignored X response from AI', xCount.current)
               xCount.current++
-              if (xCount.current > 3) {
+              if (xCount.current > 20) {
                 // Stop the connection
                 console.log('🔴 Stopping capture because of X response')
                 xCount.current = 0
