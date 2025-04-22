@@ -19,13 +19,12 @@ type ReadingMode = 'normal' | 'rapid' | 'spritz'
 const TEST_MODE = false
 
 const test_bullet_points = [
-  'javascript is a langauge to make web pages alive',
-  'javascript is a langauge to modern looking pages on the web',
-  'Lamda functions are used in AWS',
-  'React is a library to make web pages alive',
-  'Node.js is a runtime to run javascript outside the browser',
-  'AWS is a cloud service provider',
-  'AI is the future of the world'
+  'The most undetectable AI interview assistant.',
+  "Displays answers in a subtle eye contact box—impossible to tell you're reading.",
+  'Invisible on screen share with lightning-fast responses.',
+  'Auto speech recognition updates bullet points in real time.',
+  'Speak naturally—no clicks, no hands.',
+  'Never freeze on a question again.'
 ]
 
 function App(): JSX.Element {
@@ -82,6 +81,7 @@ function App(): JSX.Element {
   } = useWebRTC({
     currentSession,
     isCapturing,
+    stopCapture: hookStopCapture,
     initialBulletPoints: TEST_MODE ? test_bullet_points : []
   })
 
@@ -153,7 +153,7 @@ function App(): JSX.Element {
       }
     } catch (error: any) {
       console.error('Error starting combined capture:', error)
-      setError(`Failed to start capture: ${error?.message || 'Unknown error'}`)
+      setError(`Failed to Start Assistance: ${error?.message || 'Unknown error'}`)
       stopCombinedCapture()
     }
   }

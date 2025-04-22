@@ -218,10 +218,10 @@ export const CapturePage: React.FC<CapturePageProps> = ({
                 {isStarting ? (
                   <>
                     <CircularProgress size={16} sx={{ color: 'white', mr: 1 }} />
-                    Starting Capture
+                    Starting Assistance
                   </>
                 ) : (
-                  'Start Capture'
+                  'Start Assistance'
                 )}
               </Button>
               <select
@@ -275,10 +275,10 @@ export const CapturePage: React.FC<CapturePageProps> = ({
               {wsStatus === 'connecting' ? (
                 <>
                   <CircularProgress size={16} sx={{ color: 'white', mr: 1 }} />
-                  Starting Capture
+                  Starting Assistance
                 </>
               ) : (
-                <>Stop Capture</>
+                <>Stop Assistance</>
               )}
             </Button>
           )}

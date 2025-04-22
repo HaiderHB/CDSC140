@@ -33,7 +33,7 @@ bullet_points = []
 bullet_embeddings = None
 # Track recent words and last matched text
 recent_words = []
-MIN_NEW_WORDS = 5  # Minimum number of new words required before matching again
+MIN_NEW_WORDS = 10  # Minimum number of new words required before matching again
 ROLLING_WINDOW_SIZE = 10  # Number of words to keep in recent words
 # --- End Sentence Similarity Setup ---
 
@@ -337,14 +337,14 @@ def initialize_recorder():
                 language='en',
                 silero_sensitivity=0.6,
                 webrtc_sensitivity=2,
-                post_speech_silence_duration=1.0,
+                post_speech_silence_duration=0.15,
+                min_gap_between_recordings=0.3,
+                early_transcription_on_silence=50,
                 min_length_of_recording=1.5,
-                min_gap_between_recordings=0.5,
                 enable_realtime_transcription=True,
                 # Reduce processing pause for more frequent updates
                 realtime_processing_pause=0.02,
                 silero_deactivity_detection=False,
-                early_transcription_on_silence=200,
                 beam_size=5,
                 beam_size_realtime=1,
                 debug_mode=True,

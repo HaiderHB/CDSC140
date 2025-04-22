@@ -5,6 +5,7 @@ import { getPrompt } from '@renderer/utils/prompts'
 interface UseWebRTCProps {
   currentSession: CurrentSession | null
   isCapturing: boolean
+  stopCapture: () => void
   initialBulletPoints?: string[]
 }
 
@@ -24,12 +25,14 @@ interface UseWebRTCResult {
 export const useWebRTC = ({
   currentSession,
   isCapturing,
+  stopCapture,
   initialBulletPoints = []
 }: UseWebRTCProps): UseWebRTCResult => {
   const [responseText, setResponseText] = useState('')
   const [bulletPoints, setBulletPoints] = useState<string[]>(initialBulletPoints)
   const [currentBulletPoint, setCurrentBulletPoint] = useState('')
   const [deletedBulletPoints, setDeletedBulletPoints] = useState<string[]>([])
+  const xCount = useRef(0)
   const isPrevDone = useRef(false)
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
@@ -158,8 +161,21 @@ export const useWebRTC = ({
 
             // ✅ Skip PASSED entirely — do not append, do not reset
             if (trimmed === 'X') {
-              console.log('⛔ Ignored X response from AI')
+              console.log('⛔ Ignored X response from AI', xCount.current)
+              xCount.current++
+              if (xCount.current > 3) {
+                // Stop the connection
+                console.log('🔴 Stopping capture because of X response')
+                xCount.current = 0
+                // show alert
+                alert('Audio detected as non interview. Stopping assistance.')
+                stopCapture()
+              }
               return
+            } else {
+              if (trimmed.length > 1) {
+                xCount.current = 0
+              }
             }
 
             // ✅ Reset state if previous response is done
