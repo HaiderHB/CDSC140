@@ -298,8 +298,8 @@ class CustomAudioToTextRecorder(AudioToTextRecorder):
                             status, content = data
                             if status == 'success':
                                 transcription, info = content
-                                if self.on_realtime_transcription_update:
-                                    self.on_realtime_transcription_update(transcription)
+                                if self.on_realtime_transcription_stabilized :
+                                    self.on_realtime_transcription_stabilized (transcription)
                             elif status == 'error':
                                 logging.error(f"Error in transcription: {content}")
                 except (EOFError, BrokenPipeError) as e:
@@ -422,7 +422,7 @@ async def handle_client(websocket):
                                 while not transcription_queue.empty(): transcription_queue.get()
                                 while not similarity_queue.empty(): similarity_queue.get()
 
-                                recorder.on_realtime_transcription_update = lambda text: process_text(text, websocket)
+                                recorder.on_realtime_transcription_stabilized  = lambda text: process_text(text, websocket)
                                 # Start recorder loop in executor
                                 asyncio.get_event_loop().run_in_executor(None, start_recording_loop)
                                 await send_message(websocket, "status", {"status": "started"})
@@ -432,7 +432,7 @@ async def handle_client(websocket):
                                 print("Stop recording command received")
                                 recording = False
                                 # Optionally send final transcription fragments if any
-                                recorder.on_realtime_transcription_update = None  # Detach callback
+                                recorder.on_realtime_transcription_stabilized  = None  # Detach callback
                                 await send_message(websocket, "status", {"status": "stopped"})
 
                         elif command == "shutdown":
@@ -478,7 +478,7 @@ def start_recording_loop():
         while recording and not shutdown_in_progress:
             try:
                 # Call text() without the unsupported timeout parameter
-                recorder.text(lambda text: None)  # We handle real-time updates via on_realtime_transcription_update
+                recorder.text(lambda text: None)  # We handle real-time updates via on_realtime_transcription_stabilized 
             except Exception as e:
                 if not shutdown_in_progress:  # Only log if not shutting down
                     logging.error(f"Error in recording iteration: {e}")
@@ -509,7 +509,7 @@ def shutdown_recorder():
         if recorder and recorder_initialized:
             try:
                 # Detach callback to prevent further callbacks during shutdown
-                recorder.on_realtime_transcription_update = None
+                recorder.on_realtime_transcription_stabilized  = None
                 
                 # Call the custom shutdown method
                 recorder.shutdown()
