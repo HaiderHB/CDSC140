@@ -334,6 +334,7 @@ function createWindow(): void {
         console.error('Error setting up audio capture:', error)
       }
     },
+    // @ts-ignore
     { useSystemPicker: true }
   )
 
@@ -474,6 +475,31 @@ function setupIpcHandlers(): void {
       return data.text
     } catch (error) {
       console.error('Error reading resume file:', error)
+      throw error
+    }
+  })
+
+  // Read docx file
+  ipcMain.handle('read-docx-file', async (_, filePath) => {
+    try {
+      const mammoth = require('mammoth')
+      const result = await mammoth.extractRawText({ path: filePath })
+      console.log('PARSED DOCX DATA', result.value)
+      return result.value
+    } catch (error) {
+      console.error('Error reading docx file:', error)
+      throw error
+    }
+  })
+
+  // Read txt file
+  ipcMain.handle('read-txt-file', async (_, filePath) => {
+    try {
+      const text = fs.readFileSync(filePath, 'utf8')
+      console.log('READ TXT FILE', text)
+      return text
+    } catch (error) {
+      console.error('Error reading txt file:', error)
       throw error
     }
   })

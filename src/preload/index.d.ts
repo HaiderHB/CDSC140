@@ -9,6 +9,8 @@ interface OpenAIAPI {
   saveResumes: (resumes: any[]) => Promise<boolean>
   saveResumeFile: (id: string, fileData: ArrayBuffer, fileExtension: string) => Promise<string>
   readResumeFile: (filePath: string) => Promise<string>
+  readDocxFile: (filePath: string) => Promise<string>
+  readTxtFile: (filePath: string) => Promise<string>
   deleteResume: (filePath: string) => Promise<boolean>
   closeApp: () => void
 }

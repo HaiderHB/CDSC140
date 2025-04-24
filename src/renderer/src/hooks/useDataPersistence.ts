@@ -152,13 +152,16 @@ export function useDataPersistence(): DataPersistence {
           fileContent = await window.api.readResumeFile(filePath)
           console.log('FILE CONTENT', fileContent)
         }
-        // TODO: Add support for DOCX and TXT files
-        // // Check if the file is a DOCX
-        // if (fileExtension === '.docx') {
-        // }
-        // // Check if txt
-        // if (fileExtension === '.txt') {
-        // }
+        // Check if the file is a DOCX
+        if (fileExtension === '.docx') {
+          fileContent = await window.api.readDocxFile(filePath)
+          console.log('DOCX FILE CONTENT', fileContent)
+        }
+        // Check if the file is a TXT
+        if (fileExtension === '.txt') {
+          fileContent = await window.api.readTxtFile(filePath)
+          console.log('TXT FILE CONTENT', fileContent)
+        }
 
         // Create resume metadata
         const newResume: Resume = {

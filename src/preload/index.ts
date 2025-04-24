@@ -18,6 +18,8 @@ const api = {
   saveResumeFile: (id: string, fileData: ArrayBuffer, fileExtension: string) =>
     ipcRenderer.invoke('save-resume-file', id, fileData, fileExtension),
   readResumeFile: (filePath: string) => ipcRenderer.invoke('read-resume-file', filePath),
+  readDocxFile: (filePath: string) => ipcRenderer.invoke('read-docx-file', filePath),
+  readTxtFile: (filePath: string) => ipcRenderer.invoke('read-txt-file', filePath),
   deleteResume: (filePath: string) => ipcRenderer.invoke('delete-resume', filePath),
 
   // Ctrl+M event handler
