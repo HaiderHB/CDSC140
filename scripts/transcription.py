@@ -25,7 +25,7 @@ logging.basicConfig(
 
 # --- Sentence Similarity Setup ---
 MODEL_NAME = 'sentence-transformers/multi-qa-MiniLM-L6-cos-v1'
-SIMILARITY_THRESHOLD = 0.5  # Threshold for matching
+SIMILARITY_THRESHOLD = 0.5#5  # Threshold for matching
 
 # Global variables for sentence similarity
 model = None
@@ -33,7 +33,7 @@ bullet_points = []
 bullet_embeddings = None
 # Track recent words and last matched text
 recent_words = []
-MIN_NEW_WORDS = 10  # Minimum number of new words required before matching again
+MIN_NEW_WORDS = 5  # Minimum number of new words required before matching again
 ROLLING_WINDOW_SIZE = 10  # Number of words to keep in recent words
 # --- End Sentence Similarity Setup ---
 
@@ -52,10 +52,12 @@ shutdown_in_progress = False
 # Flag to track if we're handling a signal
 handling_signal = False
 # Global variable to track total word count
-total_word_count = 0
+total_word_count = 5
 last_deleted_word_count = 0
 # Track the last transcript seen
 last_transcribed_text = ""
+# Global variable to track the full transcript
+full_transcript = ""
 
 # Signal handler for graceful shutdown
 def signal_handler(sig, frame):
@@ -120,7 +122,7 @@ def precompute_bullet_embeddings(points):
         print(f"Precomputation finished in {end_time - start_time:.2f} seconds.")
     except Exception as e:
         bullet_embeddings = None
-        logging.error(f"Failed to precompute bullet embeddings: {e}")
+        print(f"Failed to precompute bullet embeddings: {e}")
 
 def find_best_match(transcript_text):
     """Finds the best matching bullet point for the given transcript."""
@@ -128,11 +130,11 @@ def find_best_match(transcript_text):
     
     if bullet_embeddings is None or len(bullet_points) == 0 or not transcript_text:
         if bullet_embeddings is None:
-            logging.debug("No bullet embeddings available for matching.")
+            print("No bullet embeddings available for matching.")
         elif len(bullet_points) == 0:
-            logging.debug("No bullet points available for matching.")
+            print("No bullet points available for matching.")
         elif not transcript_text:
-            logging.debug("Empty transcript text, skipping matching.")
+            print("Empty transcript text, skipping matching.")
         return None, 0.0  # No match if no bullets or empty transcript
 
     try:
@@ -143,6 +145,7 @@ def find_best_match(transcript_text):
             recent_words = recent_words[-ROLLING_WINDOW_SIZE:]
         
         if total_word_count - last_deleted_word_count < MIN_NEW_WORDS:
+            print(f"Not enough new words ({total_word_count - last_deleted_word_count}) to match. Returning None.\n")
             last_deleted_word_count = total_word_count
             return None, 0.0
 
@@ -153,7 +156,10 @@ def find_best_match(transcript_text):
         first_bullet_embedding = bullet_embeddings[0].unsqueeze(0)  # Add batch dimension
         score = util.dot_score(transcript_embedding, first_bullet_embedding)[0].cpu().item()
         
-        logging.debug(f"Match score with first bullet: {score:.4f} (threshold: {SIMILARITY_THRESHOLD})")
+        # Log the score and distance
+        print("--------------------------------")
+        print(f"Comparing transcript: {transcript_text}")
+        print(f"Score: {score:.4f}\n")
         
         if score >= SIMILARITY_THRESHOLD:
             return bullet_points[0], score
@@ -163,7 +169,8 @@ def find_best_match(transcript_text):
                 recent_text = " ".join(recent_words)
                 recent_embedding = model.encode(recent_text, convert_to_tensor=True)
                 recent_score = util.dot_score(recent_embedding, first_bullet_embedding)[0].cpu().item()
-                logging.debug(f"Fallback match score with recent words: {recent_score:.4f}")
+                print(f"Fallback: comparing recent words: {recent_text}")
+                print(f"Fallback: match score with recent words: {recent_score:.4f}\n\n")
                 
                 if recent_score >= SIMILARITY_THRESHOLD:
                     return bullet_points[0], recent_score
@@ -199,7 +206,7 @@ def get_difference(prev: str, new: str) -> str:
     return ' '.join(new_words[i:])
 
 def process_text(text, websocket):
-    global total_word_count, last_transcribed_text
+    global total_word_count, last_transcribed_text, full_transcript
 
     if recording and text:
         # Step 1: Normalize by removing dots
@@ -218,12 +225,12 @@ def process_text(text, websocket):
         added_words = len(difference.split())
         total_word_count += added_words
 
-        # Replace Unicode characters with plain text
-        # print(f"New words added: '{difference}'")
-        # print(f"Total word count: {total_word_count}")
+        # Update the full transcript and log it
+        full_transcript += " " + difference  # Append the new cleaned text
+        print(f"Updated full transcript: '{full_transcript.strip()}'")  # Log the full transcript
 
         transcription_queue.put((websocket, text))
-        last_transcribed_text = text  # Store original, not cleaned
+        last_transcribed_text = cleaned  # Store original, not cleaned
 
 async def process_transcription_queue():
     """Process transcription updates from the queue and perform matching"""
@@ -242,7 +249,7 @@ async def process_transcription_queue():
 
                 # Perform similarity matching
                 match, score = find_best_match(text)
-                print(f"User just said: '{text[:50]}...'")
+                # print(f"User just said: '{text[:50]}...'")
                 if match:
                     print(f"Match found: '{match}' (Score: {score:.2f}) for transcript: '{text[:50]}...'")
                     # Put result in another queue to be sent by the main loop
@@ -337,9 +344,13 @@ def initialize_recorder():
                 language='en',
                 silero_sensitivity=0.6,
                 webrtc_sensitivity=2,
-                post_speech_silence_duration=0.15,
+                # How long must I hear silence before I decide your utterance is finished and kick off a final transcription?
+                post_speech_silence_duration=0.2,
+                # Once I’ve finalized one utterance, how long of continuous silence before I’ll even start listening for a new one?
                 min_gap_between_recordings=0.3,
-                early_transcription_on_silence=50,
+                # Can I get a quick, provisional transcription as soon as any silence is detected—even 
+                # before the full post_speech_silence_duration has passed?
+                # early_transcription_on_silence=50,
                 min_length_of_recording=1.5,
                 enable_realtime_transcription=True,
                 # Reduce processing pause for more frequent updates

@@ -250,8 +250,9 @@ function createWindow(): void {
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,
+      devTools: false,
       contextIsolation: true,
-      nodeIntegration: true
+      nodeIntegration: false
     }
   })
 
