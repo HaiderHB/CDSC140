@@ -10,7 +10,17 @@ class AuthService {
     isAuthenticated: false
   }
 
-  private constructor() {}
+  private constructor() {
+    // Load saved auth state on initialization
+    const savedState = localStorage.getItem('authState')
+    if (savedState) {
+      try {
+        this.authState = JSON.parse(savedState)
+      } catch (error) {
+        console.error('Failed to parse saved auth state:', error)
+      }
+    }
+  }
 
   public static getInstance(): AuthService {
     if (!AuthService.instance) {
@@ -25,6 +35,8 @@ class AuthService {
 
   public setAuthState(state: Partial<AuthState>) {
     this.authState = { ...this.authState, ...state }
+    // Save auth state to local storage
+    localStorage.setItem('authState', JSON.stringify(this.authState))
   }
 
   public async initiateLogin() {
@@ -62,6 +74,8 @@ class AuthService {
     this.authState = {
       isAuthenticated: false
     }
+    // Clear auth state from local storage
+    localStorage.removeItem('authState')
   }
 }
 
