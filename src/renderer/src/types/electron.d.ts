@@ -4,6 +4,9 @@ interface OpenAIAPI {
   transcribeAudio: (audioData: Uint8Array) => Promise<string>
   closeApp: () => void
   onCtrlM: (callback: () => void) => () => void
+  onCtrlN: (callback: () => void) => () => void
+  openExternal: (url: string) => Promise<void>
+  onAuthCallback: (callback: (url: string) => void) => void
 }
 
 interface ServerResult {

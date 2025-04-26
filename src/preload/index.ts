@@ -36,6 +36,12 @@ const api = {
     return () => {
       ipcRenderer.removeListener('ctrl-n-event', callback)
     }
+  },
+
+  // Auth methods
+  openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
+  onAuthCallback: (callback: (url: string) => void) => {
+    ipcRenderer.on('auth-callback', (_event, url) => callback(url))
   }
 }
 

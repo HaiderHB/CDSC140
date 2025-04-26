@@ -18,6 +18,11 @@ import { setupTranscriptionHandlers } from './transcription'
 import spawn from 'cross-spawn'
 import { ChildProcess } from 'child_process'
 import fs from 'fs'
+import { initialize, enable } from '@electron/remote/main/index.js'
+
+// Initialize remote module
+initialize()
+
 // Reference to the Python process
 let pythonProcess: ChildProcess | null = null
 
@@ -231,6 +236,44 @@ function moveWindow(direction: 'left' | 'right' | 'up' | 'down') {
   }
 }
 
+// Protocol registration
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('interviewspeaker', process.execPath, [
+      path.resolve(process.argv[1])
+    ])
+  }
+} else {
+  app.setAsDefaultProtocolClient('interviewspeaker')
+}
+
+// Handle the protocol callback
+const gotTheLock = app.requestSingleInstanceLock()
+
+if (!gotTheLock) {
+  app.quit()
+} else {
+  app.on('second-instance', (event, argv) => {
+    console.log('second-instance', argv)
+    const deepLink = argv.find((arg) => arg.startsWith('interviewspeaker://'))
+    if (deepLink && mainWindow) {
+      console.log('Deep link received in second-instance:', deepLink)
+      mainWindow.webContents.send('auth-callback', deepLink)
+      mainWindow.focus()
+    }
+  })
+
+  // Handle protocol for dev mode
+  app.on('open-url', (event, url) => {
+    console.log('open-url', url)
+    event.preventDefault()
+    if (mainWindow) {
+      console.log('Deep link received on open-url:', url)
+      mainWindow.webContents.send('auth-callback', url)
+    }
+  })
+}
+
 function createWindow(): void {
   // Create the browser window with anti-screen-capture properties
   mainWindow = new BrowserWindow({
@@ -250,11 +293,14 @@ function createWindow(): void {
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,
-      devTools: false,
+      devTools: true,
       contextIsolation: true,
       nodeIntegration: false
     }
   })
+
+  // Enable remote module for this window
+  enable(mainWindow.webContents)
 
   // Set advanced window attributes
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
@@ -409,6 +455,11 @@ function createWindow(): void {
   // Handle window close event to prevent errors
   mainWindow.on('closed', () => {
     mainWindow = null
+  })
+
+  // Add IPC handlers for auth
+  ipcMain.handle('open-external', async (event, url) => {
+    await shell.openExternal(url)
   })
 }
 

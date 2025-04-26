@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Box, CircularProgress, IconButton, Snackbar, Alert, Typography } from '@mui/material'
 import './App.css'
 import SetupConfigPage from './components/SetupConfigPage'
@@ -13,6 +13,8 @@ import { useWebRTC } from './hooks/useWebRTC'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import MainPage from './components/MainPage'
 import CapturePage from './components/CapturePage'
+import { LoginPage } from './components/LoginPage'
+import { authService } from './services/authService'
 
 type ReadingMode = 'normal' | 'rapid' | 'spritz'
 
@@ -33,6 +35,7 @@ function App(): JSX.Element {
   const [readingMode, setReadingMode] = useState<ReadingMode>('normal')
   const [showReadingModeModal, setShowReadingModeModal] = useState(false)
   const [selectedMic, setSelectedMic] = useState<string>('')
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   const {
     sessions,
@@ -134,6 +137,18 @@ function App(): JSX.Element {
     }
   }, [])
 
+  useEffect(() => {
+    // Listen for auth callback
+    // @ts-ignore
+    window.api.onAuthCallback((url) => {
+      console.log('Auth callback received:', url)
+      const success = authService.handleAuthCallback(url)
+      if (success) {
+        setIsAuthenticated(true)
+      }
+    })
+  }, [])
+
   const startCombinedCapture = async () => {
     setError(null)
     try {
@@ -214,6 +229,11 @@ function App(): JSX.Element {
     }, 150)
   }
 
+  const handleLogout = () => {
+    authService.logout()
+    setIsAuthenticated(false)
+  }
+
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const commandKey = isMac ? '⌘' : 'Ctrl'
 
@@ -231,6 +251,7 @@ function App(): JSX.Element {
         paddingTop: '62px'
       }}
     >
+      {/* Top bar */}
       <Box
         sx={{
           position: 'fixed',
@@ -270,6 +291,7 @@ function App(): JSX.Element {
         </Box>
       </Box>
 
+      {/* Commands */}
       <Box
         sx={{
           position: 'fixed',
@@ -299,107 +321,114 @@ function App(): JSX.Element {
         </Box>
       </Box>
 
-      <Box>
-        {(loadingSessions || loadingResumes) && (
-          <Box
-            sx={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              bgcolor: 'rgba(21, 21, 21, 0.3)',
-              zIndex: 10000
-            }}
-          >
-            <CircularProgress color="primary" size={60} />
+      {isAuthenticated ? (
+        <>
+          <Box>
+            {(loadingSessions || loadingResumes) && (
+              <Box
+                sx={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: 'rgba(21, 21, 21, 0.3)',
+                  zIndex: 10000
+                }}
+              >
+                <CircularProgress color="primary" size={60} />
+              </Box>
+            )}
+
+            {currentPage === 'main' && (
+              <MainPage
+                homeTab={homeTab}
+                onTabChange={(event, newValue) => setHomeTab(newValue)}
+                sessions={sessions}
+                onNewSession={handleNewSession}
+                onSelectSession={navHandleLoadSession}
+                onDeleteSession={handleDeleteSessionWrapper}
+                resumes={resumes}
+                onAddResume={handleAddResumeWrapper}
+                onDeleteResume={handleDeleteResumeWrapper}
+                onLogout={handleLogout}
+              />
+            )}
+
+            {currentPage === 'setup' && (
+              <Box
+                sx={{
+                  width: '100%',
+                  mx: 'auto',
+                  borderRadius: 2,
+                  overflow: 'hidden',
+                  boxShadow: '0 0 40px rgba(233, 104, 12, 0.2)'
+                }}
+              >
+                <SetupConfigPage
+                  onSave={handleSaveConfig}
+                  resumes={resumes}
+                  onAddResume={() => {
+                    setCurrentPage('main')
+                    setHomeTab(1)
+                  }}
+                  onBack={() => setCurrentPage('main')}
+                />
+              </Box>
+            )}
+
+            {currentPage === 'capture' && currentSession && (
+              <CapturePage
+                isCapturing={isCapturing}
+                startCapture={startCombinedCapture}
+                stopCapture={stopCombinedCapture}
+                bulletPoints={bulletPoints}
+                readingMode={readingMode}
+                onShowReadingModeModal={() => setShowReadingModeModal(true)}
+                desktopAudioStatus={desktopAudioStatus}
+                micAudioStatus={micAudioStatus}
+                transcriptText={transcriptText}
+                wsStatus={wsStatus}
+                wsError={wsError}
+                isListening={isListening}
+                currentSession={currentSession}
+                goBack={() => setCurrentPage('main')}
+                responseText={responseText}
+                desktopCanvasRef={canvasRef}
+                micCanvasRef={micCanvasRef}
+                currentBulletPoint={currentBulletPoint}
+                handleManualDeleteEyeContact={handleManualDeleteEyeContact}
+                handleRestoreLastDeleted={handleRestoreLastDeleted}
+                onMicSelected={setSelectedMic}
+                selectedMic={selectedMic}
+              />
+            )}
+
+            <Snackbar
+              open={!!error}
+              autoHideDuration={6000}
+              onClose={handleCloseError}
+              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+              <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
+                {error}
+              </Alert>
+            </Snackbar>
           </Box>
-        )}
 
-        {currentPage === 'main' && (
-          <MainPage
-            homeTab={homeTab}
-            onTabChange={(event, newValue) => setHomeTab(newValue)}
-            sessions={sessions}
-            onNewSession={handleNewSession}
-            onSelectSession={navHandleLoadSession}
-            onDeleteSession={handleDeleteSessionWrapper}
-            resumes={resumes}
-            onAddResume={handleAddResumeWrapper}
-            onDeleteResume={handleDeleteResumeWrapper}
+          <ReadingModeModal
+            open={showReadingModeModal}
+            onClose={() => setShowReadingModeModal(false)}
+            value={readingMode}
+            onChange={(e) => setReadingMode(e.target.value as ReadingMode)}
           />
-        )}
-
-        {currentPage === 'setup' && (
-          <Box
-            sx={{
-              width: '100%',
-              mx: 'auto',
-              borderRadius: 2,
-              overflow: 'hidden',
-              boxShadow: '0 0 40px rgba(233, 104, 12, 0.2)'
-            }}
-          >
-            <SetupConfigPage
-              onSave={handleSaveConfig}
-              resumes={resumes}
-              onAddResume={() => {
-                setCurrentPage('main')
-                setHomeTab(1)
-              }}
-              onBack={() => setCurrentPage('main')}
-            />
-          </Box>
-        )}
-
-        {currentPage === 'capture' && currentSession && (
-          <CapturePage
-            isCapturing={isCapturing}
-            startCapture={startCombinedCapture}
-            stopCapture={stopCombinedCapture}
-            bulletPoints={bulletPoints}
-            readingMode={readingMode}
-            onShowReadingModeModal={() => setShowReadingModeModal(true)}
-            desktopAudioStatus={desktopAudioStatus}
-            micAudioStatus={micAudioStatus}
-            transcriptText={transcriptText}
-            wsStatus={wsStatus}
-            wsError={wsError}
-            isListening={isListening}
-            currentSession={currentSession}
-            goBack={() => setCurrentPage('main')}
-            responseText={responseText}
-            desktopCanvasRef={canvasRef}
-            micCanvasRef={micCanvasRef}
-            currentBulletPoint={currentBulletPoint}
-            handleManualDeleteEyeContact={handleManualDeleteEyeContact}
-            handleRestoreLastDeleted={handleRestoreLastDeleted}
-            onMicSelected={setSelectedMic}
-            selectedMic={selectedMic}
-          />
-        )}
-
-        <Snackbar
-          open={!!error}
-          autoHideDuration={6000}
-          onClose={handleCloseError}
-          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-        >
-          <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
-            {error}
-          </Alert>
-        </Snackbar>
-      </Box>
-
-      <ReadingModeModal
-        open={showReadingModeModal}
-        onClose={() => setShowReadingModeModal(false)}
-        value={readingMode}
-        onChange={(e) => setReadingMode(e.target.value as ReadingMode)}
-      />
+        </>
+      ) : (
+        <LoginPage />
+      )}
     </Box>
   )
 }
