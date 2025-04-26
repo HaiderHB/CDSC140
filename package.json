@@ -1,7 +1,8 @@
 {
-  "name": "electron-app",
+  "name": "interviewspeaker",
+  "productName": "Interview Speaker",
   "version": "1.0.0",
-  "description": "An Electron application with React and TypeScript",
+  "description": "Realtime AI Interview Assistance",
   "main": "./out/main/index.js",
   "type": "module",
   "author": "example.com",
