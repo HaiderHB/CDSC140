@@ -149,6 +149,14 @@ function App(): JSX.Element {
     })
   }, [])
 
+  useEffect(() => {
+    // On app mount, check if user is already authenticated
+    const authState = authService.getAuthState()
+    if (authState.isAuthenticated) {
+      setIsAuthenticated(true)
+    }
+  }, [])
+
   const startCombinedCapture = async () => {
     setError(null)
     try {
