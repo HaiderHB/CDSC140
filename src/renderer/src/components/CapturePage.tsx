@@ -6,6 +6,8 @@ import { TranscriptionDisplay } from './TranscriptionDisplay'
 import { AudioStatusDisplay } from './AudioStatusDisplay'
 import { WsStatus } from '../hooks/useTranscriptionService'
 import { CurrentSession } from '../hooks/useAppNavigation'
+import { checkSubscriptionStatus } from '../utils/checkSubscription'
+import { authService } from '../services/authService'
 
 interface CapturePageProps {
   isCapturing: boolean
@@ -30,6 +32,7 @@ interface CapturePageProps {
   handleRestoreLastDeleted: () => void
   onMicSelected: (micId: string) => void
   selectedMic: string
+  onNotSubscribed: () => void
 }
 
 export const CapturePage: React.FC<CapturePageProps> = ({
@@ -52,7 +55,8 @@ export const CapturePage: React.FC<CapturePageProps> = ({
   handleManualDeleteEyeContact,
   handleRestoreLastDeleted,
   onMicSelected,
-  selectedMic
+  selectedMic,
+  onNotSubscribed
 }) => {
   // Determine command key based on platform
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
@@ -99,8 +103,18 @@ export const CapturePage: React.FC<CapturePageProps> = ({
     }
   }, [wsStatus, isStarting])
 
-  const handleStartCapture = () => {
+  const handleStartCapture = async () => {
     setIsStarting(true)
+    // Subscription check before starting assistance
+    const authState = authService.getAuthState()
+    if (authState.isAuthenticated && authState.userId) {
+      const result = await checkSubscriptionStatus(authState.userId)
+      if (!result) {
+        setIsStarting(false)
+        onNotSubscribed()
+        return
+      }
+    }
     if (wsStatus !== 'connecting') {
       startCapture()
     }

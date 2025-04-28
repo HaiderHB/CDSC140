@@ -42,7 +42,7 @@ class AuthService {
   public async initiateLogin() {
     try {
       // @ts-ignore
-      await window.api.openExternal('https://interviewspeaker.co/sign-in?fromApp=true')
+      await window.api.openExternal('http://localhost:3000/sign-in?fromApp=true')
     } catch (error) {
       console.error('Failed to open login URL:', error)
     }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Box, CircularProgress, IconButton, Snackbar, Alert, Typography } from '@mui/material'
 import './App.css'
 import SetupConfigPage from './components/SetupConfigPage'
@@ -15,6 +15,8 @@ import MainPage from './components/MainPage'
 import CapturePage from './components/CapturePage'
 import { LoginPage } from './components/LoginPage'
 import { authService } from './services/authService'
+import NotSubscribedPage from './components/NotSubscribedPage'
+import { checkSubscriptionStatus } from './utils/checkSubscription'
 
 type ReadingMode = 'normal' | 'rapid' | 'spritz'
 
@@ -36,6 +38,7 @@ function App(): JSX.Element {
   const [showReadingModeModal, setShowReadingModeModal] = useState(false)
   const [selectedMic, setSelectedMic] = useState<string>('')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isSubscribed, setIsSubscribed] = useState<boolean | null>(null)
 
   const {
     sessions,
@@ -56,7 +59,6 @@ function App(): JSX.Element {
     currentSession,
     setCurrentPage,
     setHomeTab,
-    handleNewSession,
     handleLoadSession: navHandleLoadSession,
     handleSaveConfig
     // @ts-ignore
@@ -156,6 +158,30 @@ function App(): JSX.Element {
       setIsAuthenticated(true)
     }
   }, [])
+
+  // Subscription check after login
+  useEffect(() => {
+    const checkSub = async () => {
+      const authState = authService.getAuthState()
+      if (authState.isAuthenticated && authState.userId) {
+        const result = await checkSubscriptionStatus(authState.userId)
+        setIsSubscribed(result)
+      }
+    }
+    if (isAuthenticated) {
+      checkSub()
+    }
+  }, [isAuthenticated])
+
+  // Reload subscription status
+  const handleReloadSubscription = async () => {
+    const authState = authService.getAuthState()
+    if (authState.isAuthenticated && authState.userId) {
+      // setIsSubscribed(null)
+      const result = await checkSubscriptionStatus(authState.userId)
+      setIsSubscribed(result)
+    }
+  }
 
   const startCombinedCapture = async () => {
     setError(null)
@@ -330,9 +356,11 @@ function App(): JSX.Element {
       </Box>
 
       {isAuthenticated ? (
-        <>
+        isSubscribed === false ? (
+          <NotSubscribedPage onReload={handleReloadSubscription} />
+        ) : (
           <Box>
-            {(loadingSessions || loadingResumes) && (
+            {(loadingSessions || loadingResumes || isSubscribed === null) && (
               <Box
                 sx={{
                   position: 'fixed',
@@ -356,7 +384,18 @@ function App(): JSX.Element {
                 homeTab={homeTab}
                 onTabChange={(event, newValue) => setHomeTab(newValue)}
                 sessions={sessions}
-                onNewSession={handleNewSession}
+                onNewSession={async () => {
+                  // Check subscription before allowing session start
+                  const authState = authService.getAuthState()
+                  if (authState.isAuthenticated && authState.userId) {
+                    const result = await checkSubscriptionStatus(authState.userId)
+                    if (result) {
+                      setCurrentPage('setup')
+                    } else {
+                      setIsSubscribed(false)
+                    }
+                  }
+                }}
                 onSelectSession={navHandleLoadSession}
                 onDeleteSession={handleDeleteSessionWrapper}
                 resumes={resumes}
@@ -366,7 +405,7 @@ function App(): JSX.Element {
               />
             )}
 
-            {currentPage === 'setup' && (
+            {currentPage === 'setup' && isSubscribed && (
               <Box
                 sx={{
                   width: '100%',
@@ -412,6 +451,7 @@ function App(): JSX.Element {
                 handleRestoreLastDeleted={handleRestoreLastDeleted}
                 onMicSelected={setSelectedMic}
                 selectedMic={selectedMic}
+                onNotSubscribed={() => setIsSubscribed(false)}
               />
             )}
 
@@ -426,17 +466,17 @@ function App(): JSX.Element {
               </Alert>
             </Snackbar>
           </Box>
-
-          <ReadingModeModal
-            open={showReadingModeModal}
-            onClose={() => setShowReadingModeModal(false)}
-            value={readingMode}
-            onChange={(e) => setReadingMode(e.target.value as ReadingMode)}
-          />
-        </>
+        )
       ) : (
         <LoginPage />
       )}
+
+      <ReadingModeModal
+        open={showReadingModeModal}
+        onClose={() => setShowReadingModeModal(false)}
+        value={readingMode}
+        onChange={(e) => setReadingMode(e.target.value as ReadingMode)}
+      />
     </Box>
   )
 }
