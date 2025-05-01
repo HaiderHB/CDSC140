@@ -16,6 +16,15 @@ export default defineConfig({
       }
     },
     plugins: [react()],
-    publicDir: resolve('public')
+    publicDir: resolve('public'),
+    server: {
+      proxy: {
+        '/api': {
+          target: 'https://interviewspeaker.co',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api/, '')
+        }
+      }
+    }
   }
 })

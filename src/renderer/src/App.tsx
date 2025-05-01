@@ -357,7 +357,7 @@ function App(): JSX.Element {
 
       {isAuthenticated ? (
         isSubscribed === false ? (
-          <NotSubscribedPage onReload={handleReloadSubscription} />
+          <NotSubscribedPage onReload={handleReloadSubscription} onLogout={handleLogout} />
         ) : (
           <Box>
             {(loadingSessions || loadingResumes || isSubscribed === null) && (
