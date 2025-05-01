@@ -613,7 +613,7 @@ app.whenReady().then(() => {
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self'; connect-src 'self' http://localhost:3000 ws://localhost:9876 https://api.openai.com https://storage.googleapis.com https://fonts.googleapis.com https://tfhub.dev https://www.kaggle.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline';"
+          "default-src 'self'; connect-src 'self' http://localhost:3000 ws://localhost:9876 https://api.openai.com https://storage.googleapis.com https://fonts.googleapis.com https://tfhub.dev https://interviewspeaker.co https://www.interviewspeaker.co https://www.kaggle.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline';"
         ]
       }
     })

@@ -1,11 +1,11 @@
 import React from 'react'
 import { Box, Button, Container, Typography } from '@mui/material'
-
 interface NotSubscribedPageProps {
   onReload: () => void
+  onLogout: () => void
 }
 
-const NotSubscribedPage: React.FC<NotSubscribedPageProps> = ({ onReload }) => {
+const NotSubscribedPage: React.FC<NotSubscribedPageProps> = ({ onReload, onLogout }) => {
   return (
     <Container maxWidth="sm">
       <Box
@@ -37,6 +37,9 @@ const NotSubscribedPage: React.FC<NotSubscribedPageProps> = ({ onReload }) => {
         </Button>
         <Button variant="contained" size="large" onClick={onReload} sx={{ minWidth: 200, py: 1.5 }}>
           Check Again
+        </Button>
+        <Button variant="contained" size="large" onClick={onLogout} sx={{ minWidth: 200, py: 1.5 }}>
+          Logout
         </Button>
       </Box>
     </Container>
