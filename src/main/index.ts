@@ -81,25 +81,6 @@ process.stderr.write = (msg, ...args) => {
 // Load environment variables from .env file
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootPath = path.resolve(__dirname, '../../..')
-let openaiApiKey: string | undefined
-const model = 'gpt-4o-mini-realtime-preview-2024-12-17'
-
-const envFilePath = path.join(rootPath, 'interview-speaker-fresh', '.env')
-
-try {
-  const envFile = readFileSync(envFilePath, 'utf8')
-  console.log('Found .env file in whisper-node-test directory')
-
-  const keyMatch = envFile.match(/OPENAI_API_KEY=(.+)/)
-  if (keyMatch) {
-    openaiApiKey = keyMatch[1].replace(/^"|"$/g, '') // Remove quotes at beginning and end
-    console.log('OpenAI API key loaded successfully')
-  } else {
-    console.error('OpenAI API key not found in .env file')
-  }
-} catch (error) {
-  console.error('Error loading .env file:', error)
-}
 
 // Initialize the storage system
 initStorage()
