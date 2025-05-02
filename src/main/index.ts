@@ -401,12 +401,25 @@ function createWindow(): void {
   })
 
   // Handle IPC requests for OpenAI token
-  ipcMain.handle('get-openai-session', async () => {
+  ipcMain.handle('get-openai-session', async (event) => {
     try {
+      // Get access token through IPC
+      const accessToken = await event.sender.executeJavaScript(`
+        (() => {
+          const authState = localStorage.getItem('authState');
+          return authState ? JSON.parse(authState).accessToken : null;
+        })()
+      `)
+
+      if (!accessToken) {
+        throw new Error('No access token available')
+      }
+
       const response = await fetch('http://localhost:3000/api/create-session', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`
         }
       })
 
@@ -425,12 +438,25 @@ function createWindow(): void {
   })
 
   // Handle IPC requests for WebRTC SDP exchange
-  ipcMain.handle('openai-webrtc-sdp', async (_, sdp: string) => {
+  ipcMain.handle('openai-webrtc-sdp', async (event, sdp: string) => {
     try {
+      // Get access token through IPC
+      const accessToken = await event.sender.executeJavaScript(`
+        (() => {
+          const authState = localStorage.getItem('authState');
+          return authState ? JSON.parse(authState).accessToken : null;
+        })()
+      `)
+
+      if (!accessToken) {
+        throw new Error('No access token available')
+      }
+
       const response = await fetch('http://localhost:3000/api/webrtc-sdp', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`
         },
         body: JSON.stringify({ sdp })
       })
