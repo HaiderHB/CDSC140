@@ -1,7 +1,7 @@
 import sys
 import logging
 import os
-from install_packages import check_and_install_packages
+# from install_packages import check_and_install_packages
 from RealtimeSTT import AudioToTextRecorder
 import asyncio
 import websockets
@@ -562,13 +562,13 @@ async def main():
 
     print("Checking and installing required packages...")
     # Check and install required packages
-    check_and_install_packages([
-        {'import_name': 'websockets'},
-        {'import_name': 'RealtimeSTT'},
-        {'import_name': 'asyncio'},
-        {'import_name': 'sentence_transformers'},
-        {'import_name': 'numpy'},
-    ])
+    # check_and_install_packages([
+    #     {'import_name': 'websockets'},
+    #     {'import_name': 'RealtimeSTT'},
+    #     {'import_name': 'asyncio'},
+    #     {'import_name': 'sentence_transformers'},
+    #     {'import_name': 'numpy'},
+    # ])
     
     current_time = time.time()
     print(f"Package installation completed in {current_time - last_step_time:.2f} seconds")

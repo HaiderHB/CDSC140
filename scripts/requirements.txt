@@ -6,4 +6,5 @@ sentence-transformers
 onnxruntime
 onnx
 torch
-numpy 
+numpy
+nuitka
