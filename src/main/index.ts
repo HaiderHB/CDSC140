@@ -396,7 +396,7 @@ function createWindow(): void {
         throw new Error('No access token available')
       }
 
-      const response = await fetch('http://localhost:3000/api/create-session', {
+      const response = await fetch('https://interviewspeaker.co/api/create-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -433,7 +433,7 @@ function createWindow(): void {
         throw new Error('No access token available')
       }
 
-      const response = await fetch('http://localhost:3000/api/webrtc-sdp', {
+      const response = await fetch('https://interviewspeaker.co/api/webrtc-sdp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
