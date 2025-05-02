@@ -110,7 +110,7 @@ export const useWebRTC = ({
         console.log('✅✅✅ Data channel open, sending session.update')
         const update = {
           type: 'session.update',
-          session: { instructions: prompt } //, modalities: ['text'] }
+          session: { instructions: prompt }
         }
         console.log('🔍 Sending session update:', update)
         // Send the session update to OpenAI
@@ -125,27 +125,6 @@ export const useWebRTC = ({
         console.log('🔍 Sending session update:', update2)
         // Send the session update to OpenAI
         dataChannelRef.current?.send(JSON.stringify(update2))
-
-        // const update3 = {
-        //   type: 'session.update',
-        //   response: {
-        //     input: [
-        //       {
-        //         type: 'message',
-        //         role: 'user',
-        //         content: [
-        //           {
-        //             type: 'input_text',
-        //             text: 'So I made a next.js project with supabase as the backend hosted on vercel.'
-        //           }
-        //         ]
-        //       }
-        //     ]
-        //   }
-        // }
-        // console.log('🔍 Sending session update:', update3)
-        // // Send the session update to OpenAI
-        // dataChannelRef.current?.send(JSON.stringify(update3))
       })
 
       // Event listener for incoming messages on the data channel
@@ -229,7 +208,6 @@ export const useWebRTC = ({
         const sdpResponse = await window.api.openAIWebRtcSdp(sdp)
         const answer = { type: 'answer' as RTCSdpType, sdp: sdpResponse }
         await pc.setRemoteDescription(answer) // Set the remote description with the response
-        console.log('Successfully connected to OpenAI WebRTC')
       } catch (error) {
         // Log any errors that occur during the SDP exchange
         console.error('Error in WebRTC SDP exchange:', error)

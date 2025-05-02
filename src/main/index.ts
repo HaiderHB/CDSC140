@@ -403,25 +403,23 @@ function createWindow(): void {
   // Handle IPC requests for OpenAI token
   ipcMain.handle('get-openai-session', async () => {
     try {
-      if (!openaiApiKey) {
-        throw new Error('OpenAI API key not found in .env file')
-      }
-
-      const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
+      const response = await fetch('http://localhost:3000/api/create-session', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${openaiApiKey}`,
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: model,
-          modalities: ['text']
-        })
+        }
       })
 
-      return await response.json()
+      if (!response.ok) {
+        throw new Error(`Backend Error: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      console.log('OPENAI SESSION RESPONSE', data)
+
+      return data
     } catch (error) {
-      console.error('Error getting OpenAI session:', error)
+      console.error('Error getting OpenAI session from backend:', error)
       throw error
     }
   })
@@ -429,23 +427,21 @@ function createWindow(): void {
   // Handle IPC requests for WebRTC SDP exchange
   ipcMain.handle('openai-webrtc-sdp', async (_, sdp: string) => {
     try {
-      if (!openaiApiKey) {
-        throw new Error('OpenAI API key not found in .env file')
+      const response = await fetch('http://localhost:3000/api/webrtc-sdp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ sdp })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Backend Error: ${response.statusText}`)
       }
 
-      const response = await fetch(
-        `https://api.openai.com/v1/realtime?model=${model}&modalities=text`,
-        {
-          method: 'POST',
-          body: sdp,
-          headers: {
-            Authorization: `Bearer ${openaiApiKey}`,
-            'Content-Type': 'application/sdp'
-          }
-        }
-      )
-
-      return await response.text()
+      const data = await response.text()
+      console.log('-----------SDP SESSION RESPONSE-----------')
+      return data
     } catch (error) {
       console.error('Error in WebRTC SDP exchange:', error)
       throw error
