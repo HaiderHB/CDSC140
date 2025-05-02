@@ -4,8 +4,8 @@ import { electronAPI } from '@electron-toolkit/preload'
 // Custom APIs for renderer
 const api = {
   // OpenAI API functions
-  getOpenAISession: () => ipcRenderer.invoke('get-openai-session'),
-  openAIWebRtcSdp: (sdp: string) => ipcRenderer.invoke('openai-webrtc-sdp', sdp),
+  getOpenAISession: () => ipcRenderer.invoke('get-ai-session'),
+  openAIWebRtcSdp: (sdp: string) => ipcRenderer.invoke('ai-webrtc-sdp', sdp),
 
   // App control functions
   closeApp: () => ipcRenderer.send('close-app'),

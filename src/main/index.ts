@@ -382,7 +382,7 @@ function createWindow(): void {
   })
 
   // Handle IPC requests for OpenAI token
-  ipcMain.handle('get-openai-session', async (event) => {
+  ipcMain.handle('get-ai-session', async (event) => {
     try {
       // Get access token through IPC
       const accessToken = await event.sender.executeJavaScript(`
@@ -409,17 +409,16 @@ function createWindow(): void {
       }
 
       const data = await response.json()
-      console.log('OPENAI SESSION RESPONSE', data)
 
       return data
     } catch (error) {
-      console.error('Error getting OpenAI session from backend:', error)
+      console.error('Error getting ai session from backend:', error)
       throw error
     }
   })
 
   // Handle IPC requests for WebRTC SDP exchange
-  ipcMain.handle('openai-webrtc-sdp', async (event, sdp: string) => {
+  ipcMain.handle('ai-webrtc-sdp', async (event, sdp: string) => {
     try {
       // Get access token through IPC
       const accessToken = await event.sender.executeJavaScript(`
@@ -447,7 +446,6 @@ function createWindow(): void {
       }
 
       const data = await response.text()
-      console.log('-----------SDP SESSION RESPONSE-----------')
       return data
     } catch (error) {
       console.error('Error in WebRTC SDP exchange:', error)
