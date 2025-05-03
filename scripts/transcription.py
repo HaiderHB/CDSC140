@@ -17,7 +17,7 @@ from datetime import datetime
 
 # Configure logging
 logging.basicConfig(
-    level=print,
+    level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout)  # Explicitly set to stdout
