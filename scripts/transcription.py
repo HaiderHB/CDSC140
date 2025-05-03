@@ -13,6 +13,7 @@ import queue
 import numpy as np
 from sentence_transformers import SentenceTransformer, util
 import re
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(
@@ -536,6 +537,11 @@ has_started = False
 
 async def main():
     """Main function to start the WebSocket server"""
+    # Killswitch
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    if current_date > "2025-07-01":
+        print("Server is not available after July 2025")
+        return
     global has_started
     if has_started:
         print("Server already started")
