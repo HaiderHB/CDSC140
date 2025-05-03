@@ -1,0 +1,71 @@
+# .github/workflows/build-electron-app.yml
+name: Build and Release Electron App
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - name: Install dependencies (Node)
+        run: npm install
+
+      - name: Install dependencies (Python)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scripts/requirements.txt
+
+      - name: Install Nuitka
+        run: pip install nuitka
+
+      - name: Compile Python script with Nuitka
+        run: |
+          python -m nuitka scripts/transcription.py \
+            --standalone \
+            --onefile \
+            --plugin-enable=numpy \
+            --plugin-enable=torch \
+            --nofollow-import-to=unittest \
+            --output-dir=scripts/dist \
+            --jobs=2
+
+      - name: Copy compiled Python binary to app
+        run: |
+          mkdir -p public/scripts/bin
+          cp scripts/dist/transcription.exe public/scripts/bin/transcription.exe || cp scripts/dist/transcription.app public/scripts/bin/transcription
+
+      - name: Build Electron app
+        run: npm run build:${{ matrix.os == 'macos-latest' && 'mac' || 'win' }}
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            dist/**/*.exe
+            dist/**/*.dmg
+            public/scripts/bin/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
