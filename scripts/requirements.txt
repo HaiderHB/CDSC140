@@ -7,4 +7,4 @@ onnxruntime
 onnx
 torch
 numpy
-nuitka
+pyinstaller
