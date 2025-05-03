@@ -40,14 +40,7 @@ jobs:
 
       - name: Compile Python script with Nuitka
         run: |
-          python -m nuitka scripts/transcription.py \
-            --standalone \
-            --onefile \
-            --plugin-enable=numpy \
-            --plugin-enable=torch \
-            --nofollow-import-to=unittest \
-            --output-dir=scripts/dist \
-            --jobs=2
+          python -m nuitka scripts/transcription.py --standalone --onefile --nofollow-import-to=unittest --output-dir=scripts/dist --jobs=2
 
       - name: Copy compiled Python binary to app
         run: |
