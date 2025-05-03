@@ -40,7 +40,13 @@ jobs:
 
       - name: Compile Python script with Nuitka
         run: |
-          NUIPATHS_NOCONFIRM=1 python -m nuitka scripts/transcription.py --standalone --onefile --nofollow-import-to=unittest --output-dir=scripts/dist --jobs=2 --disable-ccache
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            $env:NUIPATHS_NOCONFIRM = "1"
+            python -m nuitka scripts/transcription.py --standalone --onefile --nofollow-import-to=unittest --output-dir=scripts/dist --jobs=2 --disable-ccache
+          else
+            NUIPATHS_NOCONFIRM=1 python -m nuitka scripts/transcription.py --standalone --onefile --nofollow-import-to=unittest --output-dir=scripts/dist --jobs=2 --disable-ccache
+          fi
+        shell: bash
 
       - name: Copy compiled Python binary to app
         run: |
