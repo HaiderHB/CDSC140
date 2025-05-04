@@ -9,6 +9,8 @@ import { CurrentSession } from '../hooks/useAppNavigation'
 import { checkSubscriptionStatus } from '../utils/checkSubscription'
 import { authService } from '../services/authService'
 
+const showTranscription = false
+
 interface CapturePageProps {
   isCapturing: boolean
   startCapture: () => void
@@ -309,14 +311,16 @@ export const CapturePage: React.FC<CapturePageProps> = ({
       </Box>
 
       {/* Transcription - Centered within scrollable area */}
-      {/* <Box sx={{ width: '100%', maxWidth: '800px', mx: 'auto', mb: 3 }}>
-        <TranscriptionDisplay
-          isCapturing={isCapturing}
-          transcriptText={transcriptText}
-          wsStatus={wsStatus}
-          wsError={wsError}
-        />
-      </Box> */}
+      {showTranscription && (
+        <Box sx={{ width: '100%', maxWidth: '800px', mx: 'auto', mb: 3 }}>
+          <TranscriptionDisplay
+            isCapturing={isCapturing}
+            transcriptText={transcriptText}
+            wsStatus={wsStatus}
+            wsError={wsError}
+          />
+        </Box>
+      )}
 
       {/* Audio Visualizers - Centered within scrollable area */}
       {isCapturing ? (

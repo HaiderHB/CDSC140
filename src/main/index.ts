@@ -666,9 +666,28 @@ app.on('will-quit', () => {
     try {
       console.log('Properly shutting down transcription server...')
 
-      // Send a termination signal to the Python process
-      pythonProcess.kill('SIGTERM')
-      console.log(`Sent termination signal to Python process ${pythonProcess.pid}`)
+      // On Windows, we need to use taskkill to ensure the process and its children are terminated
+      if (process.platform === 'win32') {
+        const { exec } = require('child_process')
+        exec(`taskkill /pid ${pythonProcess.pid} /T /F`, (error) => {
+          if (error) {
+            console.error('Error killing Python process:', error)
+          } else {
+            console.log('Successfully terminated Python process and its children')
+          }
+        })
+      } else {
+        // For non-Windows platforms, use SIGTERM first
+        pythonProcess.kill('SIGTERM')
+        console.log(`Sent termination signal to Python process ${pythonProcess.pid}`)
+
+        // Wait a short time for graceful shutdown
+        setTimeout(() => {
+          if (pythonProcess) {
+            pythonProcess.kill('SIGKILL')
+          }
+        }, 1000)
+      }
     } catch (error) {
       console.error('Error shutting down transcription server:', error)
     }
