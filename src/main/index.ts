@@ -33,37 +33,35 @@ let moveStep = 20
 let mainWindow: BrowserWindow | null = null
 
 function startPythonScript() {
-  // Check if we're in development or production
-  const scriptPath = is.dev
-    ? join(process.cwd(), 'scripts', 'transcription.py')
-    : join(process.resourcesPath, 'scripts', 'transcription.py')
+  const isWin = process.platform === 'win32'
+  // const isMac = process.platform === 'darwin'
 
-  // Use Python 3.12 specifically
-  const pythonCommand = process.platform === 'win32' ? 'py' : 'python3.12'
-  const pythonArgs = process.platform === 'win32' ? ['-3.12', scriptPath] : [scriptPath]
+  const binaryName = isWin ? 'transcription.exe' : 'transcription'
+  const binaryPath = is.dev
+    ? join(process.cwd(), 'scripts', 'dist', binaryName)
+    : join(process.resourcesPath, 'scripts', 'dist', binaryName)
 
-  // Spawn the Python process
   try {
-    console.log(`Spawning Python process...`)
+    console.log(`Launching compiled transcription binary at: ${binaryPath}`)
 
-    pythonProcess = spawn(pythonCommand, pythonArgs, {
+    pythonProcess = spawn(binaryPath, {
       stdio: 'inherit'
     })
 
     if (pythonProcess) {
       pythonProcess.on('error', (err) => {
-        console.error('Failed to start Python process:', err)
+        console.error('Failed to start binary:', err)
       })
 
       pythonProcess.on('close', (code) => {
         if (code !== 0) {
-          console.log(`Python process exited with code ${code}`)
+          console.log(`Transcription binary exited with code ${code}`)
         }
         pythonProcess = null
       })
     }
   } catch (error) {
-    console.error('Error starting Python script:', error)
+    console.error('Error starting compiled transcription binary:', error)
   }
 }
 
