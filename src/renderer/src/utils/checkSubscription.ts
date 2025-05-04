@@ -6,8 +6,8 @@ export async function checkSubscriptionStatus(userId: string): Promise<boolean> 
     const response = await axios.post('https://www.interviewspeaker.co/api/check-plan-status', {
       user_id: userId
     })
-    const status = response.data.status
-    return status === 'active' || status === 'on_hold'
+    const active = response.data.active
+    return active
   } catch (error) {
     console.error('Failed to check subscription status:', error)
     return false
