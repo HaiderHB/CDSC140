@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 export async function checkSubscriptionStatus(userId: string): Promise<boolean> {
-  // return true
+  return true
   try {
     const response = await axios.post('https://www.interviewspeaker.co/api/check-plan-status', {
       user_id: userId

@@ -14,6 +14,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer, util
 import re
 from datetime import datetime
+import multiprocessing
 
 # Configure logging
 logging.basicConfig(
@@ -664,6 +665,14 @@ async def main():
             await asyncio.get_event_loop().run_in_executor(None, shutdown_recorder)
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
+    
+    # Explicitly set start method if needed (spawn is default & usually required on Windows/macOS for frozen apps)
+    if sys.platform in ['win32', 'darwin']:
+         # Check if it's already set to avoid error
+         if multiprocessing.get_start_method(allow_none=True) is None:
+              multiprocessing.set_start_method('spawn')
+              logging.info("Set multiprocessing start method to 'spawn'.")
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
