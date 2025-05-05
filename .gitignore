@@ -9,3 +9,4 @@ scripts/venv/
 scripts/venve/
 scripts/__pycache__/
 scripts/build/
+scripts/hooks/__pycache__/
