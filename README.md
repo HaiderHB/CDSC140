@@ -76,7 +76,8 @@ whisper-node-test
 │  ├─ entitlements.mac.plist
 │  ├─ icon.icns
 │  ├─ icon.ico
-│  └─ icon.png
+│  ├─ icon.png
+│  └─ transcription
 ├─ dev-app-update.yml
 ├─ electron-builder.yml
 ├─ electron.vite.config.ts
@@ -91,9 +92,16 @@ whisper-node-test
 ├─ resources
 │  └─ icon.png
 ├─ scripts
-│  ├─ install_packages.py
+│  ├─ build-command.txt
+│  ├─ hooks
+│  │  ├─ hook-webrtcvad.py
+│  │  └─ __pycache__
+│  │     └─ hook-webrtcvad.cpython-312.pyc
+│  ├─ local.spec
 │  ├─ requirements.txt
-│  └─ transcription.py
+│  ├─ transcription.py
+│  ├─ transcription_mac.spec
+│  └─ transcription_windows.spec
 ├─ src
 │  ├─ main
 │  │  ├─ index.ts

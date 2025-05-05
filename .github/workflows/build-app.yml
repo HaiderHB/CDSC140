@@ -1,63 +1,120 @@
-# .github/workflows/build-electron-app.yml
-name: Build and Release Electron App
+name: Cross-Platform Build and Release
 
 on:
   push:
     tags:
       - 'v*.*.*'
-  workflow_dispatch:
 
 jobs:
-  build:
-    name: Build on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-latest, macos-latest]
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: scripts
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Setup Python 3.12
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.12
+          python-version: '3.12'
 
-      - name: Install dependencies (Node)
-        run: npm install
-
-      - name: Install dependencies (Python)
+      - name: Install Python dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r scripts/requirements.txt
-          pip install RealtimeSTT==0.3.103 --no-deps
-          pip uninstall enum34
+          python -m venv venv
+          venv\Scripts\pip install --upgrade pip
+          venv\Scripts\pip install -r requirements.txt
 
-      - name: Build transcription binary with PyInstaller
+      - name: Obfuscate with PyArmor
         run: |
-          pyinstaller --onefile --distpath ./scripts/dist --workpath ./scripts/build --specpath ./scripts/build --noconsole --name transcription scripts/transcription.py
+          venv\Scripts\pyarmor gen --output dist-obf transcription.py
 
-      - name: Copy compiled binary to app
+      - name: Build executable with PyInstaller
         run: |
-          mkdir -p public/scripts/bin
-          cp scripts/dist/transcription.exe public/scripts/bin/transcription.exe || cp scripts/dist/transcription public/scripts/bin/transcription
+          venv\Scripts\pyinstaller transcription_windows.spec
 
-      - name: Build Electron app
-        run: npm run build:${{ matrix.os == 'macos-latest' && 'mac' || 'win' }}
+      - name: Copy built exe to Electron build folder
+        run: |
+          mkdir ..\build\transcription
+          copy dist\transcription.exe ..\build\transcription\transcription.exe
 
-      - name: Upload release assets
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install npm dependencies
+        run: |
+          npm ci
+
+      - name: Build Electron app (Windows)
+        run: |
+          npm run build:win
+
+      - name: Upload Windows Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
           files: |
-            dist/**/*.exe
-            dist/**/*.dmg
-            public/scripts/bin/**
+            dist/*.exe
+            dist/*.msi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-macos:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: scripts
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: |
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Obfuscate with PyArmor
+        run: |
+          source venv/bin/activate
+          pyarmor gen --output dist-obf transcription.py
+
+      - name: Build executable with PyInstaller
+        run: |
+          source venv/bin/activate
+          pyinstaller transcription_mac.spec
+
+      - name: Copy built binary to Electron build folder
+        run: |
+          mkdir -p ../build/transcription
+          cp dist/transcription ../build/transcription/transcription
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install npm dependencies
+        run: |
+          npm ci
+
+      - name: Build Electron app (macOS)
+        run: |
+          npm run build:mac
+
+      - name: Upload macOS Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.dmg
+            dist/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

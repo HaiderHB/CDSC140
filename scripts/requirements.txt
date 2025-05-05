@@ -8,6 +8,7 @@ torch==2.7.0
 numpy==2.2.5
 pyinstaller==6.13.0
 RealtimeSTT==0.3.103
+pyarmor==9.1.6
 
 faster-whisper==1.1.1
 halo==0.0.31
