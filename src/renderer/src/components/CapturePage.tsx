@@ -9,7 +9,7 @@ import { CurrentSession } from '../hooks/useAppNavigation'
 import { checkSubscriptionStatus } from '../utils/checkSubscription'
 import { authService } from '../services/authService'
 
-const showTranscription = process.env.DEV_MODE === 'true'
+const showTranscription = import.meta.env.DEV || false
 
 interface CapturePageProps {
   isCapturing: boolean

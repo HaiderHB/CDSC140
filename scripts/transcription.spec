@@ -7,10 +7,9 @@ a = Analysis(
     binaries=[],
     datas=[('venve/Lib/site-packages/pvporcupine/resources/keyword_files/windows', 'pvporcupine/resources/keyword_files/windows'), ('venve/Lib/site-packages/RealtimeSTT/warmup_audio.wav', 'RealtimeSTT'), ('venve/Lib/site-packages/faster_whisper/assets/silero_encoder_v5.onnx', 'faster_whisper/assets'), ('venve/Lib/site-packages/faster_whisper/assets/silero_decoder_v5.onnx', 'faster_whisper/assets')],
     hiddenimports=['pkg_resources.py2_warn'],
-    hookspath=[],
+    hookspath=['./hooks'],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['webrtcvad'],
     noarchive=False,
     optimize=0,
 )

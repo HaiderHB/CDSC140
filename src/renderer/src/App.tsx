@@ -20,7 +20,7 @@ import { checkSubscriptionStatus } from './utils/checkSubscription'
 
 type ReadingMode = 'normal' | 'rapid' | 'spritz'
 
-const TEST_MODE = process.env.DEV_MODE === 'true'
+const TEST_MODE = import.meta.env.DEV || false
 
 const test_bullet_points = [
   'The most undetectable AI interview assistant.',
