@@ -6,7 +6,7 @@ on:
       - 'v*.*.*'
 
 permissions:
-  contents: write # ✅ Required to create GitHub Releases
+  contents: write
 
 jobs:
   build-windows:
@@ -55,14 +55,27 @@ jobs:
       - name: Build Electron app (Windows)
         run: npm run build:win
 
-      - name: Upload Windows files to GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            dist/*.exe
-            dist/latest*.yml
+      - name: Upload Windows files to public releases repo
+        run: |
+          TAG_NAME=${GITHUB_REF##*/}
+          RELEASE_RESPONSE=$(curl -s -X POST \
+            -H "Authorization: token ${{ secrets.RELEASES_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/InterviewSpeaker/releases/releases \
+            -d "{\"tag_name\":\"$TAG_NAME\", \"name\":\"$TAG_NAME\", \"draft\":false, \"prerelease\":false}")
+
+          UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | jq -r .upload_url | sed "s/{?name,label}//")
+
+          for FILE in dist/*; do
+            FILENAME=$(basename "$FILE")
+            echo "Uploading $FILENAME..."
+            curl --data-binary @"$FILE" \
+              -H "Authorization: token ${{ secrets.RELEASES_TOKEN }}" \
+              -H "Content-Type: application/octet-stream" \
+              "$UPLOAD_URL?name=$FILENAME"
+          done
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          RELEASES_TOKEN: ${{ secrets.RELEASES_TOKEN }}
 
   build-macos:
     runs-on: macos-latest
@@ -119,11 +132,24 @@ jobs:
       - name: Debug dist contents
         run: ls -al dist
 
-      - name: Upload macOS files to GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            dist/*.dmg
-            dist/latest*.yml
+      - name: Upload macOS files to public releases repo
+        run: |
+          TAG_NAME=${GITHUB_REF##*/}
+          RELEASE_RESPONSE=$(curl -s -X POST \
+            -H "Authorization: token ${{ secrets.RELEASES_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/InterviewSpeaker/releases/releases \
+            -d "{\"tag_name\":\"$TAG_NAME\", \"name\":\"$TAG_NAME\", \"draft\":false, \"prerelease\":false}")
+
+          UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | jq -r .upload_url | sed "s/{?name,label}//")
+
+          for FILE in dist/*; do
+            FILENAME=$(basename "$FILE")
+            echo "Uploading $FILENAME..."
+            curl --data-binary @"$FILE" \
+              -H "Authorization: token ${{ secrets.RELEASES_TOKEN }}" \
+              -H "Content-Type: application/octet-stream" \
+              "$UPLOAD_URL?name=$FILENAME"
+          done
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          RELEASES_TOKEN: ${{ secrets.RELEASES_TOKEN }}
