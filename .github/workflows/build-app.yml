@@ -25,7 +25,7 @@ jobs:
           python -m venv venv
           venv\Scripts\pip install --upgrade pip
           venv\Scripts\pip install -r requirements.txt
-          venv\Scripts\pip uninstall enum34
+          venv\Scripts\pip uninstall -y enum34
 
       - name: Obfuscate with PyArmor
         run: |
@@ -88,7 +88,7 @@ jobs:
           source venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
-          pip uninstall enum34
+          pip uninstall -y enum34
 
       - name: Obfuscate with PyArmor
         run: |
