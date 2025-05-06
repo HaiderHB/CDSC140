@@ -1,5 +1,5 @@
-appId: com.electron.app
-productName: electron-app
+appId: com.interviewspeaker.app
+productName: InterviewSpeaker
 directories:
   buildResources: build
 files:
@@ -11,18 +11,23 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
   - package.json
   - build
+  - build/**
+  - out/** # ← add this line
   - resources
   - public/scripts/bin/**
 asarUnpack:
   - resources/**
+  - build/transcription/**
 win:
-  executableName: electron-app
+  executableName: InterviewSpeaker
+  icon: build/icon.ico
 nsis:
-  artifactName: ${name}-${version}-setup.${ext}
-  shortcutName: ${productName}
-  uninstallDisplayName: ${productName}
+  artifactName: InterviewSpeaker-Installer.${ext}
+  shortcutName: InterviewSpeaker
+  uninstallDisplayName: InterviewSpeaker
   createDesktopShortcut: always
 mac:
+  icon: build/icon.icns
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.

@@ -48,7 +48,8 @@ function startPythonScript() {
       console.log(`Launching compiled transcription binary at: ${binaryPath}`)
 
       pythonProcess = spawn(binaryPath, {
-        stdio: 'inherit'
+        stdio: 'inherit',
+        windowsHide: true
       })
 
       if (pythonProcess) {

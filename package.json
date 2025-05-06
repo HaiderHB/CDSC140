@@ -5,8 +5,8 @@
   "description": "Realtime AI Interview Assistance",
   "main": "./out/main/index.js",
   "type": "module",
-  "author": "example.com",
-  "homepage": "https://electron-vite.org",
+  "author": "interviewspeaker.co",
+  "homepage": "https://interviewspeaker.co",
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --cache .",
