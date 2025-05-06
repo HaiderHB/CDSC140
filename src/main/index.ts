@@ -37,16 +37,24 @@ function startPythonScript() {
 
   if (useExe) {
     const isWin = process.platform === 'win32'
-    // const isMac = process.platform === 'darwin'
-
     const binaryName = isWin ? 'transcription.exe' : 'transcription'
+
     const binaryPath = is.dev
       ? join(process.cwd(), 'scripts', 'dist', binaryName)
-      : join(process.resourcesPath, 'build', 'transcription', binaryName)
+      : join(
+          process.resourcesPath,
+          '..',
+          'resources',
+          'app.asar.unpacked',
+          'build',
+          'transcription',
+          binaryName
+        )
+
+    console.log('Resolved binary path:', binaryPath)
+    console.log('File exists:', fs.existsSync(binaryPath))
 
     try {
-      console.log(`Launching compiled transcription binary at: ${binaryPath}`)
-
       pythonProcess = spawn(binaryPath, {
         stdio: 'inherit',
         windowsHide: true
