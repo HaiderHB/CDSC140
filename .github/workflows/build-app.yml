@@ -121,7 +121,7 @@ jobs:
         run: |
           git config --global user.email "bot@github.com"
           git config --global user.name "GitHub Action"
-          git clone https://x-access-token:${{ secrets.VERCEL_REPO_TOKEN }}@github.com/YOUR_USER/landing-page-repo.git vercel-repo
+          git clone https://x-access-token:${{ secrets.VERCEL_REPO_TOKEN }}@github.com/HaiderHB/interview-speaker-landing-page.git vercel-repo
           cp dist/latest*.yml vercel-repo/public/updates/
           cp dist/*.dmg vercel-repo/public/updates/
           cd vercel-repo
