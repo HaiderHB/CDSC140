@@ -19,6 +19,7 @@ import spawn from 'cross-spawn'
 import { ChildProcess } from 'child_process'
 import fs from 'fs'
 import { initialize, enable } from '@electron/remote/main/index.js'
+import { autoUpdater } from 'electron-updater'
 
 // Initialize remote module
 initialize()
@@ -632,6 +633,15 @@ function setupIpcHandlers(): void {
 app.whenReady().then(() => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.interviewspeaker.app')
+
+  // Set up auto-updater
+  autoUpdater.setFeedURL({
+    provider: 'generic',
+    url: 'https://interviewspeaker.co/updates'
+  })
+
+  // Check for updates and notify
+  autoUpdater.checkForUpdatesAndNotify()
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.

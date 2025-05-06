@@ -46,21 +46,22 @@ jobs:
           node-version: '20'
 
       - name: Install npm dependencies
-        run: |
-          npm ci
+        run: npm ci
 
       - name: Build Electron app (Windows)
-        run: |
-          npm run build:win
+        run: npm run build:win
 
-      - name: Upload Windows Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/*.exe
-            dist/*.msi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push update files to Vercel repo
+        run: |
+          git config --global user.email "bot@github.com"
+          git config --global user.name "GitHub Action"
+          git clone https://x-access-token:${{ secrets.VERCEL_REPO_TOKEN }}@github.com/HaiderHB/interview-speaker-landing-page.git vercel-repo
+          cp dist/latest*.yml vercel-repo/public/updates/
+          cp dist/*.exe vercel-repo/public/updates/
+          cd vercel-repo
+          git add .
+          git commit -m "Windows update: ${{ github.ref_name }}"
+          git push
 
   build-macos:
     runs-on: macos-latest
@@ -105,18 +106,19 @@ jobs:
           node-version: '20'
 
       - name: Install npm dependencies
-        run: |
-          npm ci
+        run: npm ci
 
       - name: Build Electron app (macOS)
-        run: |
-          npm run build:mac
+        run: npm run build:mac
 
-      - name: Upload macOS Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/*.dmg
-            dist/*.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push update files to Vercel repo
+        run: |
+          git config --global user.email "bot@github.com"
+          git config --global user.name "GitHub Action"
+          git clone https://x-access-token:${{ secrets.VERCEL_REPO_TOKEN }}@github.com/YOUR_USER/landing-page-repo.git vercel-repo
+          cp dist/latest*.yml vercel-repo/public/updates/
+          cp dist/*.dmg vercel-repo/public/updates/
+          cd vercel-repo
+          git add .
+          git commit -m "macOS update: ${{ github.ref_name }}"
+          git push

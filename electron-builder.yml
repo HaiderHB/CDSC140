@@ -12,7 +12,7 @@ files:
   - package.json
   - build
   - build/**
-  - out/** # ← add this line
+  - out/**
   - resources
   - public/scripts/bin/**
 asarUnpack:
@@ -21,6 +21,9 @@ asarUnpack:
 win:
   executableName: InterviewSpeaker
   icon: build/icon.ico
+  publish:
+    provider: generic
+    url: https://interviewspeaker.co/updates/
 nsis:
   artifactName: InterviewSpeaker-Installer.${ext}
   shortcutName: InterviewSpeaker
@@ -35,6 +38,9 @@ mac:
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false
+  publish:
+    provider: generic
+    url: https://interviewspeaker.co/updates/
 dmg:
   artifactName: ${name}-${version}.${ext}
 linux:
@@ -49,6 +55,6 @@ appImage:
 npmRebuild: false
 publish:
   provider: generic
-  url: https://example.com/auto-updates
+  url: https://interviewspeaker.co/updates/
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/
