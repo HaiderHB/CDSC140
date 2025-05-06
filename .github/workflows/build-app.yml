@@ -52,18 +52,14 @@ jobs:
       - name: Build Electron app (Windows)
         run: npm run build:win
 
-      - name: Push update files to releases repo
-        run: |
-          git config --global user.email "bot@github.com"
-          git config --global user.name "GitHub Action"
-          git clone https://x-access-token:${{ secrets.RELEASES_TOKEN }}@github.com/InterviewSpeaker/releases.git releases-repo
-          mkdir -p releases-repo/windows
-          cp dist/latest*.yml releases-repo/windows/
-          cp dist/*.exe releases-repo/windows/
-          cd releases-repo
-          git add .
-          git commit -m "Windows update: ${{ github.ref_name }}" || echo "Nothing to commit"
-          git push
+      - name: Upload Windows files to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/*.exe
+            dist/latest*.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-macos:
     runs-on: macos-latest
@@ -120,15 +116,11 @@ jobs:
       - name: Debug dist contents
         run: ls -al dist
 
-      - name: Push update files to releases repo
-        run: |
-          git config --global user.email "bot@github.com"
-          git config --global user.name "GitHub Action"
-          git clone https://x-access-token:${{ secrets.RELEASES_TOKEN }}@github.com/InterviewSpeaker/releases.git releases-repo
-          mkdir -p releases-repo/macos
-          cp dist/latest*.yml releases-repo/macos/
-          cp dist/*.dmg releases-repo/macos/
-          cd releases-repo
-          git add .
-          git commit -m "macOS update: ${{ github.ref_name }}" || echo "Nothing to commit"
-          git push
+      - name: Upload macOS files to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/*.dmg
+            dist/latest*.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
