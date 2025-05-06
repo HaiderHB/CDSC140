@@ -101,6 +101,9 @@ jobs:
           source venv/bin/activate
           pyinstaller transcription_mac.spec
 
+      - name: Debug dist contents
+        run: ls -al dist
+
       - name: Copy built binary to Electron build folder
         run: |
           mkdir -p ../build/transcription

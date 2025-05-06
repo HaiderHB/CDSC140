@@ -3,6 +3,12 @@
   "productName": "Interview Speaker",
   "version": "1.0.0",
   "description": "Realtime AI Interview Assistance",
+  "build": {
+    "publish": {
+      "provider": "generic",
+      "url": "https://interviewspeaker.co/updates/"
+    }
+  },
   "main": "./out/main/index.js",
   "type": "module",
   "author": "interviewspeaker.co",
@@ -20,7 +26,7 @@
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
-    "build:mac": "electron-vite build && electron-builder --mac",
+    "build:mac": "electron-vite build && electron-builder --mac --publish always",
     "build:linux": "electron-vite build && electron-builder --linux"
   },
   "dependencies": {
