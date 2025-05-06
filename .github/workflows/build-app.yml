@@ -6,63 +6,64 @@ on:
       - 'v*.*.*'
 
 jobs:
-  # build-windows:
-  #   runs-on: windows-latest
-  #   defaults:
-  #     run:
-  #       working-directory: scripts
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: scripts
 
-  #   steps:
-  #     - uses: actions/checkout@v3
+    steps:
+      - uses: actions/checkout@v3
 
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v5
-  #       with:
-  #         python-version: '3.12'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-  #     - name: Install Python dependencies
-  #       run: |
-  #         python -m venv venv
-  #         venv\Scripts\pip install --upgrade pip
-  #         venv\Scripts\pip install -r requirements.txt
-  #         venv\Scripts\pip uninstall -y enum34
+      - name: Install Python dependencies
+        run: |
+          python -m venv venv
+          venv\Scripts\pip install --upgrade pip
+          venv\Scripts\pip install -r requirements.txt
+          venv\Scripts\pip uninstall -y enum34
 
-  #     - name: Obfuscate with PyArmor
-  #       run: |
-  #         venv\Scripts\pyarmor gen --output dist-obf transcription.py
-  #         copy dist-obf\transcription.py transcription.py
+      - name: Obfuscate with PyArmor
+        run: |
+          venv\Scripts\pyarmor gen --output dist-obf transcription.py
+          copy dist-obf\transcription.py transcription.py
 
-  #     - name: Build executable with PyInstaller
-  #       run: |
-  #         venv\Scripts\pyinstaller transcription_windows.spec
+      - name: Build executable with PyInstaller
+        run: |
+          venv\Scripts\pyinstaller transcription_windows.spec
 
-  #     - name: Copy built exe to Electron build folder
-  #       run: |
-  #         mkdir ..\build\transcription
-  #         copy dist\transcription.exe ..\build\transcription\transcription.exe
+      - name: Copy built exe to Electron build folder
+        run: |
+          mkdir ..\build\transcription
+          copy dist\transcription.exe ..\build\transcription\transcription.exe
 
-  #     - name: Install Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '20'
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-  #     - name: Install npm dependencies
-  #       run: npm ci
+      - name: Install npm dependencies
+        run: npm ci
 
-  #     - name: Build Electron app (Windows)
-  #       run: npm run build:win
+      - name: Build Electron app (Windows)
+        run: npm run build:win
 
-  #     - name: Push update files to Vercel repo
-  #       run: |
-  #         git config --global user.email "bot@github.com"
-  #         git config --global user.name "GitHub Action"
-  #         git clone https://x-access-token:${{ secrets.VERCEL_REPO_TOKEN }}@github.com/HaiderHB/interview-speaker-landing-page.git vercel-repo
-  #         cp dist/latest*.yml vercel-repo/public/updates/
-  #         cp dist/*.exe vercel-repo/public/updates/
-  #         cd vercel-repo
-  #         git add .
-  #         git commit -m "Windows update: ${{ github.ref_name }}"
-  #         git push
+      - name: Push update files to releases repo
+        run: |
+          git config --global user.email "bot@github.com"
+          git config --global user.name "GitHub Action"
+          git clone https://x-access-token:${{ secrets.RELEASES_TOKEN }}@github.com/InterviewSpeaker/releases.git releases-repo
+          mkdir -p releases-repo/windows
+          cp dist/latest*.yml releases-repo/windows/
+          cp dist/*.exe releases-repo/windows/
+          cd releases-repo
+          git add .
+          git commit -m "Windows update: ${{ github.ref_name }}" || echo "Nothing to commit"
+          git push
 
   build-macos:
     runs-on: macos-latest
@@ -119,15 +120,15 @@ jobs:
       - name: Debug dist contents
         run: ls -al dist
 
-      - name: Push update files to Vercel repo
+      - name: Push update files to releases repo
         run: |
           git config --global user.email "bot@github.com"
           git config --global user.name "GitHub Action"
-          git clone https://x-access-token:${{ secrets.VERCEL_REPO_TOKEN }}@github.com/HaiderHB/interview-speaker-landing-page.git vercel-repo
-          mkdir -p vercel-repo/public/updates/
-          cp dist/latest*.yml vercel-repo/public/updates/
-          cp dist/*.dmg vercel-repo/public/updates/
-          cd vercel-repo
+          git clone https://x-access-token:${{ secrets.RELEASES_TOKEN }}@github.com/InterviewSpeaker/releases.git releases-repo
+          mkdir -p releases-repo/macos
+          cp dist/latest*.yml releases-repo/macos/
+          cp dist/*.dmg releases-repo/macos/
+          cd releases-repo
           git add .
           git commit -m "macOS update: ${{ github.ref_name }}" || echo "Nothing to commit"
           git push

@@ -32,12 +32,12 @@ let windowVisible = false
 let windowOpacity = 0
 let moveStep = 20
 let mainWindow: BrowserWindow | null = null
+const isWin = process.platform === 'win32'
 
 function startPythonScript() {
   const useExe = true
 
   if (useExe) {
-    const isWin = process.platform === 'win32'
     const binaryName = isWin ? 'transcription.exe' : 'transcription'
 
     const binaryPath = is.dev
@@ -83,8 +83,8 @@ function startPythonScript() {
       : join(process.resourcesPath, 'scripts', 'transcription.py')
 
     // Use Python 3.12 specifically
-    const pythonCommand = process.platform === 'win32' ? 'py' : 'python3.12'
-    const pythonArgs = process.platform === 'win32' ? ['-3.12', scriptPath] : [scriptPath]
+    const pythonCommand = isWin ? 'py' : 'python3.12'
+    const pythonArgs = isWin ? ['-3.12', scriptPath] : [scriptPath]
 
     // Spawn the Python process
     try {
@@ -182,7 +182,7 @@ function handleAppClose() {
       console.log('Properly shutting down transcription server...')
 
       // On Windows, we need to use taskkill to ensure the process and its children are terminated
-      if (process.platform === 'win32') {
+      if (isWin) {
         const { exec } = require('child_process')
         exec(`taskkill /pid ${pythonProcess.pid} /T /F`, (error) => {
           if (error) {
@@ -634,11 +634,17 @@ app.whenReady().then(() => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.interviewspeaker.app')
 
-  // Set up auto-updater
-  autoUpdater.setFeedURL({
-    provider: 'generic',
-    url: 'https://interviewspeaker.co/updates'
-  })
+  if (isWin) {
+    autoUpdater.setFeedURL({
+      provider: 'generic',
+      url: 'https://cdn.jsdelivr.net/gh/InterviewSpeaker/releases@main/windows'
+    })
+  } else {
+    autoUpdater.setFeedURL({
+      provider: 'generic',
+      url: 'https://cdn.jsdelivr.net/gh/InterviewSpeaker/releases@main/macos'
+    })
+  }
 
   // Check for updates and notify
   autoUpdater.checkForUpdatesAndNotify()
@@ -723,7 +729,7 @@ app.on('will-quit', () => {
       console.log('Properly shutting down transcription server...')
 
       // On Windows, we need to use taskkill to ensure the process and its children are terminated
-      if (process.platform === 'win32') {
+      if (isWin) {
         const { exec } = require('child_process')
         exec(`taskkill /pid ${pythonProcess.pid} /T /F`, (error) => {
           if (error) {
