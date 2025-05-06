@@ -42,7 +42,7 @@ function startPythonScript() {
     const binaryName = isWin ? 'transcription.exe' : 'transcription'
     const binaryPath = is.dev
       ? join(process.cwd(), 'scripts', 'dist', binaryName)
-      : join(process.resourcesPath, 'scripts', 'dist', binaryName)
+      : join(process.resourcesPath, 'build', 'transcription', binaryName)
 
     try {
       console.log(`Launching compiled transcription binary at: ${binaryPath}`)
