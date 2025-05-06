@@ -25,6 +25,7 @@ jobs:
           python -m venv venv
           venv\Scripts\pip install --upgrade pip
           venv\Scripts\pip install -r requirements.txt
+          venv\Scripts\pip uninstall enum34
 
       - name: Obfuscate with PyArmor
         run: |
@@ -77,12 +78,17 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install PortAudio (for PyAudio)
+        run: |
+          brew install portaudio
+
       - name: Install Python dependencies
         run: |
           python3 -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
+          pip uninstall enum34
 
       - name: Obfuscate with PyArmor
         run: |
