@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*.*.*'
 
+permissions:
+  contents: write # ✅ Required to create GitHub Releases
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -59,7 +62,7 @@ jobs:
             dist/*.exe
             dist/latest*.yml
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN }}
 
   build-macos:
     runs-on: macos-latest
@@ -123,4 +126,4 @@ jobs:
             dist/*.dmg
             dist/latest*.yml
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN }}
