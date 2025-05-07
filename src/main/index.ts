@@ -19,7 +19,8 @@ import spawn from 'cross-spawn'
 import { ChildProcess } from 'child_process'
 import fs from 'fs'
 import { initialize, enable } from '@electron/remote/main/index.js'
-import { autoUpdater } from 'electron-updater'
+import pkg from 'electron-updater'
+const { autoUpdater } = pkg
 
 // Initialize remote module
 initialize()
