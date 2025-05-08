@@ -43,7 +43,7 @@
     "build": "electron-vite build",
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir",
-    "obfuscate": "javascript-obfuscator out --output out --compact true --control-flow-flattening true",
+    "obfuscate": "javascript-obfuscator out/renderer/assets --output out/renderer/assets --compact true --control-flow-flattening true",
     "build:win": "npm run build && npm run obfuscate && electron-builder --win",
     "build:mac": "electron-vite build && npm run obfuscate && electron-builder --mac --publish always",
     "build:linux": "electron-vite build && npm run obfuscate && electron-builder --linux"
