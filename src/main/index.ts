@@ -18,7 +18,8 @@ import { setupTranscriptionHandlers } from './transcription'
 import spawn from 'cross-spawn'
 import { ChildProcess } from 'child_process'
 import fs from 'fs'
-import { initialize, enable } from '@electron/remote/main/index.js'
+import * as remote from '@electron/remote/main/index.js'
+const { initialize, enable } = remote
 import pkg from 'electron-updater'
 const { autoUpdater } = pkg
 
