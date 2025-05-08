@@ -44,6 +44,12 @@ jobs:
           mkdir ..\build\transcription
           copy dist\transcription.exe ..\build\transcription\transcription.exe
 
+      - name: Print tree structure (compact)
+        run: |
+          cd ${{ github.workspace }}
+          tree /F
+        shell: cmd
+
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
@@ -104,6 +110,12 @@ jobs:
         run: |
           mkdir -p build/transcription
           cp scripts/dist/transcription build/transcription/transcription
+
+      - name: Print tree structure (compact)
+        run: |
+          cd ${{ github.workspace }}
+          tree /F
+        shell: cmd
 
       - name: Install Node.js
         uses: actions/setup-node@v4
