@@ -111,8 +111,9 @@ jobs:
           mkdir -p build/transcription
           cp scripts/dist/transcription build/transcription/transcription
 
-      - name: Print tree structure (compact)
+      - name: Install and run tree (macOS)
         run: |
+          brew install tree
           cd ${{ github.workspace }}
           tree -a -L 4
         shell: bash
