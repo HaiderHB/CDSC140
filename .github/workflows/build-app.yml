@@ -114,8 +114,8 @@ jobs:
       - name: Print tree structure (compact)
         run: |
           cd ${{ github.workspace }}
-          tree /F
-        shell: cmd
+          tree -a -L 4
+        shell: bash
 
       - name: Install Node.js
         uses: actions/setup-node@v4
