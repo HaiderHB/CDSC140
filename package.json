@@ -3,30 +3,6 @@
   "productName": "Interview Speaker",
   "version": "1.0.0",
   "description": "Realtime AI Interview Assistance",
-  "build": {
-    "publish": {
-      "provider": "generic",
-      "url": "https://interviewspeaker.co/updates/"
-    },
-    "files": [
-      "out/**/*",
-      "resources/**/*",
-      "!**/*.md",
-      "!**/tsconfig*.json",
-      "!**/*.bat",
-      "!**/.vscode",
-      "!**/src",
-      "!**/*.yaml",
-      "!**/*.ts",
-      "!**/.prettier*",
-      "!**/.npmrc",
-      "!scripts/**/*",
-      "!start.js"
-    ],
-    "asarUnpack": [
-      "resources/build/transcription/transcription.exe"
-    ]
-  },
   "main": "./out/main/index.js",
   "type": "module",
   "author": "interviewspeaker.co",
@@ -43,7 +19,7 @@
     "build": "electron-vite build",
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir",
-    "obfuscate": "javascript-obfuscator out --output out --compact true --control-flow-flattening true",
+    "obfuscate": "javascript-obfuscator out --output out --compact true --disable-console-output true --dead-code-injection-threshold 0.4",
     "build:win": "npm run build && npm run obfuscate && electron-builder --win",
     "build:mac": "electron-vite build && npm run obfuscate && electron-builder --mac --publish always",
     "build:linux": "electron-vite build && npm run obfuscate && electron-builder --linux"
