@@ -3,12 +3,6 @@
   "productName": "Interview Speaker",
   "version": "1.0.0",
   "description": "Realtime AI Interview Assistance",
-  "build": {
-    "publish": {
-      "provider": "generic",
-      "url": "https://interviewspeaker.co/updates/"
-    }
-  },
   "main": "./out/main/index.js",
   "type": "module",
   "author": "interviewspeaker.co",
