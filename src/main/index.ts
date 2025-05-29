@@ -301,6 +301,8 @@ if (!gotTheLock) {
   })
 }
 
+const TEST_MODE = false
+
 function createWindow(): void {
   // Create the browser window with anti-screen-capture properties
   mainWindow = new BrowserWindow({
@@ -320,7 +322,7 @@ function createWindow(): void {
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,
-      devTools: true,
+      devTools: TEST_MODE,
       contextIsolation: true,
       nodeIntegration: false
     }
@@ -333,7 +335,7 @@ function createWindow(): void {
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
 
   // Enable content protection to prevent screen capture
-  mainWindow.setContentProtection(true)
+  mainWindow.setContentProtection(TEST_MODE)
 
   // Set always on top with screen-saver priority
   mainWindow.setAlwaysOnTop(true, 'screen-saver', 1)

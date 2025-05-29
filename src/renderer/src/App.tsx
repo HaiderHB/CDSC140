@@ -3,7 +3,6 @@ import { Box, CircularProgress, IconButton, Snackbar, Alert, Typography } from '
 import './App.css'
 import SetupConfigPage from './components/SetupConfigPage'
 import { useDataPersistence } from './hooks/useDataPersistence'
-import { useSpeechRecognition } from './hooks/useSpeechRecognition'
 import { Key } from './components/Key' // Import the Key component
 import { ReadingModeModal } from './components/ReadingModeModal' // Import ReadingModeModal
 import { useAppNavigation } from './hooks/useAppNavigation'
@@ -20,7 +19,7 @@ import { checkSubscriptionStatus } from './utils/checkSubscription'
 
 type ReadingMode = 'normal' | 'rapid' | 'spritz'
 
-const TEST_MODE = import.meta.env.DEV || false
+const TEST_MODE = false
 
 const test_bullet_points = [
   'The most undetectable AI interview assistant.',
@@ -109,13 +108,7 @@ function App(): JSX.Element {
     onMatchFound: findAndRemoveMatchingBulletPoint
   })
 
-  const { isListening } = useSpeechRecognition({
-    onTranscript: (text) => {
-      console.log('Local speech recognition transcript:', text)
-    },
-    bulletPoints,
-    onMatchFound: findAndRemoveMatchingBulletPoint
-  })
+  const isListening = false
 
   // useEffect(() => {
   //   console.log('----currentSession', currentSession)
