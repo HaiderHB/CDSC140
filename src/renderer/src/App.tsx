@@ -38,6 +38,7 @@ function App(): JSX.Element {
   const [selectedMic, setSelectedMic] = useState<string>('')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState<boolean | null>(null)
+  const [autoSkipEnabled, setAutoSkipEnabled] = useState(false)
 
   const {
     sessions,
@@ -108,8 +109,6 @@ function App(): JSX.Element {
     onMatchFound: findAndRemoveMatchingBulletPoint
   })
 
-  const isListening = false
-
   // useEffect(() => {
   //   console.log('----currentSession', currentSession)
   // }, [currentSession])
@@ -144,8 +143,8 @@ function App(): JSX.Element {
     })
   }, [])
 
+  // On app mount, check if user is already authenticated
   useEffect(() => {
-    // On app mount, check if user is already authenticated
     const authState = authService.getAuthState()
     if (authState.isAuthenticated) {
       setIsAuthenticated(true)
@@ -165,6 +164,17 @@ function App(): JSX.Element {
       checkSub()
     }
   }, [isAuthenticated])
+
+  // Handle auto-skip toggle during active capture
+  useEffect(() => {
+    if (isCapturing) {
+      if (autoSkipEnabled) {
+        startTranscriptionRecording()
+      } else {
+        stopTranscriptionRecording()
+      }
+    }
+  }, [autoSkipEnabled, isCapturing])
 
   // Reload subscription status
   const handleReloadSubscription = async () => {
@@ -189,7 +199,9 @@ function App(): JSX.Element {
 
         connectWebSocket()
 
-        startTranscriptionRecording()
+        if (autoSkipEnabled) {
+          startTranscriptionRecording()
+        }
       } else {
         throw new Error('Failed to get audio streams.')
       }
@@ -433,7 +445,6 @@ function App(): JSX.Element {
                 transcriptText={transcriptText}
                 wsStatus={wsStatus}
                 wsError={wsError}
-                isListening={isListening}
                 currentSession={currentSession}
                 goBack={() => setCurrentPage('main')}
                 responseText={responseText}
@@ -445,6 +456,8 @@ function App(): JSX.Element {
                 onMicSelected={setSelectedMic}
                 selectedMic={selectedMic}
                 onNotSubscribed={() => setIsSubscribed(false)}
+                autoSkipEnabled={autoSkipEnabled}
+                onAutoSkipToggle={setAutoSkipEnabled}
               />
             )}
 

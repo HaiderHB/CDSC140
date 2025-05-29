@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react'
-import { Box, Button, CircularProgress, Typography } from '@mui/material'
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Typography,
+  Switch,
+  FormControlLabel,
+  Tooltip
+} from '@mui/material'
 import { AudioStatus } from '../hooks/useAudioCapture'
 import { ResponseOutput } from './ResponseOutput'
 import { TranscriptionDisplay } from './TranscriptionDisplay'
@@ -24,7 +32,6 @@ interface CapturePageProps {
   transcriptText: string
   wsStatus: WsStatus
   wsError: string | null
-  isListening: boolean
   currentSession: CurrentSession | null
   goBack: () => void
   responseText: string
@@ -35,6 +42,8 @@ interface CapturePageProps {
   onMicSelected: (micId: string) => void
   selectedMic: string
   onNotSubscribed: () => void
+  autoSkipEnabled: boolean
+  onAutoSkipToggle: (enabled: boolean) => void
 }
 
 export const CapturePage: React.FC<CapturePageProps> = ({
@@ -50,7 +59,6 @@ export const CapturePage: React.FC<CapturePageProps> = ({
   transcriptText,
   wsStatus,
   wsError,
-  isListening,
   goBack,
   desktopCanvasRef,
   micCanvasRef,
@@ -58,7 +66,9 @@ export const CapturePage: React.FC<CapturePageProps> = ({
   handleRestoreLastDeleted,
   onMicSelected,
   selectedMic,
-  onNotSubscribed
+  onNotSubscribed,
+  autoSkipEnabled,
+  onAutoSkipToggle
 }) => {
   // Determine command key based on platform
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
@@ -188,6 +198,36 @@ export const CapturePage: React.FC<CapturePageProps> = ({
 
       {/* Bullet Points - Top Middle */}
       <Box sx={{ width: '100%', maxWidth: '700px', mx: 'auto', px: 2, flexShrink: 0, mb: 2 }}>
+        {/* Auto Skip Toggle */}
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+          <Tooltip title="Use AI to auto skip bullet points as you speak" arrow>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={autoSkipEnabled}
+                  onChange={(e) => onAutoSkipToggle(e.target.checked)}
+                  sx={{
+                    '& .MuiSwitch-switchBase.Mui-checked': {
+                      color: '#E9680C'
+                    },
+                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                      backgroundColor: '#E9680C'
+                    }
+                  }}
+                />
+              }
+              label="Automatically Skip (Beta)"
+              sx={{
+                color: '#E9680C',
+                '& .MuiFormControlLabel-label': {
+                  fontSize: '0.9rem',
+                  fontWeight: 500
+                }
+              }}
+            />
+          </Tooltip>
+        </Box>
+
         <ResponseOutput
           isCapturing={isCapturing}
           bulletPoints={bulletPoints}
@@ -302,12 +342,6 @@ export const CapturePage: React.FC<CapturePageProps> = ({
             <Typography sx={{ mt: 1, color: '#E9680C' }}>{statusMessage}</Typography>
           ) : null}
         </Box>
-        {isListening && (
-          <Box sx={{ color: '#4ade80', mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <CircularProgress size={16} sx={{ color: '#4ade80' }} />
-            Listening for speech...
-          </Box>
-        )}
       </Box>
 
       {/* Transcription - Centered within scrollable area */}
