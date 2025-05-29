@@ -301,6 +301,7 @@ if (!gotTheLock) {
   })
 }
 
+// not invisible + devtools
 const TEST_MODE = false
 
 function createWindow(): void {
@@ -640,12 +641,12 @@ app.whenReady().then(() => {
   if (isWin) {
     autoUpdater.setFeedURL({
       provider: 'generic',
-      url: 'https://cdn.jsdelivr.net/gh/InterviewSpeaker/releases@main/windows'
+      url: 'https://www.interviewspeaker.co/api/updates/windows'
     })
   } else {
     autoUpdater.setFeedURL({
       provider: 'generic',
-      url: 'https://cdn.jsdelivr.net/gh/InterviewSpeaker/releases@main/macos'
+      url: 'https://www.interviewspeaker.co/api/updates/mac'
     })
   }
 
