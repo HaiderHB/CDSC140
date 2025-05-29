@@ -17,7 +17,7 @@ import { CurrentSession } from '../hooks/useAppNavigation'
 import { checkSubscriptionStatus } from '../utils/checkSubscription'
 import { authService } from '../services/authService'
 
-const showTranscription = import.meta.env.DEV || false
+const showTranscription = false
 
 interface CapturePageProps {
   isCapturing: boolean
@@ -298,7 +298,7 @@ export const CapturePage: React.FC<CapturePageProps> = ({
                 }}
               >
                 <option value="" style={{ color: '#E9680C' }}>
-                  Select Microphone
+                  Default Microphone
                 </option>
                 {micOptions.map((mic) => (
                   <option key={mic.deviceId} value={mic.deviceId} style={{ color: '#E9680C' }}>
