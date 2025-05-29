@@ -64,11 +64,12 @@ jobs:
       - name: Upload Windows files to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
+          repository: InterviewSpeaker/releases # 👈 target repo
           files: |
             dist/*.exe
             dist/latest*.yml
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN }} # PAT with access to CDSC140
 
   build-macos:
     runs-on: macos-latest
@@ -135,6 +136,7 @@ jobs:
       - name: Upload macOS files to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
+          repository: InterviewSpeaker/releases # 👈 target repo
           files: |
             dist/*.dmg
             dist/latest*.yml
