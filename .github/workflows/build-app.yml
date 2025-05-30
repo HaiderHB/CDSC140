@@ -64,7 +64,7 @@ jobs:
       - name: Upload Windows files to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          repository: InterviewSpeaker/releases # 👈 target repo
+          repository: InterviewSpeaker-Releases/releases # 👈 target repo
           files: |
             dist/*.exe
             dist/latest*.yml
@@ -136,7 +136,7 @@ jobs:
       - name: Upload macOS files to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          repository: InterviewSpeaker/releases # 👈 target repo
+          repository: InterviewSpeaker-Releases/releases # 👈 target repo
           files: |
             dist/*.dmg
             dist/latest*.yml
