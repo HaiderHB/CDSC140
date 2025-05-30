@@ -1,0 +1,61 @@
+appId: com.interviewspeaker.asr
+productName: InterviewSpeakerASR
+directories:
+  buildResources: build
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!locales/**'
+  - package.json
+  - build
+  - build/**
+  - out/**
+  - resources
+  - public/scripts/bin/**
+asarUnpack:
+  - resources/**
+  - build/transcription/**
+win:
+  executableName: InterviewSpeakerASR
+  icon: build/icon.ico
+  publish:
+    provider: generic
+    url: https://interviewspeaker.co/updates/
+nsis:
+  artifactName: InterviewSpeakerASR-Installer.${ext}
+  shortcutName: InterviewSpeakerASR
+  uninstallDisplayName: InterviewSpeakerASR
+  createDesktopShortcut: always
+mac:
+  icon: build/icon.icns
+  entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    - NSCameraUsageDescription: Application requests access to the device's camera.
+    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
+    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
+    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+  notarize: false
+  publish:
+    provider: generic
+    url: https://interviewspeaker.co/updates/
+dmg:
+  artifactName: InterviewSpeakerASR-${version}.${ext}
+linux:
+  target:
+    - AppImage
+    - snap
+    - deb
+  maintainer: electronjs.org
+  category: Utility
+appImage:
+  artifactName: InterviewSpeakerASR-${version}.${ext}
+npmRebuild: false
+publish:
+  provider: generic
+  url: https://interviewspeaker.co/updates/
+electronDownload:
+  mirror: https://npmmirror.com/mirrors/electron/

@@ -22,6 +22,8 @@
     "obfuscate": "javascript-obfuscator out --output out --compact true --disable-console-output true --dead-code-injection-threshold 0.4",
     "build:win": "npm run build && npm run obfuscate && electron-builder --win",
     "build:mac": "electron-vite build && npm run obfuscate && electron-builder --mac --publish always",
+    "build:win-asr": "npm run build && npm run obfuscate && electron-builder --win --config electron-builder.config.asr.yaml",
+    "build:mac-asr": "electron-vite build && npm run obfuscate && electron-builder --mac --config electron-builder.config.asr.yaml --publish always",
     "build:linux": "electron-vite build && npm run obfuscate && electron-builder --linux"
   },
   "dependencies": {
