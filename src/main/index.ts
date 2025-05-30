@@ -60,6 +60,10 @@ function startPythonScript() {
     console.log('Resolved binary path:', binaryPath)
     console.log('File exists:', exeExists)
 
+    if (!exeExists) {
+      return
+    }
+
     try {
       pythonProcess = spawn(binaryPath, {
         stdio: 'inherit',

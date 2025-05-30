@@ -87,7 +87,7 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
               alignItems="flex-start"
               justifyContent="space-between"
             >
-              <Box
+              {/* <Box
                 sx={{
                   fontSize: '8px',
                   marginTop: '-10px',
@@ -98,7 +98,7 @@ export const ResponseOutput: React.FC<ResponseOutputProps> = ({
                 }}
               >
                 * Manual option — AI does this by automatically as you speak.
-              </Box>
+              </Box> */}
               <Paper
                 elevation={0}
                 onClick={handleManualDeleteEyeContact}
