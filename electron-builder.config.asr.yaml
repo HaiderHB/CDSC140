@@ -52,7 +52,7 @@ linux:
   maintainer: electronjs.org
   category: Utility
 appImage:
-  artifactName: InterviewSpeakerASR-${version}.${ext}
+  artifactName: InterviewSpeakerASR-Installer.${ext}
 npmRebuild: false
 publish:
   provider: generic

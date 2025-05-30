@@ -43,8 +43,8 @@ mac:
     provider: generic
     url: https://interviewspeaker.co/updates/
 dmg:
-  artifactName: ${name}-${version}.${ext}
-linux:
+  artifactName: InterviewSpeaker-Installer.${ext}
+
   target:
     - AppImage
     - snap
