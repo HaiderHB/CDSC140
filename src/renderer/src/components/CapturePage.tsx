@@ -46,6 +46,9 @@ interface CapturePageProps {
   onAutoSkipToggle: (enabled: boolean) => void
 }
 
+// @ts-ignore
+const { getExeExists } = window.api
+
 export const CapturePage: React.FC<CapturePageProps> = ({
   isCapturing,
   startCapture,
@@ -77,6 +80,7 @@ export const CapturePage: React.FC<CapturePageProps> = ({
   const [micOptions, setMicOptions] = useState<MediaDeviceInfo[]>([])
   const [isStarting, setIsStarting] = useState(false)
   const [statusMessage, setStatusMessage] = useState('Initializing')
+  const [exeExists, setExeExists] = useState(false)
 
   useEffect(() => {
     const getMicrophones = async () => {
@@ -114,6 +118,14 @@ export const CapturePage: React.FC<CapturePageProps> = ({
       setStatusMessage('')
     }
   }, [wsStatus, isStarting])
+
+  useEffect(() => {
+    const fetchExeExists = async () => {
+      const exists = await getExeExists()
+      setExeExists(exists)
+    }
+    fetchExeExists()
+  }, [])
 
   const handleStartCapture = async () => {
     setIsStarting(true)
@@ -200,12 +212,13 @@ export const CapturePage: React.FC<CapturePageProps> = ({
       <Box sx={{ width: '100%', maxWidth: '700px', mx: 'auto', px: 2, flexShrink: 0, mb: 2 }}>
         {/* Auto Skip Toggle */}
         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-          <Tooltip title="Use AI to auto skip bullet points as you speak" arrow>
+          <Tooltip title={!exeExists ? 'Speech recognition not installed.' : ''} arrow>
             <FormControlLabel
               control={
                 <Switch
                   checked={autoSkipEnabled}
                   onChange={(e) => onAutoSkipToggle(e.target.checked)}
+                  disabled={!exeExists}
                   sx={{
                     '& .MuiSwitch-switchBase.Mui-checked': {
                       color: '#E9680C'

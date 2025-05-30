@@ -42,7 +42,10 @@ const api = {
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   onAuthCallback: (callback: (url: string) => void) => {
     ipcRenderer.on('auth-callback', (_event, url) => callback(url))
-  }
+  },
+
+  // Check if the transcription binary exists
+  getExeExists: () => ipcRenderer.invoke('get-exe-exists')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

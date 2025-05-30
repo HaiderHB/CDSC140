@@ -30,6 +30,7 @@ interface DataAPI {
 
 interface API extends OpenAIAPI, DataAPI {
   transcribeAudio: (audioData: Uint8Array) => Promise<string>
+  getExeExists: () => Promise<boolean>
 }
 
 interface IpcRenderer {

@@ -35,6 +35,9 @@ let moveStep = 20
 let mainWindow: BrowserWindow | null = null
 const isWin = process.platform === 'win32'
 
+// Variable to store exeExists status
+let exeExists = false
+
 function startPythonScript() {
   const useExe = true
 
@@ -53,8 +56,9 @@ function startPythonScript() {
           binaryName
         )
 
+    exeExists = fs.existsSync(binaryPath)
     console.log('Resolved binary path:', binaryPath)
-    console.log('File exists:', fs.existsSync(binaryPath))
+    console.log('File exists:', exeExists)
 
     try {
       pythonProcess = spawn(binaryPath, {
@@ -510,6 +514,11 @@ function createWindow(): void {
   // Add IPC handlers for auth
   ipcMain.handle('open-external', async (event, url) => {
     await shell.openExternal(url)
+  })
+
+  // Send exeExists status to renderer
+  ipcMain.handle('get-exe-exists', async () => {
+    return exeExists
   })
 }
 
