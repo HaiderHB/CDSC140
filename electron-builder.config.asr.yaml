@@ -24,7 +24,8 @@ win:
   icon: build/icon.ico
   publish:
     provider: generic
-    url: https://interviewspeaker.co/updates/
+    url: https://interviewspeaker.co/api/updates/
+    artifactName: latest-ASR.yml
 nsis:
   artifactName: InterviewSpeakerASR-Installer.${ext}
   shortcutName: InterviewSpeakerASR
@@ -41,7 +42,8 @@ mac:
   notarize: false
   publish:
     provider: generic
-    url: https://interviewspeaker.co/updates/
+    url: https://interviewspeaker.co/api/updates/
+    artifactName: latest-mac-ASR.yml
 dmg:
   artifactName: InterviewSpeakerASR-Installer.${ext}
 linux:
@@ -56,6 +58,6 @@ appImage:
 npmRebuild: false
 publish:
   provider: generic
-  url: https://interviewspeaker.co/updates/
+  url: https://interviewspeaker.co/api/updates/
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/

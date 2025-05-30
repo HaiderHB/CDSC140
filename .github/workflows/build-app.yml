@@ -35,8 +35,8 @@ jobs:
         with:
           repository: InterviewSpeaker-Releases/releases
           files: |
-            dist/InterviewSpeaker*.exe
-            dist/InterviewSpeaker*.yml
+            dist/*.exe
+            dist/*.yml
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN }}
 
@@ -69,8 +69,8 @@ jobs:
         with:
           repository: InterviewSpeaker-Releases/releases
           files: |
-            dist/InterviewSpeakerASR*.exe
-            dist/InterviewSpeakerASR*.yml
+            dist/*.exe
+            dist/*.yml
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN }}
 
@@ -97,8 +97,8 @@ jobs:
         with:
           repository: InterviewSpeaker-Releases/releases
           files: |
-            dist/InterviewSpeaker*.dmg
-            dist/InterviewSpeaker*.yml
+            dist/*.dmg
+            dist/*.yml
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN }}
 
@@ -139,7 +139,7 @@ jobs:
         with:
           repository: InterviewSpeaker-Releases/releases
           files: |
-            dist/InterviewSpeakerASR*.dmg
-            dist/InterviewSpeakerASR*.yml
+            dist/*.dmg
+            dist/*.yml
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN }}
