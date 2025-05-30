@@ -92,7 +92,7 @@ export const CapturePage: React.FC<CapturePageProps> = ({
   }, [])
 
   useEffect(() => {
-    if (wsStatus != 'connected' && isStarting) {
+    if (!autoSkipEnabled && wsStatus != 'connected' && isStarting) {
       setIsStarting(true)
       const messages = [
         'Preparing transcription service',
@@ -142,6 +142,11 @@ export const CapturePage: React.FC<CapturePageProps> = ({
     if (wsStatus !== 'connecting') {
       startCapture()
     }
+  }
+
+  const handleStopCapture = () => {
+    stopCapture()
+    setIsStarting(false)
   }
 
   return (
@@ -322,7 +327,7 @@ export const CapturePage: React.FC<CapturePageProps> = ({
             </>
           ) : (
             <Button
-              onClick={stopCapture}
+              onClick={handleStopCapture}
               variant="contained"
               disabled={wsStatus === 'connecting'}
               sx={
