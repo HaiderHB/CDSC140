@@ -43,7 +43,7 @@ mac:
     provider: generic
     url: https://interviewspeaker.co/updates/
 dmg:
-  artifactName: InterviewSpeakerASR-${version}.${ext}
+  artifactName: InterviewSpeakerASR-Installer.${ext}
 linux:
   target:
     - AppImage
