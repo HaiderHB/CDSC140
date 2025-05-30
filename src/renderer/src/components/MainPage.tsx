@@ -4,6 +4,7 @@ import SessionList from './SessionList'
 import ResumeManager from './ResumeManager'
 import Settings from './Settings'
 import { Session, Resume } from '../hooks/useDataPersistence'
+import UpdatesPage from './UpdatesPage'
 
 interface MainPageProps {
   sessions: Session[]
@@ -16,6 +17,7 @@ interface MainPageProps {
   onAddResume: (resume: { name: string; file: File }) => void
   onDeleteResume: (resumeId: string) => void
   onLogout: () => void
+  onUpdates: () => void
 }
 
 export const MainPage: React.FC<MainPageProps> = ({
@@ -28,7 +30,8 @@ export const MainPage: React.FC<MainPageProps> = ({
   onDeleteSession,
   onAddResume,
   onDeleteResume,
-  onLogout
+  onLogout,
+  onUpdates
 }) => {
   return (
     <Container maxWidth="lg">
@@ -43,6 +46,7 @@ export const MainPage: React.FC<MainPageProps> = ({
             <Tab label="Sessions" />
             <Tab label="Resumes" />
             <Tab label="Settings" />
+            <Tab label="Updates" onClick={onUpdates} />
           </Tabs>
         </Box>
 
@@ -67,6 +71,9 @@ export const MainPage: React.FC<MainPageProps> = ({
 
         {/* Settings Tab */}
         {homeTab === 2 && <Settings onLogout={onLogout} />}
+
+        {/* Updates Tab */}
+        {homeTab === 3 && <UpdatesPage />}
       </Box>
     </Container>
   )

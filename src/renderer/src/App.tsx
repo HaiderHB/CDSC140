@@ -16,6 +16,7 @@ import { LoginPage } from './components/LoginPage'
 import { authService } from './services/authService'
 import NotSubscribedPage from './components/NotSubscribedPage'
 import { checkSubscriptionStatus } from './utils/checkSubscription'
+import UpdatesPage from './components/UpdatesPage'
 
 type ReadingMode = 'normal' | 'rapid' | 'spritz'
 
@@ -407,6 +408,7 @@ function App(): JSX.Element {
                 onAddResume={handleAddResumeWrapper}
                 onDeleteResume={handleDeleteResumeWrapper}
                 onLogout={handleLogout}
+                onUpdates={() => setHomeTab(3)}
               />
             )}
 
@@ -460,6 +462,8 @@ function App(): JSX.Element {
                 onAutoSkipToggle={setAutoSkipEnabled}
               />
             )}
+
+            {currentPage === 'updates' && <UpdatesPage />}
 
             <Snackbar
               open={!!error}
