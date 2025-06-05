@@ -344,7 +344,7 @@ function createWindow(): void {
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
 
   // Enable content protection to prevent screen capture
-  mainWindow.setContentProtection(TEST_MODE)
+  mainWindow.setContentProtection(!TEST_MODE)
 
   // Set always on top with screen-saver priority
   mainWindow.setAlwaysOnTop(true, 'screen-saver', 1)
